@@ -6,4 +6,5 @@
     `mrtool` package.
 """
 from .data import *
+from .cov_model import *
 from . import utils

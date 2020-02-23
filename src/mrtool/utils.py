@@ -117,3 +117,108 @@ def sizes_to_indices(sizes):
         a += size
 
     return indices
+
+
+def is_gaussian_prior(prior, size=None):
+    """Check if variable satisfy Gaussian prior format
+
+    Args:
+        prior (numpy.ndarray):
+            Either one or two dimensional array, with first group refer to mean
+            and second group refer to standard deviation.
+
+    Keyword Args:
+        size (int | None, optional):
+            Size the variable, prior related to.
+
+    Returns:
+        bool:
+            True if satisfy condition.
+    """
+    # check type
+    ok = isinstance(prior, np.ndarray) or prior is None
+    if prior is not None:
+        # check dimension
+        ok = ok and (prior.ndim == 1 or prior.ndim == 2) and len(prior) == 2
+        if size is not None and prior.ndim == 2:
+            ok = ok and (prior.shape[1] == size)
+        # check value
+        ok = ok and np.all(prior[1] > 0.0)
+    return ok
+
+
+def is_uniform_prior(prior, size=None):
+    """Check if variable satisfy uniform prior format
+
+    Args:
+        prior (numpy.ndarray):
+            Either one or two dimensional array, with first group refer to lower
+            bound and second group refer to upper bound.
+
+    Keyword Args:
+        size (int | None, optional):
+            Size the variable, prior related to.
+
+    Returns:
+        bool:
+            True if satisfy condition.
+    """
+    # check type
+    ok = isinstance(prior, np.ndarray) or prior is None
+    if prior is not None:
+        # check dimension
+        ok = ok and (prior.ndim == 1 or prior.ndim == 2) and len(prior) == 2
+        if size is not None and prior.ndim == 2:
+            ok = ok and (prior.shape[1] == size)
+        # check value
+        ok = ok and np.all(prior[0] <= prior[1])
+    return ok
+
+
+def input_gaussian_prior(prior, size):
+    """Process the input Gaussian prior
+
+    Args:
+        prior (numpy.ndarray):
+            Either one or two dimensional array, with first group refer to mean
+            and second group refer to standard deviation.
+        size (int, optional):
+            Size the variable, prior related to.
+
+    Returns:
+        numpy.ndarray:
+            Prior after processing, with shape (2, size), with the first row
+            store the mean and second row store the standard deviation.
+    """
+    assert is_gaussian_prior(prior)
+    if prior is None:
+        return np.array([[0.0]*size, [np.inf]*size])
+    elif prior.ndim == 1:
+        return np.repeat(prior[:, None], size, axis=1)
+    else:
+        assert prior.shape[1] == size
+        return prior
+
+def input_uniform_prior(prior, size):
+    """Process the input Gaussian prior
+
+    Args:
+        prior (numpy.ndarray):
+            Either one or two dimensional array, with first group refer to mean
+            and second group refer to standard deviation.
+        size (int, optional):
+            Size the variable, prior related to.
+
+    Returns:
+        numpy.ndarray:
+            Prior after processing, with shape (2, size), with the first row
+            store the mean and second row store the standard deviation.
+    """
+    assert is_gaussian_prior(prior)
+    if prior is None:
+        return np.array([[0.0]*size, [np.inf]*size])
+    elif prior.ndim == 1:
+        return np.repeat(prior[:, None], size, axis=1)
+    else:
+        assert prior.shape[1] == size
+        return prior
