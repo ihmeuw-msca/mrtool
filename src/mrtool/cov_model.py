@@ -342,3 +342,146 @@ class CovModel:
                 num_r += self.prior_spline_maxder_gaussian.shape[1]
 
             return num_r
+
+
+class LinearCovModel(CovModel):
+    """Linear Covariates Model.
+    """
+    def __init__(self, *args, use_re_mid_point=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.use_re_mid_point = use_re_mid_point
+
+    def create_x_mat(self, data):
+        """Create design matrix for the fixed effects.
+
+        Args:
+            data (mrtool.MRData):
+                The data frame used for storing the data
+
+        Returns:
+            numpy.ndarray:
+                Design matrix for fixed effects.
+        """
+        alt_mat, ref_mat = self.create_design_mat(data)
+        if ref_mat.size == 0:
+            return alt_mat
+        else:
+            return alt_mat - ref_mat
+
+    def create_z_mat(self, data):
+        """Create design matrix for the random effects.
+
+        Args:
+            data (mrtool.MRData):
+                The data frame used for storing the data
+
+        Returns:
+            numpy.ndarray:
+                Design matrix for random effects.
+        """
+        if not self.use_re:
+            return np.array([]).reshape(data.num_obs, 0)
+
+        if self.use_re_mid_point:
+            alt_mat = utils.avg_integral(data.covs[self.alt_cov].values)
+            ref_mat = utils.avg_integral(data.covs[self.ref_cov].values)
+        else:
+            alt_mat, ref_mat = self.create_design_mat(data)
+
+        if ref_mat.size == 0:
+            return alt_mat
+        else:
+            return alt_mat - ref_mat
+
+
+class LogCovModel(CovModel):
+    """Log Covariates Model.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def create_x_fun(self, data):
+        """Create design functions for the fixed effects.
+
+        Args:
+            data (mrtool.MRData):
+                The data frame used for storing the data
+
+        Returns:
+            tuple{function, function}:
+                Design functions for fixed effects.
+        """
+        alt_mat, ref_mat = self.create_design_mat(data)
+
+        if ref_mat.size == 0:
+            def fun(beta):
+                return np.log(1.0 + alt_mat.dot(beta))
+
+            def jac_fun(beta):
+                return alt_mat/(1.0 + alt_mat.dot(beta)[:, None])
+        else:
+            def fun(beta):
+                return np.log(1.0 + alt_mat.dot(beta)) - \
+                    np.log(1.0 + ref_mat.dot(beta))
+
+            def jac_fun(beta):
+                return alt_mat/(1.0 + alt_mat.dot(beta)[:, None]) - \
+                    ref_mat/(1.0 + ref_mat.dot(beta)[:, None])
+
+        return fun, jac_fun
+
+    def create_z_mat(self, data):
+        """Create design matrix for the random effects.
+
+        Args:
+            data (mrtool.MRData):
+                The data frame used for storing the data
+
+        Returns:
+            numpy.ndarray:
+                Design matrix for random effects.
+        """
+        if not self.use_re:
+            return np.array([]).reshape(data.num_obs, 0)
+
+        alt_mat = utils.avg_integral(data.covs[self.alt_cov].values)
+        ref_mat = utils.avg_integral(data.covs[self.ref_cov].values)
+
+        if ref_mat.size == 0:
+            return alt_mat
+        else:
+            return alt_mat - ref_mat
+
+    def create_constraint_mat(self, data):
+        """Create constraint matrix.
+        Overwrite the super class, adding non-negative constraints.
+        """
+        c_mat, c_val = super().create_constraint_mat(data)
+        tmp_val = np.array([[-1.0], [np.inf]])
+
+        if self.use_spline:
+            spline = self.create_spline(data)
+            points = np.linspace(spline.knots[0], spline.knots[-1],
+                                 self.prior_spline_num_constraint_points)
+            c_mat = np.vstack((c_mat,
+                               spline.design_mat(points)[:, 1:]))
+            c_val = np.hstack((c_val,
+                               np.repeat(tmp_val, points.size, axis=1)))
+        else:
+            alt_mat = utils.avg_integral(data.covs[self.alt_cov].values)
+            ref_mat = utils.avg_integral(data.covs[self.ref_cov].values)
+            cov_mat = np.hstack((alt_mat, ref_mat))
+            c_mat = np.vstack((c_mat, np.array([[np.min(cov_mat)],
+                                                [np.max(cov_mat)]])))
+            c_val = np.hstack((c_val,
+                               np.repeat(tmp_val, 2, axis=1)))
+        return c_mat, c_val
+
+    @property
+    def num_constraints(self):
+        num_c = super().num_constraints
+        if self.use_spline:
+            num_c += self.prior_spline_num_constraint_points
+        else:
+            num_c += 2
+        return num_c
