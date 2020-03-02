@@ -6,6 +6,7 @@
     Covariates model for `mrtool`.
 """
 import numpy as np
+import xspline
 from . import utils
 
 
@@ -17,7 +18,7 @@ class CovModel:
                  ref_cov=None,
                  use_re=False,
                  use_spline=False,
-                 spline_knot_type='frequency',
+                 spline_knots_type='frequency',
                  spline_knots=np.linspace(0.0, 1.0, 4),
                  spline_degree=3,
                  spline_l_linear=False,
@@ -38,8 +39,6 @@ class CovModel:
                 Main covariate name, when it is a list consists of two
                 covariates names, use the average integrand between defined by
                 the two covariates.
-
-        Keyword Args:
             ref_cov (str | list{str} | None, optional):
                 Reference covariate name, will be interpreted differently in the
                 sub-classes.
@@ -47,7 +46,7 @@ class CovModel:
                 If use the random effects.
             use_spline(bool, optional):
                 If use splines.
-            spline_knot_type (str, optional):
+            spline_knots_type (str, optional):
                 The method of how to place the knots, `'frequency'` place the
                 knots according to the data quantile and `'domain'` place the
                 knots according to the domain of the data.
@@ -89,12 +88,12 @@ class CovModel:
             prior_gamma_uniform (numpy.ndarray, optional):
                 Direct uniform prior for gamma.
         """
-        self.alt_cov = alt_cov
-        self.ref_cov = ref_cov
+        self.alt_cov = utils.input_cols(alt_cov)
+        self.ref_cov = utils.input_cols(ref_cov)
         self.use_re = use_re
         self.use_spline = use_spline
 
-        self.spline_knot_type = spline_knot_type
+        self.spline_knots_type = spline_knots_type
         self.spline_knots = spline_knots
         self.spline_degree = spline_degree
         self.spline_l_linear = spline_l_linear
@@ -126,7 +125,7 @@ class CovModel:
         assert isinstance(self.use_spline, bool)
 
         # spline specific
-        assert self.spline_knot_type in ['frequency', 'domain']
+        assert self.spline_knots_type in ['frequency', 'domain']
         assert isinstance(self.spline_knots, np.ndarray)
         assert np.min(self.spline_knots) >= 0.0
         assert np.max(self.spline_knots) <= 1.0
@@ -154,6 +153,12 @@ class CovModel:
     def process_attr(self):
         """Process attributes.
         """
+        # covariates names
+        if not isinstance(self.alt_cov, list):
+            self.alt_cov = [self.alt_cov]
+        if not isinstance(self.ref_cov, list):
+            self.ref_cov = [self.ref_cov]
+
         # spline knots
         self.spline_knots = np.unique(self.spline_knots)
         if np.min(self.spline_knots) > 0.0:
@@ -163,10 +168,10 @@ class CovModel:
 
         # prior information
         self.prior_spline_maxder_gaussian = utils.input_gaussian_prior(
-            self.prior_spline_maxder_gaussian, self.num_x_vars
+            self.prior_spline_maxder_gaussian, self.spline_knots.size - 1
         )
         self.prior_spline_maxder_uniform = utils.input_uniform_prior(
-            self.prior_spline_maxder_uniform, self.num_x_vars
+            self.prior_spline_maxder_uniform, self.spline_knots.size - 1
         )
         self.prior_beta_gaussian = utils.input_gaussian_prior(
             self.prior_beta_gaussian, self.num_x_vars
@@ -180,6 +185,121 @@ class CovModel:
         self.prior_gamma_uniform = utils.input_uniform_prior(
             self.prior_gamma_uniform, self.num_z_vars
         )
+
+    def create_spline(self, data):
+        """Create spline given current spline parameters.
+        Args:
+            data (mrtool.MRData):
+                The data frame used for storing the data
+        Returns:
+            xspline.XSpline
+                The spline object.
+        """
+        # extract covariate
+        assert all([cov in data.covs.columns for cov in self.alt_cov])
+        assert all([cov in data.covs.columns for cov in self.ref_cov])
+        cov = data.covs[self.alt_cov + self.ref_cov].values
+
+        if self.spline_knots_type == 'frequency':
+            spline_knots = np.quantile(cov, self.spline_knots)
+        else:
+            spline_knots = cov.min() + self.spline_knots*(cov.max() - cov.min())
+
+        return xspline.XSpline(spline_knots,
+                               self.spline_degree,
+                               l_linear=self.spline_l_linear,
+                               r_linear=self.spline_r_linear)
+
+    def create_design_mat(self, data):
+        """Create design matrix.
+        Args:
+            data (mrtool.MRData):
+                The data frame used for storing the data
+        Returns:
+            tuple{numpy.ndarray, numpy.ndarray}:
+                Return the design matrix for linear cov or spline.
+        """
+        assert all([cov in data.covs.columns for cov in self.alt_cov])
+        assert all([cov in data.covs.columns for cov in self.ref_cov])
+
+        alt_cov = data.covs[self.alt_cov].values
+        ref_cov = data.covs[self.ref_cov].values
+
+        spline = self.create_spline(data) if self.use_spline else None
+
+        alt_mat = utils.avg_integral(alt_cov, spline=spline)[:, 1:]
+        ref_mat = utils.avg_integral(ref_cov, spline=spline)[:, 1:]
+
+        return alt_mat, ref_mat
+
+    def create_constraint_mat(self, data):
+        """Create constraint matrix.
+        Args:
+            data (mrtool.MRData):
+                The data frame used for storing the data
+
+        Returns:
+            tuple{numpy.ndarray, numpy.ndarray}:
+                Return linear constraints matrix and its uniform prior.
+        """
+        # initialize the matrix and the value
+        c_mat = np.array([]).reshape(0, self.num_x_vars)
+        c_val = np.array([]).reshape(2, 0)
+        if not self.use_spline:
+            return c_mat, c_val
+
+        spline = self.create_spline(data)
+        points = np.linspace(spline.knots[0], spline.knots[-1],
+                             self.prior_spline_num_constraint_points)
+        tmp_val = np.array([[-np.inf], [0.0]])
+
+        # spline monotonicity constraints
+        if self.prior_spline_monotonicity is not None:
+            sign = 1.0 if self.prior_spline_monotonicity is 'decreasing' \
+                else -1.0
+            c_mat = np.vstack((c_mat,
+                               sign*spline.design_dmat(points, 1)[:, 1:]))
+            c_val = np.hstack((c_val,
+                               np.repeat(tmp_val, points.size, axis=1)))
+
+        # spline convexity constraints
+        if self.prior_spline_convexity is not None:
+            sign = 1.0 if self.prior_spline_convexity is 'concave' else -1.0
+            c_mat = np.vstack((c_mat,
+                               sign*spline.design_dmat(points, 2)[:, 1:]))
+            c_val = np.hstack((c_val,
+                               np.repeat(tmp_val, points.size, axis=1)))
+
+        # spline maximum derivative constraints
+        if not np.isinf(self.prior_spline_maxder_uniform).all():
+            c_mat = np.vstack((c_mat, spline.last_dmat()[:, 1:]))
+            c_val = np.hstack((c_val, self.prior_spline_maxder_uniform))
+
+        return c_mat, c_val
+
+    def create_regularization_mat(self, data):
+        """Create constraint matrix.
+        Args:
+            data (mrtool.MRData):
+                The data frame used for storing the data
+
+        Returns:
+            tuple{numpy.ndarray, numpy.ndarray}:
+                Return linear regularization matrix and its Gaussian prior.
+        """
+        r_mat = np.array([]).reshape(0, self.num_x_vars)
+        r_val = np.array([]).reshape(2, 0)
+        if not self.use_spline:
+            return r_mat, r_val
+
+        spline = self.create_spline(data)
+
+        # spline maximum derivative constraints
+        if not np.isinf(self.prior_spline_maxder_uniform).all():
+            r_mat = np.vstack((r_mat, spline.last_dmat()[:, 1:]))
+            r_val = np.hstack((r_val, self.prior_spline_maxder_gaussian))
+
+        return r_mat, r_val
 
     @property
     def num_x_vars(self):
@@ -197,3 +317,28 @@ class CovModel:
             return self.num_x_vars
         else:
             return 0
+
+    @property
+    def num_constraints(self):
+        if not self.use_spline:
+            return 0
+        else:
+            num_c = self.prior_spline_num_constraint_points*(
+                    (self.prior_spline_monotonicity is not None) +
+                    (self.prior_spline_convexity is not None)
+            )
+            if not np.isinf(self.prior_spline_maxder_uniform).all():
+                num_c += self.prior_spline_maxder_uniform.shape[1]
+
+            return num_c
+
+    @property
+    def num_regularizations(self):
+        if not self.use_spline:
+            return 0
+        else:
+            num_r = 0
+            if not np.isinf(self.prior_spline_maxder_gaussian[1]).all():
+                num_r += self.prior_spline_maxder_gaussian.shape[1]
+
+            return num_r

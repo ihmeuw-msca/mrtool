@@ -216,9 +216,55 @@ def input_uniform_prior(prior, size):
     """
     assert is_gaussian_prior(prior)
     if prior is None:
-        return np.array([[0.0]*size, [np.inf]*size])
+        return np.array([[-np.inf]*size, [np.inf]*size])
     elif prior.ndim == 1:
         return np.repeat(prior[:, None], size, axis=1)
     else:
         assert prior.shape[1] == size
         return prior
+
+
+def avg_integral(mat, spline=None):
+    """Compute average integral.
+
+    Args:
+        mat (numpy.ndarray):
+            Matrix that contains the starting and ending points of the integral
+            or a single column represents the mid-points.
+        spline (xspline.XSpline | None, optional):
+            Spline integrate over with, when `None` treat the function as
+            linear.
+
+    Returns:
+        numpy.ndarray:
+            Design matrix when spline is not `None`, otherwise the mid-points.
+    """
+    assert mat.ndim == 2
+    if mat.size == 0:
+        return mat.reshape(mat.shape[0], 0)
+
+    if mat.shape[1] == 1:
+        return mat if spline is None else spline.design_mat(mat.ravel())
+    else:
+        if spline is None:
+            return mat.mean(axis=1)[:, None]
+        else:
+            x0 = mat[:, 0]
+            x1 = mat[:, 1]
+            dx = x1 - x0
+            val_idx = (dx == 0.0)
+            int_idx = (dx != 0.0)
+
+            mat = np.zeros((dx.size, spline.num_spline_bases))
+
+            if np.any(val_idx):
+                mat[val_idx, :] = spline.design_mat(x0[val_idx],
+                                                    l_extra=True,
+                                                    r_extra=True)
+            if np.any(int_idx):
+                mat[int_idx, :] = spline.design_imat(
+                    x0[int_idx], x1[int_idx], 1,
+                    l_extra=True,
+                    r_extra=True)/(dx[int_idx][:, None])
+
+            return mat
