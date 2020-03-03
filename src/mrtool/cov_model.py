@@ -15,6 +15,7 @@ class CovModel:
     """
     def __init__(self,
                  alt_cov,
+                 name=None,
                  ref_cov=None,
                  use_re=False,
                  use_spline=False,
@@ -42,6 +43,8 @@ class CovModel:
             ref_cov (str | list{str} | None, optional):
                 Reference covariate name, will be interpreted differently in the
                 sub-classes.
+            name (str | None, optional):
+                Model name for easy access.
             use_re (bool, optional):
                 If use the random effects.
             use_spline(bool, optional):
@@ -90,6 +93,7 @@ class CovModel:
         """
         self.alt_cov = utils.input_cols(alt_cov)
         self.ref_cov = utils.input_cols(ref_cov)
+        self.name = name
         self.use_re = use_re
         self.use_spline = use_spline
 
@@ -117,6 +121,7 @@ class CovModel:
         """
         assert utils.is_cols(self.alt_cov)
         assert utils.is_cols(self.ref_cov)
+        assert isinstance(self.name, str) or self.name is None
         if isinstance(self.alt_cov, list):
             assert len(self.alt_cov) <= 2
         if isinstance(self.ref_cov, list):
@@ -158,6 +163,12 @@ class CovModel:
             self.alt_cov = [self.alt_cov]
         if not isinstance(self.ref_cov, list):
             self.ref_cov = [self.ref_cov]
+        # model name
+        if self.name is None:
+            if len(self.alt_cov) == 1:
+                self.name = self.alt_cov[0]
+            else:
+                self.name = 'cov' + '{:0>3}'.format(np.random.randint(1000))
 
         # spline knots
         self.spline_knots = np.unique(self.spline_knots)
