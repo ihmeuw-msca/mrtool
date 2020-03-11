@@ -82,6 +82,18 @@ class MRBRT:
         }
         self.num_z_vars = int(sum(self.z_vars_sizes.values()))
 
+        # number of constraints
+        self.num_constraints = sum([
+            cov_model.num_constraints
+            for cov_model in self.cov_models
+        ])
+
+        # number of regularizations
+        self.num_regularizations = sum([
+            cov_model.num_regularizations
+            for cov_model in self.cov_models
+        ])
+
     def check_attr(self):
         """Check the input type of the attributes.
         """
@@ -135,3 +147,39 @@ class MRBRT:
         ])
 
         return mat
+
+    def create_c_mat(self):
+        """Create the constraints matrices.
+        """
+        num_vars = self.num_x_vars + self.num_z_vars
+        c_mat = np.zeros((0, num_vars))
+        c_vec = np.zeros((2, 0))
+
+        for cov_model in self.cov_models:
+            if cov_model.num_constraints != 0:
+                c_mat_sub = np.zeros((cov_model.num_constraints,
+                                      num_vars))
+                c_mat_sub[:, self.x_vars_idx[cov_model.name]], c_vec_sub = \
+                    cov_model.create_constraint_mat(self.data)
+                c_mat = np.vstack((c_mat, c_mat_sub))
+                c_vec = np.hstack((c_vec, c_vec_sub))
+
+        return c_mat, c_vec
+
+    def create_h_mat(self):
+        """Create the regularizer matrices.
+        """
+        num_vars = self.num_x_vars
+        h_mat = np.zeros((0, num_vars))
+        h_vec = np.zeros((2, 0))
+
+        for cov_model in self.cov_models:
+            if cov_model.num_regularizations != 0:
+                h_mat_sub = np.zeros((cov_model.num_regularizations,
+                                      num_vars))
+                h_mat_sub[:, self.x_vars_idx[cov_model.name]], h_vec_sub = \
+                    cov_model.create_regularization_mat(self.data)
+                h_mat = np.vstack((h_mat, h_mat_sub))
+                h_vec = np.hstack((h_vec, h_vec_sub))
+
+        return h_mat, h_vec

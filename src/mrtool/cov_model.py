@@ -18,6 +18,7 @@ class CovModel:
                  name=None,
                  ref_cov=None,
                  use_re=False,
+                 use_re_mid_point=False,
                  use_spline=False,
                  spline_knots_type='frequency',
                  spline_knots=np.linspace(0.0, 1.0, 4),
@@ -47,6 +48,8 @@ class CovModel:
                 Model name for easy access.
             use_re (bool, optional):
                 If use the random effects.
+            use_re_mid_point (bool, optional):
+                If use the midpoint for the random effects.
             use_spline(bool, optional):
                 If use splines.
             spline_knots_type (str, optional):
@@ -95,6 +98,7 @@ class CovModel:
         self.ref_cov = utils.input_cols(ref_cov)
         self.name = name
         self.use_re = use_re
+        self.use_re_mid_point = use_re_mid_point
         self.use_spline = use_spline
 
         self.spline_knots_type = spline_knots_type
@@ -325,7 +329,10 @@ class CovModel:
     @property
     def num_z_vars(self):
         if self.use_re:
-            return self.num_x_vars
+            if self.use_re_mid_point:
+                return 1
+            else:
+                return self.num_x_vars
         else:
             return 0
 
@@ -358,9 +365,8 @@ class CovModel:
 class LinearCovModel(CovModel):
     """Linear Covariates Model.
     """
-    def __init__(self, *args, use_re_mid_point=True, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.use_re_mid_point = use_re_mid_point
 
     def create_x_mat(self, data):
         """Create design matrix for the fixed effects.
@@ -496,3 +502,10 @@ class LogCovModel(CovModel):
         else:
             num_c += 2
         return num_c
+
+    @property
+    def num_z_vars(self):
+        if self.use_re:
+            return 1
+        else:
+            return 0
