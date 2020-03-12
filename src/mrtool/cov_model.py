@@ -200,6 +200,7 @@ class CovModel:
         self.prior_gamma_uniform = utils.input_uniform_prior(
             self.prior_gamma_uniform, self.num_z_vars
         )
+        self.prior_gamma_uniform = np.maximum(0.0, self.prior_gamma_uniform)
 
     def create_spline(self, data):
         """Create spline given current spline parameters.

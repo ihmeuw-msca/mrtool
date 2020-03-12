@@ -81,6 +81,14 @@ class MRBRT:
             for cov_model in self.cov_models
         }
         self.num_z_vars = int(sum(self.z_vars_sizes.values()))
+        z_vars_idx = utils.sizes_to_indices([
+            self.z_vars_sizes[name]
+            for name in self.cov_model_names
+        ])
+        self.z_vars_idx = {
+            name: z_vars_idx[i] + self.num_x_vars
+            for i, name in enumerate(self.cov_model_names)
+        }
 
         # number of constraints
         self.num_constraints = sum([
@@ -183,3 +191,33 @@ class MRBRT:
                 h_vec = np.hstack((h_vec, h_vec_sub))
 
         return h_mat, h_vec
+
+    def create_uprior(self):
+        """Create direct uniform prior.
+        """
+        num_vars = self.num_x_vars + self.num_z_vars
+        uprior = np.array([[-np.inf]*num_vars,
+                           [np.inf]*num_vars])
+
+        for cov_model in self.cov_models:
+            uprior[:, self.x_vars_idx[cov_model.name]] = \
+                cov_model.prior_beta_uniform
+            uprior[:, self.z_vars_idx[cov_model.name]] = \
+                cov_model.prior_gamma_uniform
+
+        return uprior
+
+    def create_gprior(self):
+        """Create direct gaussian prior.
+        """
+        num_vars = self.num_x_vars + self.num_z_vars
+        gprior = np.array([[0]*num_vars,
+                           [np.inf]*num_vars])
+
+        for cov_model in self.cov_models:
+            gprior[:, self.x_vars_idx[cov_model.name]] = \
+                cov_model.prior_beta_gaussian
+            gprior[:, self.z_vars_idx[cov_model.name]] = \
+                cov_model.prior_gamma_gaussian
+
+        return gprior
