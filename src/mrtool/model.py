@@ -8,6 +8,7 @@
 import numpy as np
 from .data import *
 from .cov_model import *
+from limetr import LimeTr
 
 
 class MRBRT:
@@ -102,6 +103,9 @@ class MRBRT:
             for cov_model in self.cov_models
         ])
 
+        # place holder for the limetr objective
+        self.lt = None
+
     def check_attr(self):
         """Check the input type of the attributes.
         """
@@ -177,7 +181,7 @@ class MRBRT:
     def create_h_mat(self):
         """Create the regularizer matrices.
         """
-        num_vars = self.num_x_vars
+        num_vars = self.num_x_vars + self.num_z_vars
         h_mat = np.zeros((0, num_vars))
         h_vec = np.zeros((2, 0))
 
@@ -221,3 +225,51 @@ class MRBRT:
                 cov_model.prior_gamma_gaussian
 
         return gprior
+
+    def fit_model(self):
+        """Fitting the model through limetr.
+        """
+        # dimensions
+        n = self.data.study_size.values
+        k_beta = self.num_x_vars
+        k_gamma = self.num_z_vars
+
+        # data
+        y = self.data.obs.values
+        s = self.data.obs_se.values
+
+        # create x fun and z mat
+        x_fun, x_fun_jac = self.create_x_fun()
+        z_mat = self.create_z_mat()
+
+        # priors
+        c_mat, c_vec = self.create_c_mat()
+        h_mat, h_vec = self.create_h_mat()
+
+        def c_fun(var):
+            return c_mat.dot(var)
+
+        def c_fun_jac(var):
+            return c_mat
+
+        def h_fun(var):
+            return h_mat.dot(var)
+
+        def h_fun_jac(var):
+            return h_mat
+
+        uprior = self.create_uprior()
+        gprior = self.create_gprior()
+
+        # create limetr object
+        self.lt = LimeTr(n, k_beta, k_gamma,
+                         y, x_fun, x_fun_jac, z_mat, S=s,
+                         C=c_fun, JC=c_fun_jac, c=c_vec,
+                         H=h_fun, JH=h_fun_jac, h=h_vec,
+                         uprior=uprior, gprior=gprior,
+                         inlier_percentage=self.inlier_pct)
+
+        self.lt.fitModel()
+        self.beta_soln = self.lt.beta.copy()
+        self.gamma_soln = self.lt.gamma.copy()
+        self.w_soln = self.lt.w.copy()
