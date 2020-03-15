@@ -119,20 +119,21 @@ class MRBRT:
         assert isinstance(self.inlier_pct, float)
         assert (self.inlier_pct >= 0.0) and (self.inlier_pct <= 1.0)
 
-    def create_x_fun(self):
+    def create_x_fun(self, data=None):
         """Create the fixed effects function, link with limetr.
         """
+        data = self.data if data is None else data
         # create design matrix for the linear covariates part
         linear_mat = [
-            cov_model.create_x_mat(self.data)
+            cov_model.create_x_mat(data)
             for cov_model in self.linear_cov_models
         ]
         if linear_mat:
             linear_mat = np.hstack(linear_mat)
         else:
-            linear_mat = np.array(linear_mat).reshape(self.data.num_obs, 0)
+            linear_mat = np.array(linear_mat).reshape(data.num_obs, 0)
         log_fun = [
-            cov_model.create_x_fun(self.data)
+            cov_model.create_x_fun(data)
             for cov_model in self.log_cov_models
         ]
 
@@ -153,11 +154,12 @@ class MRBRT:
 
         return fun, jac_fun
 
-    def create_z_mat(self):
+    def create_z_mat(self, data=None):
         """Create the random effects matrix, link with limetr.
         """
+        data = self.data if data is None else data
         mat = np.hstack([
-            cov_model.create_z_mat(self.data)
+            cov_model.create_z_mat(data)
             for cov_model in self.cov_models
         ])
 
@@ -305,3 +307,31 @@ class MRBRT:
             self.lt.sampleSoln(self.lt, sample_size=sample_size)
 
         return beta_soln_samples, gamma_soln_samples
+
+    def create_draws(self, data,
+                     sample_size=1,
+                     beta_samples=None,
+                     gamma_samples=None,
+                     use_re=False):
+
+        if beta_samples is None or gamma_samples is None:
+            beta_samples, gamma_samples = \
+                self.sample_soln(sample_size=sample_size)
+        else:
+            assert beta_samples.shape == (sample_size, self.num_x_vars)
+            assert gamma_samples.shape == (sample_size, self.num_z_vars)
+
+        x_fun, x_jac_fun = self.create_x_fun(data=data)
+        z_mat = self.create_z_mat(data=data)
+
+        y_samples = np.vstack([
+            x_fun(beta_sample)
+            for beta_sample in beta_samples
+        ])
+
+        if use_re:
+            u_samples = np.random.randn(sample_size,
+                                        self.num_z_vars)*gamma_samples
+            y_samples += u_samples.dot(z_mat.T)
+
+        return y_samples.T
