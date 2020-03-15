@@ -244,7 +244,7 @@ def avg_integral(mat, spline=None):
         return mat.reshape(mat.shape[0], 0)
 
     if mat.shape[1] == 1:
-        return mat if spline is None else spline.design_mat(mat.ravel())
+        return mat if spline is None else spline.design_mat(mat.ravel())[:, 1:]
     else:
         if spline is None:
             return mat.mean(axis=1)[:, None]
@@ -267,4 +267,4 @@ def avg_integral(mat, spline=None):
                     l_extra=True,
                     r_extra=True)/(dx[int_idx][:, None])
 
-            return mat
+            return mat[:, 1:]

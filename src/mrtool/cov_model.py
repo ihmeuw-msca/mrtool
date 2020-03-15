@@ -243,8 +243,8 @@ class CovModel:
 
         spline = self.create_spline(data) if self.use_spline else None
 
-        alt_mat = utils.avg_integral(alt_cov, spline=spline)[:, 1:]
-        ref_mat = utils.avg_integral(ref_cov, spline=spline)[:, 1:]
+        alt_mat = utils.avg_integral(alt_cov, spline=spline)
+        ref_mat = utils.avg_integral(ref_cov, spline=spline)
 
         return alt_mat, ref_mat
 
@@ -311,7 +311,7 @@ class CovModel:
         spline = self.create_spline(data)
 
         # spline maximum derivative constraints
-        if not np.isinf(self.prior_spline_maxder_uniform).all():
+        if not np.isinf(self.prior_spline_maxder_gaussian[1]).all():
             r_mat = np.vstack((r_mat, spline.last_dmat()[:, 1:]))
             r_val = np.hstack((r_val, self.prior_spline_maxder_gaussian))
 

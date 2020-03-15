@@ -105,6 +105,9 @@ class MRBRT:
 
         # place holder for the limetr objective
         self.lt = None
+        self.beta_soln = None
+        self.gamma_soln = None
+        self.w_soln = None
 
     def check_attr(self):
         """Check the input type of the attributes.
@@ -226,7 +229,16 @@ class MRBRT:
 
         return gprior
 
-    def fit_model(self):
+    def fit_model(self,
+                  x0=None,
+                  inner_print_level=0,
+                  inner_max_iter=20,
+                  inner_tol=1e-8,
+                  outer_verbose=False,
+                  outer_max_iter=100,
+                  outer_step_size=1.0,
+                  outer_tol=1e-6,
+                  normalize_trimming_grad=False):
         """Fitting the model through limetr.
         """
         # dimensions
@@ -269,7 +281,27 @@ class MRBRT:
                          uprior=uprior, gprior=gprior,
                          inlier_percentage=self.inlier_pct)
 
-        self.lt.fitModel()
+        self.lt.fitModel(x0=x0,
+                         inner_print_level=inner_print_level,
+                         inner_max_iter=inner_max_iter,
+                         inner_tol=inner_tol,
+                         outer_verbose=outer_verbose,
+                         outer_max_iter=outer_max_iter,
+                         outer_step_size=outer_step_size,
+                         outer_tol=outer_tol,
+                         normalize_trimming_grad=normalize_trimming_grad)
         self.beta_soln = self.lt.beta.copy()
         self.gamma_soln = self.lt.gamma.copy()
         self.w_soln = self.lt.w.copy()
+
+    def sample_soln(self, sample_size=1):
+        """Sample solutions.
+        """
+        if self.lt is None:
+            print('Fit the model first!')
+            return None, None
+
+        beta_soln_samples, gamma_soln_samples = \
+            self.lt.sampleSoln(self.lt, sample_size=sample_size)
+
+        return beta_soln_samples, gamma_soln_samples
