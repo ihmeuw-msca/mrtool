@@ -15,5 +15,6 @@ setup(name='mrtool',
                         'pytest',
                         'ipopt',
                         'limetr',
-                        'xspline'],
+                        'xspline',
+                        'pycddlib'],
       zip_safe=False)

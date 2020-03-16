@@ -6,6 +6,7 @@
 """
 import numpy as np
 import pandas as pd
+import cdd
 
 
 def get_cols(df, cols):
@@ -268,3 +269,164 @@ def avg_integral(mat, spline=None):
                     r_extra=True)/(dx[int_idx][:, None])
 
             return mat[:, 1:]
+
+# random knots
+def sample_knots(k, b=None, d=None, N=1):
+    """Sample knots given a set of rules.
+    """
+    t0 = 0.0
+    tk = 1.0
+    # check input
+    assert t0 <= tk
+    assert k >= 2
+
+    if d is not None:
+        assert d.shape == (k, 2) and sum(d[:, 0]) <= 1.0 and\
+            np.all(d >= 0.0) and np.all(d <= 1.0)
+    else:
+        d = np.repeat(np.array([[0.0, 1.0]]), k, axis=0)
+
+    if b is not None:
+        assert b.shape == (k - 1, 2) and\
+            np.all(b[:, 0] <= b[:, 1]) and\
+            np.all(b[:-1, 1] <= b[1:, 1]) and\
+            np.all(b >= 0.0) and np.all(b <= 1.0)
+    else:
+        b = np.repeat(np.array([[0.0, 1.0]]), k - 1, axis=0)
+
+    d = d*(tk - t0)
+    b = b*(tk - t0) + t0
+    d[0] += t0
+    d[-1] -= tk
+
+    # find vertices of the polyhedron
+    D = -col_diff_mat(k - 1)
+    I = np.identity(k - 1)
+
+    A1 = np.vstack((-D, D))
+    A2 = np.vstack((-I, I))
+
+    b1 = np.hstack((-d[:, 0], d[:, 1]))
+    b2 = np.hstack((-b[:, 0], b[:, 1]))
+
+    A = np.vstack((A1, A2))
+    b = np.hstack((b1, b2))
+
+    mat = np.insert(-A, 0, b, axis=1)
+    mat = cdd.Matrix(mat)
+    mat.rep_type = cdd.RepType.INEQUALITY
+    poly = cdd.Polyhedron(mat)
+    ext = poly.get_generators()
+    vertices_and_rays = np.array(ext)
+
+    if vertices_and_rays.size == 0:
+        print('there is no feasible knots')
+        return None
+
+    if np.any(vertices_and_rays[:, 0] == 0.0):
+        print('polyhedron is not closed, something is wrong.')
+        return None
+    else:
+        vertices = vertices_and_rays[:, 1:]
+
+    # sample from the convex combination of the vertices
+    n = vertices.shape[0]
+    s_simplex = sample_simplex(n, N=N)
+    s = s_simplex.dot(vertices)
+
+    s = np.insert(s, 0, t0, axis=1)
+    s = np.insert(s, k, tk, axis=1)
+
+    return s
+
+
+def sample_simplex(n, N=1):
+    """sample from n dimensional simplex"""
+    assert n >= 1
+
+    # special case when n == 1
+    if n == 1:
+        return np.ones((N, n))
+
+    # other cases
+    s = np.random.rand(N, n - 1)
+    s.sort(axis=1)
+    s = np.insert(s, 0, 0.0, axis=1)
+    s = np.insert(s, n, 1.0, axis=1)
+
+    w = np.zeros((n + 1, n))
+    id_d0 = np.diag_indices(n)
+    id_d1 = (id_d0[0] + 1, id_d0[1])
+    w[id_d0] = -1.0
+    w[id_d1] = 1.0
+
+    return s.dot(w)
+
+
+def col_diff_mat(n):
+    """column difference matrix"""
+    D = np.zeros((n + 1, n))
+    id_d0 = np.diag_indices(n)
+    id_d1 = (id_d0[0] + 1, id_d0[1])
+    D[id_d0] = -1.0
+    D[id_d1] = 1.0
+
+    return D
+
+
+def score_sub_models_datafit(mr):
+    """score the result of mrbert"""
+    if mr.lt.soln is None:
+        print('must optimize MR first!')
+        return None
+
+    return -mr.lt.objective(mr.lt.soln)
+
+
+def score_sub_models_variation(mr, ensemble_cov_model, n=1):
+    """score the result of mrbert"""
+    if mr.lt.soln is None:
+        print('must optimize MR first!')
+        return None
+
+    spline = mr.cov_models_dict[ensemble_cov_model].create_spline(mr.data)
+    x = np.linspace(spline.knots[0], spline.knots[-1], 201)
+    dmat = spline.design_dmat(x, n)[:, 1:]
+    d = dmat.dot(mr.beta_soln[mr.x_vars_idx[ensemble_cov_model]])
+    return -np.mean(np.abs(d))
+
+
+def nonlinear_trans(score, slope=6.0, quantile=0.7):
+    score_min = np.min(score)
+    score_max = np.max(score)
+    weight = (score - score_min)/(score_max - score_min)
+
+
+    sorted_weight = np.sort(weight)
+    x = sorted_weight[int(0.8*weight.size)]
+    y = 1.0 - x
+
+    # calculate the transformation coefficient
+    c = np.zeros(4)
+    c[1] = slope*x**2/quantile
+    c[0] = quantile*np.exp(c[1]/x)
+    c[3] = slope*y**2/(1.0 - quantile)
+    c[2] = (1.0 - quantile)*np.exp(c[3]/y)
+
+    weight_trans = np.zeros(weight.size)
+
+    for i in range(weight.size):
+        w = weight[i]
+        if w == 0.0:
+            weight_trans[i] = 0.0
+        elif w < x:
+            weight_trans[i] = c[0]*np.exp(-c[1]/w)
+        elif w < 1.0:
+            weight_trans[i] = 1.0 - c[2]*np.exp(-c[3]/(1.0 - w))
+        else:
+            weight_trans[i] = 1.0
+
+    weight_trans = (weight_trans - np.min(weight_trans))/\
+        (np.max(weight_trans) - np.min(weight_trans))
+
+    return weight_trans

@@ -5,10 +5,11 @@
 
     Model module for mrtool package.
 """
-import numpy as np
+import pandas as pd
 from .data import *
 from .cov_model import *
 from limetr import LimeTr
+from copy import deepcopy
 
 
 class MRBRT:
@@ -32,6 +33,11 @@ class MRBRT:
         self.cov_models = cov_models if cov_models is not None else [
             LinearCovModel('intercept')]
         self.inlier_pct = inlier_pct
+
+        self.cov_models_dict = {
+            cov_model.name: cov_model
+            for cov_model in self.cov_models
+        }
 
         # group the linear and log covariates model
         self.linear_cov_models = [
@@ -335,3 +341,171 @@ class MRBRT:
             y_samples += u_samples.dot(z_mat.T)
 
         return y_samples.T
+
+
+class MRBeRT:
+    """Ensemble model of MRBRT.
+    """
+    def __init__(self, data,
+                 ensemble_cov_model,
+                 ensemble_knots,
+                 cov_models=None,
+                 inlier_pct=1.0):
+        """Constructor of `MRBeRT`
+
+        Args:
+            ensemble_cov_model (mrtool.CovModel):
+                Covariates model which will be used with ensemble.
+        """
+        self.data = data
+        self.cov_models = cov_models if cov_models is not None else [
+            LinearCovModel('intercept')]
+        self.inlier_pct = inlier_pct
+
+        assert isinstance(ensemble_cov_model, CovModel)
+        assert ensemble_cov_model.use_spline
+
+        cov_model_tmp = ensemble_cov_model
+        self.ensemble_cov_model = cov_model_tmp.name
+        self.ensemble_knots = ensemble_knots
+        self.num_sub_models = len(ensemble_knots)
+
+        self.sub_models = []
+        for knots in self.ensemble_knots:
+            ensemble_cov_model = deepcopy(cov_model_tmp)
+            ensemble_cov_model.spline_knots = knots.copy()
+            ensemble_cov_model.process_attr()
+            ensemble_cov_model.check_attr()
+            self.sub_models.append(MRBRT(data,
+                                         cov_models=[*self.cov_models,
+                                                     ensemble_cov_model],
+                                         inlier_pct=self.inlier_pct))
+
+        self.weights = np.ones(self.num_sub_models)/self.num_sub_models
+
+    def fit_model(self,
+                  x0=None,
+                  inner_print_level=0,
+                  inner_max_iter=20,
+                  inner_tol=1e-8,
+                  outer_verbose=False,
+                  outer_max_iter=100,
+                  outer_step_size=1.0,
+                  outer_tol=1e-6,
+                  normalize_trimming_grad=False,
+                  scores_weights=np.array([1.0, 1.0]),
+                  slopes=np.array([2.0, 10.0]),
+                  quantiles=np.array([0.4, 0.4])):
+        """Fitting the model through limetr.
+        """
+        for sub_model in self.sub_models:
+            sub_model.fit_model(
+                x0=x0,
+                inner_print_level=inner_print_level,
+                inner_max_iter=inner_max_iter,
+                inner_tol=inner_tol,
+                outer_verbose=outer_verbose,
+                outer_max_iter=outer_max_iter,
+                outer_step_size=outer_step_size,
+                outer_tol=outer_tol,
+                normalize_trimming_grad=normalize_trimming_grad
+            )
+
+        self.score_model(scores_weights=scores_weights,
+                         slopes=slopes,
+                         quantiles=quantiles)
+
+    def score_model(self,
+                    scores_weights=np.array([1.0, 1.0]),
+                    slopes=np.array([2.0, 10.0]),
+                    quantiles=np.array([0.4, 0.4])):
+        """Score the model by there fitting and variation.
+        """
+        scores = np.zeros((2, self.num_sub_models))
+        for i, sub_model in enumerate(self.sub_models):
+            scores[0][i] = utils.score_sub_models_datafit(sub_model)
+            scores[1][i] = utils.score_sub_models_variation(
+                sub_model, self.ensemble_cov_model, n=3)
+
+        weights = np.zeros(scores.shape)
+        for i in range(2):
+            weights[i] = utils.nonlinear_trans(
+                scores[i],
+                slope=slopes[i],
+                quantile=quantiles[i]
+            )**scores_weights[i]
+
+        weights = np.prod(weights, axis=0)
+        self.weights = weights/np.sum(weights)
+
+    def sample_soln(self, sample_size=1):
+        """Sample solution.
+        """
+        try:
+            sample_sizes = np.random.multinomial(sample_size, self.weights)
+        except:
+            print("Fit and evaluate the models first.")
+            return None
+
+        beta_samples = []
+        gamma_samples = []
+        for i, sub_model in enumerate(self.sub_models):
+            if sample_sizes[i] != 0:
+                sub_beta_samples, sub_gamma_samples = \
+                    sub_model.sample_soln(sample_size=sample_sizes[i])
+                beta_samples.append(sub_beta_samples)
+                gamma_samples.append(sub_gamma_samples)
+
+        beta_samples = np.vstack(beta_samples)
+        gamma_samples = np.vstack(gamma_samples)
+
+        sub_model_id = np.repeat(np.arange(self.num_sub_models),
+                                 sample_sizes)
+        beta_samples = pd.DataFrame({
+            'beta_%i'%i: beta_samples[:, i]
+            for i in range(beta_samples.shape[1])
+        })
+        gamma_samples = pd.DataFrame({
+            'gamma_%i'%i: gamma_samples[:, i]
+            for i in range(gamma_samples.shape[1])
+        })
+        beta_samples['sub_model_id'] = sub_model_id
+        gamma_samples['sub_model_id'] = sub_model_id
+
+        return beta_samples, gamma_samples
+
+    def create_draws(self, data,
+                     sample_size=1,
+                     beta_samples=None,
+                     gamma_samples=None,
+                     use_re=False):
+        """Create draws.
+        """
+        if beta_samples is None or gamma_samples is None:
+            beta_samples, gamma_samples = \
+                self.sample_soln(sample_size=sample_size)
+        else:
+            assert beta_samples.shape == (sample_size,
+                                          self.sub_models[0].num_x_vars + 1)
+            assert gamma_samples.shape == (sample_size,
+                                           self.sub_models[0].num_z_vars + 1)
+
+        y_samples = []
+        for i in range(self.num_sub_models):
+            sub_beta_samples = beta_samples[[
+                name for name in beta_samples.columns if 'beta' in name
+            ]][beta_samples['sub_model_id'] == i].values
+            sub_gamma_samples = gamma_samples[[
+                name for name in gamma_samples.columns if 'gamma' in name
+            ]][gamma_samples['sub_model_id'] == i].values
+            if sub_beta_samples.size != 0:
+                y_samples.append(self.sub_models[i].create_draws(
+                    data,
+                    sample_size=sub_beta_samples.shape[0],
+                    beta_samples=sub_beta_samples,
+                    gamma_samples=sub_gamma_samples,
+                    use_re=use_re
+                ))
+        y_samples = np.hstack(y_samples)
+
+        return y_samples
