@@ -245,7 +245,8 @@ def avg_integral(mat, spline=None):
         return mat.reshape(mat.shape[0], 0)
 
     if mat.shape[1] == 1:
-        return mat if spline is None else spline.design_mat(mat.ravel())[:, 1:]
+        return mat if spline is None else spline.design_mat(
+            mat.ravel(), l_extra=True, r_extra=True)[:, 1:]
     else:
         if spline is None:
             return mat.mean(axis=1)[:, None]

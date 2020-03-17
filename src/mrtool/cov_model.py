@@ -20,6 +20,7 @@ class CovModel:
                  use_re=False,
                  use_re_mid_point=False,
                  use_spline=False,
+                 spline=None,
                  spline_knots_type='frequency',
                  spline_knots=np.linspace(0.0, 1.0, 4),
                  spline_degree=3,
@@ -52,6 +53,8 @@ class CovModel:
                 If use the midpoint for the random effects.
             use_spline(bool, optional):
                 If use splines.
+            spline (xspline.XSpline | None, optional):
+                Given spline, if `None`, will construct spline by given data.
             spline_knots_type (str, optional):
                 The method of how to place the knots, `'frequency'` place the
                 knots according to the data quantile and `'domain'` place the
@@ -101,6 +104,7 @@ class CovModel:
         self.use_re_mid_point = use_re_mid_point
         self.use_spline = use_spline
 
+        self.spline = spline
         self.spline_knots_type = spline_knots_type
         self.spline_knots = spline_knots
         self.spline_degree = spline_degree
@@ -134,6 +138,7 @@ class CovModel:
         assert isinstance(self.use_spline, bool)
 
         # spline specific
+        assert self.spline is None or isinstance(self.spline, xspline.XSpline)
         assert self.spline_knots_type in ['frequency', 'domain']
         assert isinstance(self.spline_knots, np.ndarray)
         assert np.min(self.spline_knots) >= 0.0
@@ -211,10 +216,20 @@ class CovModel:
             xspline.XSpline
                 The spline object.
         """
+        if self.spline is not None:
+            return self.spline
         # extract covariate
         assert all([cov in data.covs.columns for cov in self.alt_cov])
         assert all([cov in data.covs.columns for cov in self.ref_cov])
-        cov = data.covs[self.alt_cov + self.ref_cov].values
+        alt_cov = data.covs[self.alt_cov].values
+        ref_cov = data.covs[self.ref_cov].values
+        cov_min = min(alt_cov.min(), ref_cov.min())
+        cov_max = max(alt_cov.max(), ref_cov.max())
+
+        cov = np.hstack((cov_min,
+                         alt_cov.mean(axis=1),
+                         ref_cov.mean(axis=1),
+                         cov_max))
 
         if self.spline_knots_type == 'frequency':
             spline_knots = np.quantile(cov, self.spline_knots)
