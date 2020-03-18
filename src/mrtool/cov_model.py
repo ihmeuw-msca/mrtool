@@ -207,16 +207,18 @@ class CovModel:
         )
         self.prior_gamma_uniform = np.maximum(0.0, self.prior_gamma_uniform)
 
-    def create_spline(self, data):
+    def create_spline(self, data, fixed_spline=True):
         """Create spline given current spline parameters.
         Args:
             data (mrtool.MRData):
                 The data frame used for storing the data
+            fixed_spline (bool, optional):
+                Use or set fixed spline.
         Returns:
             xspline.XSpline
                 The spline object.
         """
-        if self.spline is not None:
+        if self.spline is not None and fixed_spline:
             return self.spline
         # extract covariate
         assert all([cov in data.covs.columns for cov in self.alt_cov])
@@ -236,10 +238,15 @@ class CovModel:
         else:
             spline_knots = cov.min() + self.spline_knots*(cov.max() - cov.min())
 
-        return xspline.XSpline(spline_knots,
-                               self.spline_degree,
-                               l_linear=self.spline_l_linear,
-                               r_linear=self.spline_r_linear)
+        spline = xspline.XSpline(spline_knots,
+                                 self.spline_degree,
+                                 l_linear=self.spline_l_linear,
+                                 r_linear=self.spline_r_linear)
+
+        if fixed_spline:
+            self.spline = spline
+
+        return spline
 
     def create_design_mat(self, data):
         """Create design matrix.
