@@ -225,13 +225,17 @@ class CovModel:
         assert all([cov in data.covs.columns for cov in self.ref_cov])
         alt_cov = data.covs[self.alt_cov].values
         ref_cov = data.covs[self.ref_cov].values
-        cov_min = min(alt_cov.min(), ref_cov.min())
-        cov_max = max(alt_cov.max(), ref_cov.max())
+        if ref_cov.size == 0:
+            cov = alt_cov.ravel()
+        else:
+            cov_min = min(alt_cov.min(), ref_cov.min())
+            cov_max = max(alt_cov.max(), ref_cov.max())
+            cov = np.hstack((cov_min,
+                             alt_cov.mean(axis=1),
+                             ref_cov.mean(axis=1),
+                             cov_max))
 
-        cov = np.hstack((cov_min,
-                         alt_cov.mean(axis=1),
-                         ref_cov.mean(axis=1),
-                         cov_max))
+
 
         if self.spline_knots_type == 'frequency':
             spline_knots = np.quantile(cov, self.spline_knots)
