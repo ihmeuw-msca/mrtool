@@ -215,7 +215,7 @@ def input_uniform_prior(prior, size):
             Prior after processing, with shape (2, size), with the first row
             store the mean and second row store the standard deviation.
     """
-    assert is_gaussian_prior(prior)
+    assert is_uniform_prior(prior)
     if prior is None:
         return np.array([[-np.inf]*size, [np.inf]*size])
     elif prior.ndim == 1:
