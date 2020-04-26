@@ -237,6 +237,21 @@ class MRBRT:
 
         return gprior
 
+    def create_lprior(self):
+        """Create direct laplace prior.
+        """
+        num_vars = self.num_x_vars + self.num_z_vars
+        lprior = np.array([[0]*num_vars,
+                           [np.inf]*num_vars])
+
+        for cov_model in self.cov_models:
+            lprior[:, self.x_vars_idx[cov_model.name]] = \
+                cov_model.prior_beta_laplace
+            lprior[:, self.z_vars_idx[cov_model.name]] = \
+                cov_model.prior_gamma_laplace
+
+        return lprior
+
     def fit_model(self,
                   x0=None,
                   inner_print_level=0,
@@ -280,13 +295,14 @@ class MRBRT:
 
         uprior = self.create_uprior()
         gprior = self.create_gprior()
+        lprior = self.create_lprior()
 
         # create limetr object
         self.lt = LimeTr(n, k_beta, k_gamma,
                          y, x_fun, x_fun_jac, z_mat, S=s,
                          C=c_fun, JC=c_fun_jac, c=c_vec,
                          H=h_fun, JH=h_fun_jac, h=h_vec,
-                         uprior=uprior, gprior=gprior,
+                         uprior=uprior, gprior=gprior, lprior=lprior,
                          inlier_percentage=self.inlier_pct)
 
         self.lt.fitModel(x0=x0,

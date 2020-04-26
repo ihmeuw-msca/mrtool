@@ -5,7 +5,7 @@
 
     `mrtool` package.
 """
-from .data import *
-from .cov_model import *
-from .model import *
-from . import utils
+from .core.data import *
+from .core.cov_model import *
+from .core.model import *
+from .core import utils

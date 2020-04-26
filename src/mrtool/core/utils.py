@@ -147,6 +147,7 @@ def is_gaussian_prior(prior, size=None):
         ok = ok and np.all(prior[1] > 0.0)
     return ok
 
+is_laplace_prior = is_gaussian_prior
 
 def is_uniform_prior(prior, size=None):
     """Check if variable satisfy uniform prior format
@@ -199,6 +200,8 @@ def input_gaussian_prior(prior, size):
     else:
         assert prior.shape[1] == size
         return prior
+
+input_laplace_prior = input_gaussian_prior
 
 def input_uniform_prior(prior, size):
     """Process the input Gaussian prior

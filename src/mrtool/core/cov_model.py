@@ -33,8 +33,10 @@ class CovModel:
                  prior_spline_maxder_uniform=None,
                  prior_beta_gaussian=None,
                  prior_beta_uniform=None,
+                 prior_beta_laplace=None,
                  prior_gamma_gaussian=None,
-                 prior_gamma_uniform=None):
+                 prior_gamma_uniform=None,
+                 prior_gamma_laplace=None):
         """Constructor of the covariate model.
 
         Args:
@@ -92,10 +94,14 @@ class CovModel:
                 two dimensional array like `prior_spline_maxder_gaussian`.
             prior_beta_uniform (numpy.ndarray, optional):
                 Direct uniform prior for beta.
+            prior_beta_laplace (numpy.ndarray, optional):
+                Direct Laplace prior for beta.
             prior_gamma_gaussian (numpy.ndarray, optional):
                 Direct Gaussian prior for gamma.
             prior_gamma_uniform (numpy.ndarray, optional):
                 Direct uniform prior for gamma.
+            prior_gamma_laplace (numpy.ndarray, optional):
+                Direct Laplace prior for gamma.
         """
         self.alt_cov = utils.input_cols(alt_cov)
         self.ref_cov = utils.input_cols(ref_cov)
@@ -118,8 +124,10 @@ class CovModel:
         self.prior_spline_maxder_uniform = prior_spline_maxder_uniform
         self.prior_beta_gaussian = prior_beta_gaussian
         self.prior_beta_uniform = prior_beta_uniform
+        self.prior_beta_laplace = prior_beta_laplace
         self.prior_gamma_gaussian = prior_gamma_gaussian
         self.prior_gamma_uniform = prior_gamma_uniform
+        self.prior_gamma_laplace = prior_gamma_laplace
 
         self.check_attr()
         self.process_attr()
@@ -163,6 +171,8 @@ class CovModel:
         assert utils.is_uniform_prior(self.prior_spline_maxder_uniform)
         assert utils.is_uniform_prior(self.prior_beta_uniform)
         assert utils.is_uniform_prior(self.prior_gamma_uniform)
+        assert utils.is_laplace_prior(self.prior_beta_laplace)
+        assert utils.is_laplace_prior(self.prior_gamma_laplace)
 
     def process_attr(self):
         """Process attributes.
@@ -199,6 +209,9 @@ class CovModel:
         self.prior_beta_uniform = utils.input_uniform_prior(
             self.prior_beta_uniform, self.num_x_vars
         )
+        self.prior_beta_laplace = utils.input_laplace_prior(
+            self.prior_beta_laplace, self.num_x_vars
+        )
         self.prior_gamma_gaussian = utils.input_gaussian_prior(
             self.prior_gamma_gaussian, self.num_z_vars
         )
@@ -206,6 +219,9 @@ class CovModel:
             self.prior_gamma_uniform, self.num_z_vars
         )
         self.prior_gamma_uniform = np.maximum(0.0, self.prior_gamma_uniform)
+        self.prior_gamma_laplace = utils.input_laplace_prior(
+            self.prior_gamma_laplace, self.num_z_vars
+        )
 
     def create_spline(self, data, fixed_spline=True):
         """Create spline given current spline parameters.
