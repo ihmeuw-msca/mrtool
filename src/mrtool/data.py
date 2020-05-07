@@ -53,12 +53,12 @@ class MRData:
                 New input data frame.
         """
         # add columns if necessary
-        df = df.sort_values(self.col_study_id).copy()
         if 'intercept' in self.col_covs and 'intercept' not in df:
             df['intercept'] = 1.0
         if self.col_study_id not in df:
             df[self.col_study_id] = np.arange(df.shape[0])
 
+        df = df.sort_values(self.col_study_id).copy()
         self.df = df[self.cols].copy()
         self.df['weights'] = 1.0
 
