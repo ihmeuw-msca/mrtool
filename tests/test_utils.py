@@ -7,7 +7,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-import mrtool.utils as utils
+from mrtool import utils
 
 
 @pytest.mark.parametrize('df', [pd.DataFrame({'alpha': np.ones(5),
