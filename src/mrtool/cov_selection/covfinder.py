@@ -10,8 +10,8 @@ from mrtool import MRData, LinearCovModel, MRBRT
 class CovFinder:
     """Class in charge of the covariate selection.
     """
-    loose_beta_gprior_std = 0.1
-    dummy_gamma_uprior = [1000.0, 1000.0]
+    loose_beta_gprior_std = np.inf
+    dummy_gamma_uprior = np.array([1000.0, 1000.0])
 
     def __init__(self,
                  data: MRData,
@@ -46,14 +46,14 @@ class CovFinder:
         if prior_type == 'Laplace':
             cov_models = [
                 LinearCovModel(cov, use_re=True,
-                               prior_beta_laplace=[0.0, laplace_std],
+                               prior_beta_laplace=np.array([0.0, laplace_std]),
                                prior_gamma_uniform=self.dummy_gamma_uprior)
                 for cov in covs
             ]
         else:
             cov_models = [
                 LinearCovModel(cov, use_re=True,
-                               prior_beta_gaussian=[0.0, self.loose_beta_gprior_std]
+                               prior_beta_gaussian=np.array([0.0, self.loose_beta_gprior_std])
                                if cov not in self.beta_gprior else self.beta_gprior[cov],
                                prior_gamma_uniform=self.dummy_gamma_uprior)
                 for cov in covs
@@ -67,22 +67,25 @@ class CovFinder:
                                           prior_type='Laplace',
                                           laplace_std=laplace_std)
 
-        laplace_model.fit_model()
+        laplace_model.fit_model(x0=np.zeros(2*laplace_model.num_x_vars + 2*laplace_model.num_z_vars))
         additional_covs = [
             cov
             for i, cov in enumerate(self.covs)
             if cov not in self.selected_covs and laplace_model.beta_soln[i] > self.laplace_threshold
         ]
+        print(additional_covs)
 
         if len(additional_covs) > 0:
             candidate_covs = self.selected_covs + additional_covs
             gaussian_model = self.create_model(candidate_covs,
                                                prior_type='Gaussian')
-            gaussian_model.fit_model()
-            beta_soln_samples, _ = gaussian_model.sample_soln(sample_size=self.num_samples)
+            gaussian_model.fit_model(x0=np.zeros(gaussian_model.num_x_vars + gaussian_model.num_z_vars))
+            beta_soln_samples, _ = gaussian_model.sample_soln(sample_size=self.num_samples, sim_re=False)
             beta_soln_mean = gaussian_model.beta_soln
             beta_soln_std = np.std(beta_soln_samples, axis=0)
             beta_soln_sig = self.is_significance(beta_soln_samples, var_type='beta')
+            print(beta_soln_mean)
+            print(beta_soln_std)
             # update the selected covs
             self.selected_covs.extend([
                 cov for i, cov in enumerate(candidate_covs)
@@ -90,7 +93,7 @@ class CovFinder:
             ])
             # update beta_gprior
             self.beta_gprior.update({
-                cov: [beta_soln_mean[i], beta_soln_std[i]]
+                cov: np.array([beta_soln_mean[i], beta_soln_std[i]])
                 for i, cov in enumerate(self.selected_covs)
                 if cov not in self.beta_gprior
             })
