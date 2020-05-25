@@ -333,7 +333,7 @@ class MRBRT:
         self.gamma_soln = self.lt.gamma.copy()
         self.w_soln = self.lt.w.copy()
 
-    def sample_soln(self, sample_size=1):
+    def sample_soln(self, sample_size=1, sim_prior=True, sim_re=True):
         """Sample solutions.
         """
         if self.lt is None:
@@ -341,7 +341,9 @@ class MRBRT:
             return None, None
 
         beta_soln_samples, gamma_soln_samples = \
-            self.lt.sampleSoln(self.lt, sample_size=sample_size)
+            self.lt.sampleSoln(self.lt, sample_size=sample_size,
+                               sim_prior=sim_prior,
+                               sim_re=sim_re)
 
         return beta_soln_samples, gamma_soln_samples
 
