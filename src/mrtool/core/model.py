@@ -97,6 +97,8 @@ class MRBRT:
             for i, name in enumerate(self.cov_model_names)
         }
 
+        self.num_vars = self.num_x_vars + self.num_z_vars
+
         # number of constraints
         self.num_constraints = sum([
             cov_model.num_constraints
@@ -113,6 +115,7 @@ class MRBRT:
         self.lt = None
         self.beta_soln = None
         self.gamma_soln = None
+        self.u_soln = None
         self.w_soln = None
 
     def check_attr(self):
@@ -332,6 +335,7 @@ class MRBRT:
         self.beta_soln = self.lt.beta.copy()
         self.gamma_soln = self.lt.gamma.copy()
         self.w_soln = self.lt.w.copy()
+        self.u_soln = self.lt.estimateRE()
 
     def sample_soln(self, sample_size=1, sim_prior=True, sim_re=True,
                     print_level=0):
