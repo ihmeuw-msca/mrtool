@@ -115,6 +115,7 @@ class CovFinder:
             if not self.stop:
                 laplace_std = 10**(0.5*power)
                 self.select_covs_by_laplace(laplace_std)
+        self.stop = True
 
     @staticmethod
     def is_significance(var_samples: np.ndarray,
