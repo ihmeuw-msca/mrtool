@@ -97,6 +97,8 @@ class MRBRT:
             for i, name in enumerate(self.cov_model_names)
         }
 
+        self.num_vars = self.num_x_vars + self.num_z_vars
+
         # number of constraints
         self.num_constraints = sum([
             cov_model.num_constraints
@@ -113,6 +115,7 @@ class MRBRT:
         self.lt = None
         self.beta_soln = None
         self.gamma_soln = None
+        self.u_soln = None
         self.w_soln = None
 
     def check_attr(self):
@@ -237,6 +240,21 @@ class MRBRT:
 
         return gprior
 
+    def create_lprior(self):
+        """Create direct laplace prior.
+        """
+        num_vars = self.num_x_vars + self.num_z_vars
+        lprior = np.array([[0]*num_vars,
+                           [np.inf]*num_vars])
+
+        for cov_model in self.cov_models:
+            lprior[:, self.x_vars_idx[cov_model.name]] = \
+                cov_model.prior_beta_laplace
+            lprior[:, self.z_vars_idx[cov_model.name]] = \
+                cov_model.prior_gamma_laplace
+
+        return lprior
+
     def fit_model(self,
                   x0=None,
                   inner_print_level=0,
@@ -266,27 +284,43 @@ class MRBRT:
         c_mat, c_vec = self.create_c_mat()
         h_mat, h_vec = self.create_h_mat()
 
-        def c_fun(var):
-            return c_mat.dot(var)
+        if c_mat.size == 0 and c_vec.size == 0:
+            c_fun = None
+            c_fun_jac = None
+        else:
+            def c_fun(var):
+                return c_mat.dot(var)
 
-        def c_fun_jac(var):
-            return c_mat
+            def c_fun_jac(var):
+                return c_mat
 
-        def h_fun(var):
-            return h_mat.dot(var)
+        if h_mat.size == 0 and h_vec.size == 0:
+            h_fun = None
+            h_fun_jac = None
+        else:
+            def h_fun(var):
+                return h_mat.dot(var)
 
-        def h_fun_jac(var):
-            return h_mat
+            def h_fun_jac(var):
+                return h_mat
 
         uprior = self.create_uprior()
         gprior = self.create_gprior()
+        lprior = self.create_lprior()
+
+        if np.isneginf(uprior[0]).all() and np.isposinf(uprior[1]).all():
+            uprior = None
+        if np.isposinf(gprior[1]).all():
+            gprior = None
+        if np.isposinf(lprior[1]).all():
+            lprior = None
 
         # create limetr object
         self.lt = LimeTr(n, k_beta, k_gamma,
                          y, x_fun, x_fun_jac, z_mat, S=s,
                          C=c_fun, JC=c_fun_jac, c=c_vec,
                          H=h_fun, JH=h_fun_jac, h=h_vec,
-                         uprior=uprior, gprior=gprior,
+                         uprior=uprior, gprior=gprior, lprior=lprior,
                          inlier_percentage=self.inlier_pct)
 
         self.lt.fitModel(x0=x0,
@@ -301,8 +335,10 @@ class MRBRT:
         self.beta_soln = self.lt.beta.copy()
         self.gamma_soln = self.lt.gamma.copy()
         self.w_soln = self.lt.w.copy()
+        self.u_soln = self.lt.estimateRE()
 
-    def sample_soln(self, sample_size=1):
+    def sample_soln(self, sample_size=1, sim_prior=True, sim_re=True,
+                    print_level=0):
         """Sample solutions.
         """
         if self.lt is None:
@@ -310,7 +346,10 @@ class MRBRT:
             return None, None
 
         beta_soln_samples, gamma_soln_samples = \
-            self.lt.sampleSoln(self.lt, sample_size=sample_size)
+            self.lt.sampleSoln(self.lt, sample_size=sample_size,
+                               sim_prior=sim_prior,
+                               sim_re=sim_re,
+                               print_level=print_level)
 
         return beta_soln_samples, gamma_soln_samples
 
