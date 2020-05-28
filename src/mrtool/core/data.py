@@ -5,6 +5,9 @@
 
     `data` module for `mrtool` package.
 """
+from typing import List, Any
+from functools import reduce
+from operator import and_
 import numpy as np
 from . import utils
 
@@ -61,6 +64,11 @@ class MRData:
         df = df.sort_values(self.col_study_id).copy()
         self.df = df[self.cols].copy()
         self.df['weights'] = 1.0
+
+    def has_covs(self, covs: List[Any]) -> bool:
+        """If the data has the provided covaraites.
+        """
+        return reduce(and_, [cov in self.col_covs for cov in covs])
 
     @property
     def cols(self):

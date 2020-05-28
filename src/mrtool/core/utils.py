@@ -434,3 +434,20 @@ def nonlinear_trans(score, slope=6.0, quantile=0.7):
         (np.max(weight_trans) - np.min(weight_trans))
 
     return weight_trans
+
+
+def mat_to_fun(mat):
+    mat = np.array(mat)
+    assert mat.ndim == 2
+
+    if mat.size == 0:
+        fun = None
+        jac_fun = None
+    else:
+        def fun(x, mat=mat):
+            return mat.dot(x)
+
+        def jac_fun(x, mat=mat):
+            return mat
+
+    return fun, jac_fun

@@ -8,6 +8,8 @@
 import numpy as np
 import xspline
 from . import utils
+from .data import MRData
+
 
 
 class CovModel:
@@ -103,8 +105,10 @@ class CovModel:
             prior_gamma_laplace (numpy.ndarray, optional):
                 Direct Laplace prior for gamma.
         """
-        self.alt_cov = utils.input_cols(alt_cov)
-        self.ref_cov = utils.input_cols(ref_cov)
+        self.covs = []
+        self.alt_cov = utils.input_cols(alt_cov, append_to=self.covs)
+        self.ref_cov = utils.input_cols(ref_cov, append_to=self.covs)
+
         self.name = name
         self.use_re = use_re
         self.use_re_mid_point = use_re_mid_point
@@ -290,6 +294,12 @@ class CovModel:
 
         return alt_mat, ref_mat
 
+    def create_x_fun(self, data):
+        raise NotImplementedError("Cannot use create_x_fun directly in CovModel class.")
+
+    def create_z_mat(self, data):
+        raise NotImplementedError("Cannot use create_z_mat directly in CovModel class.")
+
     def create_constraint_mat(self, data):
         """Create constraint matrix.
         Args:
@@ -427,6 +437,12 @@ class LinearCovModel(CovModel):
             return alt_mat
         else:
             return alt_mat - ref_mat
+
+    def create_x_fun(self, data: MRData):
+        """Create design function for the fixed effects.
+        """
+        mat = self.create_x_mat(data)
+        return utils.mat_to_fun(mat)
 
     def create_z_mat(self, data):
         """Create design matrix for the random effects.
