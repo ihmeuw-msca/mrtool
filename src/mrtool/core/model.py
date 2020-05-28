@@ -5,98 +5,51 @@
 
     Model module for mrtool package.
 """
-import pandas as pd
-from .data import *
-from .cov_model import *
-from limetr import LimeTr
+from typing import List, Dict
 from copy import deepcopy
+import pandas as pd
+import numpy as np
+from limetr import LimeTr
+from .data import MRData
+from .cov_model import CovModel, LinearCovModel, LogCovModel
+from . import utils
 
 
 class MRBRT:
     """MR-BRT Object
     """
-    def __init__(self, data,
-                 cov_models=None,
-                 inlier_pct=1.0):
+    def __init__(self, data: MRData,
+                 cov_models: List[CovModel],
+                 inlier_pct: float = 1.0):
         """Constructor of MRBRT.
 
         Args:
-            data (mrtool.MRData):
-                Data for meta-regression.
-            cov_models (list{mrtool.CovModel} | None, optional):
-                A list of covariates models.
+            data (MRData): Data for meta-regression.
+            cov_models (List[CovModel]): A list of covariates models.
             inlier_pct (float, optional):
                 A float number between 0 and 1 indicate the percentage of
                 inliers.
         """
         self.data = data
-        self.cov_models = cov_models if cov_models is not None else [
-            LinearCovModel('intercept')]
+        self.cov_models = cov_models
         self.inlier_pct = inlier_pct
-
-        self.cov_models_dict = {
-            cov_model.name: cov_model
-            for cov_model in self.cov_models
-        }
-
-        # group the linear and log covariates model
-        self.linear_cov_models = [
-            cov_model
-            for cov_model in self.cov_models
-            if isinstance(cov_model, LinearCovModel)
+        self.check_input()
+        self.cov_model_names = [
+            cov_model.name for cov_model in self.cov_models
         ]
-        self.log_cov_models = [
-            cov_model
-            for cov_model in self.cov_models
-            if isinstance(cov_model, LogCovModel)
-        ]
-        self.cov_models = self.linear_cov_models + self.log_cov_models
-        self.linear_cov_model_names = [
-            cov_model.name for cov_model in self.linear_cov_models]
-        self.log_cov_model_names = [
-            cov_model.name for cov_model in self.log_cov_models]
-        self.cov_model_names = self.linear_cov_model_names + \
-            self.log_cov_model_names
 
         # fixed effects size and index
-        self.x_vars_sizes = {
-            cov_model.name: cov_model.num_x_vars
-            for cov_model in self.cov_models
-        }
-        self.num_x_vars = int(sum(self.x_vars_sizes.values()))
-        self.num_linear_x_vars = int(sum([
-            self.x_vars_sizes[name] for name in self.linear_cov_model_names
-        ]))
-        self.num_log_x_vars = int(sum([
-            self.x_vars_sizes[name] for name in self.log_cov_model_names
-        ]))
-        x_vars_idx = utils.sizes_to_indices([
-            self.x_vars_sizes[name]
-            for name in self.cov_model_names
-        ])
-        self.x_vars_idx = {
-            name: x_vars_idx[i]
-            for i, name in enumerate(self.cov_model_names)
-        }
-        self.linear_x_vars_idx = np.arange(self.num_linear_x_vars)
-        self.log_x_vars_idx = np.arange(self.num_linear_x_vars,
-                                        self.num_x_vars)
+        self.x_vars_sizes = [cov_model.num_x_vars
+                             for cov_model in self.cov_models]
+        self.x_vars_indices = utils.sizes_to_indices(self.x_vars_sizes)
+        self.num_x_vars = sum(self.x_vars_sizes)
 
         # random effects size and index
-        self.z_vars_sizes = {
-            cov_model.name: cov_model.num_z_vars
-            for cov_model in self.cov_models
-        }
-        self.num_z_vars = int(sum(self.z_vars_sizes.values()))
-        z_vars_idx = utils.sizes_to_indices([
-            self.z_vars_sizes[name]
-            for name in self.cov_model_names
-        ])
-        self.z_vars_idx = {
-            name: z_vars_idx[i] + self.num_x_vars
-            for i, name in enumerate(self.cov_model_names)
-        }
-
+        self.z_vars_sizes = [cov_model.num_z_vars
+                             for cov_model in self.cov_models]
+        self.z_vars_indices = list(map(lambda x: x + self.num_x_vars,
+                                       utils.sizes_to_indices(self.z_vars_sizes)))
+        self.num_z_vars = sum(self.z_vars_sizes)
         self.num_vars = self.num_x_vars + self.num_z_vars
 
         # number of constraints
@@ -117,75 +70,67 @@ class MRBRT:
         self.gamma_soln = None
         self.u_soln = None
         self.w_soln = None
+        self.study_effects = None
 
-    def check_attr(self):
+    def check_input(self):
         """Check the input type of the attributes.
         """
         assert isinstance(self.data, MRData)
         assert isinstance(self.cov_models, list)
         assert all([isinstance(cov_model, CovModel)
                     for cov_model in self.cov_models])
-        assert isinstance(self.inlier_pct, float)
         assert (self.inlier_pct >= 0.0) and (self.inlier_pct <= 1.0)
+
+    def get_cov_model(self, name: str) -> CovModel:
+        """Choose covariate model with name.
+        """
+        matching_index = [index for index, cov_model_name in enumerate(self.cov_models)
+                          if cov_model_name == name]
+        num_matching_index = len(matching_index)
+        assert num_matching_index == 1, f"Number of matching index is {num_matching_index}."
+        return self.cov_models[matching_index[0]]
+
 
     def create_x_fun(self, data=None):
         """Create the fixed effects function, link with limetr.
         """
         data = self.data if data is None else data
-        # create design matrix for the linear covariates part
-        linear_mat = [
-            cov_model.create_x_mat(data)
-            for cov_model in self.linear_cov_models
-        ]
-        if linear_mat:
-            linear_mat = np.hstack(linear_mat)
-        else:
-            linear_mat = np.array(linear_mat).reshape(data.num_obs, 0)
-        log_fun = [
+        # create design functions
+        design_funs = [
             cov_model.create_x_fun(data)
-            for cov_model in self.log_cov_models
+            for cov_model in self.cov_models
         ]
+        funs, jac_funs = list(zip(*design_funs))
 
-        def fun(beta):
-            linear_beta = beta[self.linear_x_vars_idx]
-            y = linear_mat.dot(linear_beta)
-            for i, name in enumerate(self.log_cov_model_names):
-                log_beta = beta[self.x_vars_idx[name]]
-                y += log_fun[i][0](log_beta)
-            return y
+        def x_fun(beta, funs=funs):
+            return sum(fun(beta[self.x_vars_indices[i]])
+                       for i, fun in enumerate(funs))
 
-        def jac_fun(beta):
-            mat = linear_mat
-            for i, name in enumerate(self.log_cov_model_names):
-                log_beta = beta[self.x_vars_idx[name]]
-                mat = np.hstack((mat, log_fun[i][1](log_beta)))
-            return mat
+        def x_jac_fun(beta, jac_funs=jac_funs):
+            return np.hstack([jac_fun(beta[self.x_vars_indices[i]])
+                              for i, jac_fun in enumerate(jac_funs)])
 
-        return fun, jac_fun
+        return x_fun, x_jac_fun
 
     def create_z_mat(self, data=None):
         """Create the random effects matrix, link with limetr.
         """
         data = self.data if data is None else data
-        mat = np.hstack([
-            cov_model.create_z_mat(data)
-            for cov_model in self.cov_models
-        ])
+        mat = np.hstack([cov_model.create_z_mat(data)
+                         for cov_model in self.cov_models])
 
         return mat
 
     def create_c_mat(self):
         """Create the constraints matrices.
         """
-        num_vars = self.num_x_vars + self.num_z_vars
-        c_mat = np.zeros((0, num_vars))
+        c_mat = np.zeros((0, self.num_vars))
         c_vec = np.zeros((2, 0))
 
-        for cov_model in self.cov_models:
+        for i, cov_model in enumerate(self.cov_models):
             if cov_model.num_constraints != 0:
-                c_mat_sub = np.zeros((cov_model.num_constraints,
-                                      num_vars))
-                c_mat_sub[:, self.x_vars_idx[cov_model.name]], c_vec_sub = \
+                c_mat_sub = np.zeros((cov_model.num_constraints, self.num_vars))
+                c_mat_sub[:, self.x_vars_indices[i]], c_vec_sub = \
                     cov_model.create_constraint_mat(self.data)
                 c_mat = np.vstack((c_mat, c_mat_sub))
                 c_vec = np.hstack((c_vec, c_vec_sub))
@@ -195,15 +140,14 @@ class MRBRT:
     def create_h_mat(self):
         """Create the regularizer matrices.
         """
-        num_vars = self.num_x_vars + self.num_z_vars
-        h_mat = np.zeros((0, num_vars))
+        h_mat = np.zeros((0, self.num_vars))
         h_vec = np.zeros((2, 0))
 
-        for cov_model in self.cov_models:
+        for i, cov_model in enumerate(self.cov_models):
             if cov_model.num_regularizations != 0:
                 h_mat_sub = np.zeros((cov_model.num_regularizations,
-                                      num_vars))
-                h_mat_sub[:, self.x_vars_idx[cov_model.name]], h_vec_sub = \
+                                      self.num_vars))
+                h_mat_sub[:, self.x_vars_indices[i]], h_vec_sub = \
                     cov_model.create_regularization_mat(self.data)
                 h_mat = np.vstack((h_mat, h_mat_sub))
                 h_vec = np.hstack((h_vec, h_vec_sub))
@@ -213,58 +157,40 @@ class MRBRT:
     def create_uprior(self):
         """Create direct uniform prior.
         """
-        num_vars = self.num_x_vars + self.num_z_vars
-        uprior = np.array([[-np.inf]*num_vars,
-                           [np.inf]*num_vars])
+        uprior = np.array([[-np.inf]*self.num_vars,
+                           [np.inf]*self.num_vars])
 
-        for cov_model in self.cov_models:
-            uprior[:, self.x_vars_idx[cov_model.name]] = \
-                cov_model.prior_beta_uniform
-            uprior[:, self.z_vars_idx[cov_model.name]] = \
-                cov_model.prior_gamma_uniform
+        for i, cov_model in enumerate(self.cov_models):
+            uprior[:, self.x_vars_indices[i]] = cov_model.prior_beta_uniform
+            uprior[:, self.z_vars_indices[i]] = cov_model.prior_gamma_uniform
 
         return uprior
 
     def create_gprior(self):
         """Create direct gaussian prior.
         """
-        num_vars = self.num_x_vars + self.num_z_vars
-        gprior = np.array([[0]*num_vars,
-                           [np.inf]*num_vars])
+        gprior = np.array([[0]*self.num_vars,
+                           [np.inf]*self.num_vars])
 
-        for cov_model in self.cov_models:
-            gprior[:, self.x_vars_idx[cov_model.name]] = \
-                cov_model.prior_beta_gaussian
-            gprior[:, self.z_vars_idx[cov_model.name]] = \
-                cov_model.prior_gamma_gaussian
+        for i, cov_model in enumerate(self.cov_models):
+            gprior[:, self.x_vars_indices[i]] = cov_model.prior_beta_gaussian
+            gprior[:, self.z_vars_indices[i]] = cov_model.prior_gamma_gaussian
 
         return gprior
 
     def create_lprior(self):
         """Create direct laplace prior.
         """
-        num_vars = self.num_x_vars + self.num_z_vars
-        lprior = np.array([[0]*num_vars,
-                           [np.inf]*num_vars])
+        lprior = np.array([[0]*self.num_vars,
+                           [np.inf]*self.num_vars])
 
-        for cov_model in self.cov_models:
-            lprior[:, self.x_vars_idx[cov_model.name]] = \
-                cov_model.prior_beta_laplace
-            lprior[:, self.z_vars_idx[cov_model.name]] = \
-                cov_model.prior_gamma_laplace
+        for i, cov_model in enumerate(self.cov_models):
+            lprior[:, self.x_vars_indices[i]] = cov_model.prior_beta_laplace
+            lprior[:, self.z_vars_indices[i]] = cov_model.prior_gamma_laplace
 
         return lprior
 
-    def fit_model(self,
-                  x0=None,
-                  inner_print_level=0,
-                  inner_max_iter=20,
-                  inner_tol=1e-8,
-                  outer_verbose=False,
-                  outer_max_iter=100,
-                  outer_step_size=1.0,
-                  outer_tol=1e-6,
-                  normalize_trimming_grad=False):
+    def fit_model(self, **fit_options: Dict):
         """Fitting the model through limetr.
         """
         # dimensions
@@ -283,26 +209,8 @@ class MRBRT:
         # priors
         c_mat, c_vec = self.create_c_mat()
         h_mat, h_vec = self.create_h_mat()
-
-        if c_mat.size == 0 and c_vec.size == 0:
-            c_fun = None
-            c_fun_jac = None
-        else:
-            def c_fun(var):
-                return c_mat.dot(var)
-
-            def c_fun_jac(var):
-                return c_mat
-
-        if h_mat.size == 0 and h_vec.size == 0:
-            h_fun = None
-            h_fun_jac = None
-        else:
-            def h_fun(var):
-                return h_mat.dot(var)
-
-            def h_fun_jac(var):
-                return h_mat
+        c_fun, c_fun_jac = utils.mat_to_fun(c_mat)
+        h_fun, h_fun_jac = utils.mat_to_fun(h_mat)
 
         uprior = self.create_uprior()
         gprior = self.create_gprior()
@@ -323,19 +231,21 @@ class MRBRT:
                          uprior=uprior, gprior=gprior, lprior=lprior,
                          inlier_percentage=self.inlier_pct)
 
-        self.lt.fitModel(x0=x0,
-                         inner_print_level=inner_print_level,
-                         inner_max_iter=inner_max_iter,
-                         inner_tol=inner_tol,
-                         outer_verbose=outer_verbose,
-                         outer_max_iter=outer_max_iter,
-                         outer_step_size=outer_step_size,
-                         outer_tol=outer_tol,
-                         normalize_trimming_grad=normalize_trimming_grad)
+        self.lt.fitModel(**fit_options)
         self.beta_soln = self.lt.beta.copy()
         self.gamma_soln = self.lt.gamma.copy()
         self.w_soln = self.lt.w.copy()
         self.u_soln = self.lt.estimateRE()
+
+    def predict(self, data: MRData,
+                predict_for_study=False) -> np.ndarray:
+        """Create new prediction with existing solution.
+        """
+        assert data.has_covs(self.cov_model_names), "Prediction data do not have covariates used for fitting."
+        x_fun, _ = self.create_x_fun(data=data)
+        prediction = x_fun(self.beta_soln)
+
+        return prediction
 
     def sample_soln(self, sample_size=1, sim_prior=True, sim_re=True,
                     print_level=0):
@@ -438,7 +348,7 @@ class MRBeRT:
         """Fitting the model through limetr.
         """
         for sub_model in self.sub_models:
-            sub_model.fit_model(
+            sub_model.fit_model(**dict(
                 x0=x0,
                 inner_print_level=inner_print_level,
                 inner_max_iter=inner_max_iter,
@@ -448,7 +358,7 @@ class MRBeRT:
                 outer_step_size=outer_step_size,
                 outer_tol=outer_tol,
                 normalize_trimming_grad=normalize_trimming_grad
-            )
+            ))
 
         self.beta_solns = np.vstack([model.beta_soln
                                      for model in self.sub_models])
