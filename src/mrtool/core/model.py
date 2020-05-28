@@ -50,6 +50,7 @@ class MRBRT:
                              for cov_model in self.cov_models]
         self.z_vars_indices = utils.sizes_to_indices(self.z_vars_sizes)
         self.num_z_vars = sum(self.z_vars_sizes)
+
         self.num_vars = self.num_x_vars + self.num_z_vars
 
         # number of constraints
@@ -90,7 +91,6 @@ class MRBRT:
         assert num_matching_index == 1, f"Number of matching index is {num_matching_index}."
         return self.cov_models[matching_index[0]]
 
-
     def create_x_fun(self, data=None):
         """Create the fixed effects function, link with limetr.
         """
@@ -117,7 +117,7 @@ class MRBRT:
         """
         data = self.data if data is None else data
         mat = np.hstack([cov_model.create_z_mat(data)
-                         for cov_model in self.cov_models])
+                         for cov_model in self.cov_models]
 
         return mat
 

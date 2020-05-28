@@ -70,7 +70,6 @@ class MRData:
         """
         return reduce(and_, [cov in self.col_covs for cov in covs])
 
-
     @property
     def cols(self):
         return utils.combine_cols([

@@ -11,6 +11,7 @@ from . import utils
 from .data import MRData
 
 
+
 class CovModel:
     """Covariates model.
     """
@@ -107,6 +108,7 @@ class CovModel:
         self.covs = []
         self.alt_cov = utils.input_cols(alt_cov, append_to=self.covs)
         self.ref_cov = utils.input_cols(ref_cov, append_to=self.covs)
+
         self.name = name
         self.use_re = use_re
         self.use_re_mid_point = use_re_mid_point
