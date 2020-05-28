@@ -117,7 +117,7 @@ class MRBRT:
         """
         data = self.data if data is None else data
         mat = np.hstack([cov_model.create_z_mat(data)
-                         for cov_model in self.cov_models]
+                         for cov_model in self.cov_models])
 
         return mat
 
