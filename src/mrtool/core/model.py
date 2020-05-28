@@ -37,6 +37,7 @@ class MRBRT:
         self.cov_model_names = [
             cov_model.name for cov_model in self.cov_models
         ]
+        self.num_cov_models = len(self.cov_models)
 
         # fixed effects size and index
         self.x_vars_sizes = [cov_model.num_x_vars
@@ -47,8 +48,7 @@ class MRBRT:
         # random effects size and index
         self.z_vars_sizes = [cov_model.num_z_vars
                              for cov_model in self.cov_models]
-        self.z_vars_indices = list(map(lambda x: x + self.num_x_vars,
-                                       utils.sizes_to_indices(self.z_vars_sizes)))
+        self.z_vars_indices = utils.sizes_to_indices(self.z_vars_sizes)
         self.num_z_vars = sum(self.z_vars_sizes)
         self.num_vars = self.num_x_vars + self.num_z_vars
 
@@ -70,7 +70,7 @@ class MRBRT:
         self.gamma_soln = None
         self.u_soln = None
         self.w_soln = None
-        self.study_effects = None
+        self.re_soln = None
 
     def check_input(self):
         """Check the input type of the attributes.
@@ -162,7 +162,7 @@ class MRBRT:
 
         for i, cov_model in enumerate(self.cov_models):
             uprior[:, self.x_vars_indices[i]] = cov_model.prior_beta_uniform
-            uprior[:, self.z_vars_indices[i]] = cov_model.prior_gamma_uniform
+            uprior[:, self.z_vars_indices[i] + self.num_x_vars] = cov_model.prior_gamma_uniform
 
         return uprior
 
@@ -174,7 +174,7 @@ class MRBRT:
 
         for i, cov_model in enumerate(self.cov_models):
             gprior[:, self.x_vars_indices[i]] = cov_model.prior_beta_gaussian
-            gprior[:, self.z_vars_indices[i]] = cov_model.prior_gamma_gaussian
+            gprior[:, self.z_vars_indices[i] + self.num_x_vars] = cov_model.prior_gamma_gaussian
 
         return gprior
 
@@ -186,7 +186,7 @@ class MRBRT:
 
         for i, cov_model in enumerate(self.cov_models):
             lprior[:, self.x_vars_indices[i]] = cov_model.prior_beta_laplace
-            lprior[:, self.z_vars_indices[i]] = cov_model.prior_gamma_laplace
+            lprior[:, self.z_vars_indices[i] + self.num_x_vars] = cov_model.prior_gamma_laplace
 
         return lprior
 
@@ -236,6 +236,16 @@ class MRBRT:
         self.gamma_soln = self.lt.gamma.copy()
         self.w_soln = self.lt.w.copy()
         self.u_soln = self.lt.estimateRE()
+        self._parse_re()
+
+    def _parse_re(self):
+        """Turn the random effect optimization solution into a dictionary.
+        """
+        studies = list(self.data.study_size.index)
+        self.re_soln = {
+            study: self.u_soln[i]
+            for i, study in enumerate(studies)
+        }
 
     def predict(self, data: MRData,
                 predict_for_study=False) -> np.ndarray:
@@ -244,6 +254,13 @@ class MRBRT:
         assert data.has_covs(self.cov_model_names), "Prediction data do not have covariates used for fitting."
         x_fun, _ = self.create_x_fun(data=data)
         prediction = x_fun(self.beta_soln)
+        if predict_for_study:
+            z_mat = self.create_z_mat(data=data)
+            re = np.vstack([
+                self.re_soln[study] if study in self.re_soln else np.zeros(self.num_z_vars)
+                for study in data.study_id
+            ])
+            prediction += np.sum(z_mat*re, axis=1)
 
         return prediction
 
