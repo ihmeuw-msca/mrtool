@@ -436,17 +436,18 @@ def nonlinear_trans(score, slope=6.0, quantile=0.7):
     return weight_trans
 
 
-def mat_to_fun(alt_mat, ref_mat):
+def mat_to_fun(alt_mat, ref_mat=None):
     alt_mat = np.array(alt_mat)
-    ref_mat = np.array(ref_mat)
     assert alt_mat.ndim == 2
-    assert ref_mat.ndim == 2
+    if ref_mat is not None:
+        ref_mat = np.array(ref_mat)
+        assert ref_mat.ndim == 2
 
     if alt_mat.size == 0:
         fun = None
         jac_fun = None
     else:
-        if ref_mat.size == 0:
+        if ref_mat is None or ref_mat.size == 0:
             mat = alt_mat
         else:
             mat = alt_mat - ref_mat
@@ -458,17 +459,18 @@ def mat_to_fun(alt_mat, ref_mat):
 
     return fun, jac_fun
 
-def mat_to_log_fun(alt_mat, ref_mat):
+def mat_to_log_fun(alt_mat, ref_mat=None):
     alt_mat = np.array(alt_mat)
-    ref_mat = np.array(ref_mat)
     assert alt_mat.ndim == 2
-    assert ref_mat.ndim == 2
+    if ref_mat is not None:
+        ref_mat = np.array(ref_mat)
+        assert ref_mat.ndim == 2
 
     if alt_mat.size == 0:
         fun = None
         jac_fun = None
     else:
-        if ref_mat.size == 0:
+        if ref_mat is None or ref_mat.size == 0:
             def fun(beta):
                 return np.log(1.0 + alt_mat.dot(beta))
 

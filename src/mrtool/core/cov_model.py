@@ -152,9 +152,9 @@ class CovModel:
         # spline specific
         assert self.spline is None or isinstance(self.spline, xspline.XSpline)
         assert self.spline_knots_type in ['frequency', 'domain']
-        assert isinstance(self.spline_knots, np.ndarray)
-        assert np.min(self.spline_knots) >= 0.0
-        assert np.max(self.spline_knots) <= 1.0
+        assert isinstance(self.spline_knots_template, np.ndarray)
+        assert np.min(self.spline_knots_template) >= 0.0
+        assert np.max(self.spline_knots_template) <= 1.0
         assert isinstance(self.spline_degree, int)
         assert self.spline_degree >= 0
         assert isinstance(self.spline_l_linear, bool)
@@ -192,22 +192,23 @@ class CovModel:
                 self.name = 'cov' + '{:0>3}'.format(np.random.randint(1000))
 
         # spline knots
-        self.spline_knots = np.unique(self.spline_knots)
-        if np.min(self.spline_knots) > 0.0:
-            self.spline_knots = np.insert(self.spline_knots, 0, 0.0)
-        if np.max(self.spline_knots) < 1.0:
-            self.spline_knots = np.append(self.spline_knots, 1.0)
+        self.spline_knots_template = np.hstack([self.spline_knots_template, [0.0, 1.0]])
+        self.spline_knots_template = np.unique(self.spline_knots_template)
 
     def _process_priors(self):
         """Process priors.
         """
         # prior information
-        self.prior_spline_maxder_gaussian = utils.input_gaussian_prior(
-            self.prior_spline_maxder_gaussian, self.spline_knots.size - 1
-        )
-        self.prior_spline_maxder_uniform = utils.input_uniform_prior(
-            self.prior_spline_maxder_uniform, self.spline_knots.size - 1
-        )
+        if self.spline is not None:
+            self.prior_spline_maxder_gaussian = utils.input_gaussian_prior(
+                self.prior_spline_maxder_gaussian, self.spline_knots.size - 1
+            )
+            self.prior_spline_maxder_uniform = utils.input_uniform_prior(
+                self.prior_spline_maxder_uniform, self.spline_knots.size - 1
+            )
+        else:
+            self.prior_spline_maxder_gaussian = None
+            self.prior_spline_maxder_uniform = None
         self.prior_beta_gaussian = utils.input_gaussian_prior(
             self.prior_beta_gaussian, self.num_x_vars
         )
@@ -249,14 +250,16 @@ class CovModel:
         ref_cov = data.get_covs(self.ref_cov)
 
         cov_all = np.hstack((alt_cov.ravel(), ref_cov.ravel()))
-        cov_min = min(cov_all)
-        cov_max = max(cov_all)
-        cov = np.hstack((cov_min, alt_cov.mean(axis=1), ref_cov.mean(axis=1), cov_max))
+        cov = np.array([min(cov_all), max(cov_all)])
+        if alt_cov.size != 0:
+            cov = np.hstack((cov, alt_cov.mean(axis=1)))
+        if ref_cov.size != 0:
+            cov = np.hstack((cov, ref_cov.mean(axis=1)))
 
         if self.spline_knots_type == 'frequency':
-            spline_knots = np.quantile(cov, self.spline_knots)
+            spline_knots = np.quantile(cov, self.spline_knots_template)
         else:
-            spline_knots = min(cov) + self.spline_knots*(max(cov) - min(cov))
+            spline_knots = min(cov) + self.spline_knots_template*(max(cov) - min(cov))
 
         spline = xspline.XSpline(spline_knots,
                                  self.spline_degree,
@@ -396,7 +399,8 @@ class LinearCovModel(CovModel):
     def create_x_fun(self, data: MRData):
         """Create design function for the fixed effects.
         """
-        return utils.mat_to_fun(*self.create_design_mat(data))
+        alt_mat, ref_mat = self.create_design_mat(data)
+        return utils.mat_to_fun(alt_mat, ref_mat=ref_mat)
 
     def create_z_mat(self, data):
         """Create design matrix for the random effects.
@@ -441,7 +445,8 @@ class LogCovModel(CovModel):
             tuple{function, function}:
                 Design functions for fixed effects.
         """
-        return utils.mat_to_log_fun(*self.create_design_mat(data))
+        alt_mat, ref_mat = self.create_design_mat(data)
+        return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat)
 
     def create_z_mat(self, data):
         """Create design matrix for the random effects.
@@ -489,7 +494,4 @@ class LogCovModel(CovModel):
 
     @property
     def num_z_vars(self):
-        if self.use_re:
-            return 1
-        else:
-            return 0
+        return int(self.use_re)
