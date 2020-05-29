@@ -393,28 +393,10 @@ class LinearCovModel(CovModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def create_x_mat(self, data):
-        """Create design matrix for the fixed effects.
-
-        Args:
-            data (mrtool.MRData):
-                The data frame used for storing the data
-
-        Returns:
-            numpy.ndarray:
-                Design matrix for fixed effects.
-        """
-        alt_mat, ref_mat = self.create_design_mat(data)
-        if ref_mat.size == 0:
-            return alt_mat
-        else:
-            return alt_mat - ref_mat
-
     def create_x_fun(self, data: MRData):
         """Create design function for the fixed effects.
         """
-        mat = self.create_x_mat(data)
-        return utils.mat_to_fun(mat)
+        return utils.mat_to_fun(*self.create_design_mat(data))
 
     def create_z_mat(self, data):
         """Create design matrix for the random effects.
@@ -459,24 +441,7 @@ class LogCovModel(CovModel):
             tuple{function, function}:
                 Design functions for fixed effects.
         """
-        alt_mat, ref_mat = self.create_design_mat(data)
-
-        if ref_mat.size == 0:
-            def fun(beta):
-                return np.log(1.0 + alt_mat.dot(beta))
-
-            def jac_fun(beta):
-                return alt_mat/(1.0 + alt_mat.dot(beta)[:, None])
-        else:
-            def fun(beta):
-                return np.log(1.0 + alt_mat.dot(beta)) - \
-                    np.log(1.0 + ref_mat.dot(beta))
-
-            def jac_fun(beta):
-                return alt_mat/(1.0 + alt_mat.dot(beta)[:, None]) - \
-                    ref_mat/(1.0 + ref_mat.dot(beta)[:, None])
-
-        return fun, jac_fun
+        return utils.mat_to_log_fun(*self.create_design_mat(data))
 
     def create_z_mat(self, data):
         """Create design matrix for the random effects.
