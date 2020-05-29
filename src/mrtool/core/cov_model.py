@@ -241,10 +241,8 @@ class CovModel:
         if self.spline is not None and fixed_spline:
             return self.spline
         # extract covariate
-        assert all([cov in data.covs.columns for cov in self.alt_cov])
-        assert all([cov in data.covs.columns for cov in self.ref_cov])
-        alt_cov = data.covs[self.alt_cov].values
-        ref_cov = data.covs[self.ref_cov].values
+        alt_cov = data.get_covs(self.alt_cov)
+        ref_cov = data.get_covs(self.ref_cov)
         if ref_cov.size == 0:
             cov = alt_cov.ravel()
         else:
@@ -254,8 +252,6 @@ class CovModel:
                              alt_cov.mean(axis=1),
                              ref_cov.mean(axis=1),
                              cov_max))
-
-
 
         if self.spline_knots_type == 'frequency':
             spline_knots = np.quantile(cov, self.spline_knots)
@@ -281,11 +277,8 @@ class CovModel:
             tuple{numpy.ndarray, numpy.ndarray}:
                 Return the design matrix for linear cov or spline.
         """
-        assert all([cov in data.covs.columns for cov in self.alt_cov])
-        assert all([cov in data.covs.columns for cov in self.ref_cov])
-
-        alt_cov = data.covs[self.alt_cov].values
-        ref_cov = data.covs[self.ref_cov].values
+        alt_cov = data.get_covs(self.alt_cov)
+        ref_cov = data.get_covs(self.ref_cov)
 
         spline = self.create_spline(data) if self.use_spline else None
 
@@ -459,8 +452,8 @@ class LinearCovModel(CovModel):
             return np.array([]).reshape(data.num_obs, 0)
 
         if self.use_re_mid_point:
-            alt_mat = utils.avg_integral(data.covs[self.alt_cov].values)
-            ref_mat = utils.avg_integral(data.covs[self.ref_cov].values)
+            alt_mat = utils.avg_integral(data.get_covs(self.alt_cov))
+            ref_mat = utils.avg_integral(data.get_covs(self.ref_cov))
         else:
             alt_mat, ref_mat = self.create_design_mat(data)
 
@@ -520,8 +513,8 @@ class LogCovModel(CovModel):
         if not self.use_re:
             return np.array([]).reshape(data.num_obs, 0)
 
-        alt_mat = utils.avg_integral(data.covs[self.alt_cov].values)
-        ref_mat = utils.avg_integral(data.covs[self.ref_cov].values)
+        alt_mat = utils.avg_integral(data.get_covs(self.alt_cov))
+        ref_mat = utils.avg_integral(data.get_covs(self.ref_cov))
 
         if ref_mat.size == 0:
             return alt_mat
@@ -544,8 +537,8 @@ class LogCovModel(CovModel):
             c_val = np.hstack((c_val,
                                np.repeat(tmp_val, points.size, axis=1)))
         else:
-            alt_mat = utils.avg_integral(data.covs[self.alt_cov].values)
-            ref_mat = utils.avg_integral(data.covs[self.ref_cov].values)
+            alt_mat = utils.avg_integral(data.get_covs(self.alt_cov))
+            ref_mat = utils.avg_integral(data.get_covs(self.ref_cov))
             cov_mat = np.hstack((alt_mat, ref_mat))
             c_mat = np.vstack((c_mat, np.array([[np.min(cov_mat)],
                                                 [np.max(cov_mat)]])))

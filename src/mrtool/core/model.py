@@ -194,13 +194,13 @@ class MRBRT:
         """Fitting the model through limetr.
         """
         # dimensions
-        n = self.data.study_size.values
+        n = self.data.study_sizes
         k_beta = self.num_x_vars
         k_gamma = self.num_z_vars
 
         # data
-        y = self.data.obs.values
-        s = self.data.obs_se.values
+        y = self.data.obs
+        s = self.data.obs_se
 
         # create x fun and z mat
         x_fun, x_fun_jac = self.create_x_fun()
@@ -241,7 +241,7 @@ class MRBRT:
     def _parse_re(self):
         """Turn the random effect optimization solution into a dictionary.
         """
-        studies = list(self.data.study_size.index)
+        studies = list(self.data.studies)
         self.re_soln = {
             study: self.u_soln[i]
             for i, study in enumerate(studies)
