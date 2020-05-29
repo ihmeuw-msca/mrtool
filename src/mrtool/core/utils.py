@@ -451,3 +451,7 @@ def mat_to_fun(mat):
             return mat
 
     return fun, jac_fun
+
+
+def empty_array():
+    return np.array(list())
