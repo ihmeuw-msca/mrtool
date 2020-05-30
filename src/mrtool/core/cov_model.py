@@ -5,11 +5,11 @@
 
     Covariates model for `mrtool`.
 """
+from typing import Tuple
 import numpy as np
 import xspline
 from . import utils
 from .data import MRData
-
 
 
 class CovModel:
@@ -22,7 +22,6 @@ class CovModel:
                  use_re=False,
                  use_re_mid_point=False,
                  use_spline=False,
-                 spline=None,
                  spline_knots_type='frequency',
                  spline_knots=np.linspace(0.0, 1.0, 4),
                  spline_degree=3,
@@ -57,8 +56,6 @@ class CovModel:
                 If use the midpoint for the random effects.
             use_spline(bool, optional):
                 If use splines.
-            spline (xspline.XSpline | None, optional):
-                Given spline, if `None`, will construct spline by given data.
             spline_knots_type (str, optional):
                 The method of how to place the knots, `'frequency'` place the
                 knots according to the data quantile and `'domain'` place the
@@ -114,9 +111,10 @@ class CovModel:
         self.use_re_mid_point = use_re_mid_point
         self.use_spline = use_spline
 
-        self.spline = spline
+        self.spline = None
         self.spline_knots_type = spline_knots_type
-        self.spline_knots = spline_knots
+        self.spline_knots_template = spline_knots
+        self.spline_knots = None
         self.spline_degree = spline_degree
         self.spline_l_linear = spline_l_linear
         self.spline_r_linear = spline_r_linear
@@ -133,10 +131,12 @@ class CovModel:
         self.prior_gamma_uniform = prior_gamma_uniform
         self.prior_gamma_laplace = prior_gamma_laplace
 
-        self.check_attr()
-        self.process_attr()
+        self._check_inputs()
+        self._process_inputs()
+        if not self.use_spline:
+            self._process_priors()
 
-    def check_attr(self):
+    def _check_inputs(self):
         """Check the attributes.
         """
         assert utils.is_cols(self.alt_cov)
@@ -152,20 +152,18 @@ class CovModel:
         # spline specific
         assert self.spline is None or isinstance(self.spline, xspline.XSpline)
         assert self.spline_knots_type in ['frequency', 'domain']
-        assert isinstance(self.spline_knots, np.ndarray)
-        assert np.min(self.spline_knots) >= 0.0
-        assert np.max(self.spline_knots) <= 1.0
+        assert isinstance(self.spline_knots_template, np.ndarray)
+        assert np.min(self.spline_knots_template) >= 0.0
+        assert np.max(self.spline_knots_template) <= 1.0
         assert isinstance(self.spline_degree, int)
         assert self.spline_degree >= 0
         assert isinstance(self.spline_l_linear, bool)
         assert isinstance(self.spline_r_linear, bool)
 
         # priors
-        assert (self.prior_spline_monotonicity in ['increasing',
-                                                   'decreasing'] or
+        assert (self.prior_spline_monotonicity in ['increasing', 'decreasing'] or
                 self.prior_spline_monotonicity is None)
-        assert (self.prior_spline_convexity in ['convex',
-                                               'concave'] or
+        assert (self.prior_spline_convexity in ['convex', 'concave'] or
                 self.prior_spline_convexity is None)
         assert isinstance(self.prior_spline_num_constraint_points, int)
         assert self.prior_spline_num_constraint_points > 0
@@ -178,7 +176,7 @@ class CovModel:
         assert utils.is_laplace_prior(self.prior_beta_laplace)
         assert utils.is_laplace_prior(self.prior_gamma_laplace)
 
-    def process_attr(self):
+    def _process_inputs(self):
         """Process attributes.
         """
         # covariates names
@@ -194,19 +192,23 @@ class CovModel:
                 self.name = 'cov' + '{:0>3}'.format(np.random.randint(1000))
 
         # spline knots
-        self.spline_knots = np.unique(self.spline_knots)
-        if np.min(self.spline_knots) > 0.0:
-            self.spline_knots = np.insert(self.spline_knots, 0, 0.0)
-        if np.max(self.spline_knots) < 1.0:
-            self.spline_knots = np.append(self.spline_knots, 1.0)
+        self.spline_knots_template = np.hstack([self.spline_knots_template, [0.0, 1.0]])
+        self.spline_knots_template = np.unique(self.spline_knots_template)
 
+    def _process_priors(self):
+        """Process priors.
+        """
         # prior information
-        self.prior_spline_maxder_gaussian = utils.input_gaussian_prior(
-            self.prior_spline_maxder_gaussian, self.spline_knots.size - 1
-        )
-        self.prior_spline_maxder_uniform = utils.input_uniform_prior(
-            self.prior_spline_maxder_uniform, self.spline_knots.size - 1
-        )
+        if self.spline is not None:
+            self.prior_spline_maxder_gaussian = utils.input_gaussian_prior(
+                self.prior_spline_maxder_gaussian, self.spline_knots.size - 1
+            )
+            self.prior_spline_maxder_uniform = utils.input_uniform_prior(
+                self.prior_spline_maxder_uniform, self.spline_knots.size - 1
+            )
+        else:
+            self.prior_spline_maxder_gaussian = None
+            self.prior_spline_maxder_uniform = None
         self.prior_beta_gaussian = utils.input_gaussian_prior(
             self.prior_beta_gaussian, self.num_x_vars
         )
@@ -227,44 +229,42 @@ class CovModel:
             self.prior_gamma_laplace, self.num_z_vars
         )
 
-    def create_spline(self, data, fixed_spline=True):
+    def attach_data(self, data: MRData):
+        """Attach data.
+        """
+        if self.use_spline:
+            self.spline = self.create_spline(data)
+            self.spline_knots = self.spline.knots
+            self._process_priors()
+
+    def create_spline(self, data: MRData) -> xspline.XSpline:
         """Create spline given current spline parameters.
         Args:
             data (mrtool.MRData):
                 The data frame used for storing the data
-            fixed_spline (bool, optional):
-                Use or set fixed spline.
         Returns:
-            xspline.XSpline
-                The spline object.
+            xspline.XSpline: The spline object.
         """
-        if self.spline is not None and fixed_spline:
-            return self.spline
         # extract covariate
         alt_cov = data.get_covs(self.alt_cov)
         ref_cov = data.get_covs(self.ref_cov)
-        if ref_cov.size == 0:
-            cov = alt_cov.ravel()
-        else:
-            cov_min = min(alt_cov.min(), ref_cov.min())
-            cov_max = max(alt_cov.max(), ref_cov.max())
-            cov = np.hstack((cov_min,
-                             alt_cov.mean(axis=1),
-                             ref_cov.mean(axis=1),
-                             cov_max))
+
+        cov_all = np.hstack((alt_cov.ravel(), ref_cov.ravel()))
+        cov = np.array([min(cov_all), max(cov_all)])
+        if alt_cov.size != 0:
+            cov = np.hstack((cov, alt_cov.mean(axis=1)))
+        if ref_cov.size != 0:
+            cov = np.hstack((cov, ref_cov.mean(axis=1)))
 
         if self.spline_knots_type == 'frequency':
-            spline_knots = np.quantile(cov, self.spline_knots)
+            spline_knots = np.quantile(cov, self.spline_knots_template)
         else:
-            spline_knots = cov.min() + self.spline_knots*(cov.max() - cov.min())
+            spline_knots = min(cov) + self.spline_knots_template*(max(cov) - min(cov))
 
         spline = xspline.XSpline(spline_knots,
                                  self.spline_degree,
                                  l_linear=self.spline_l_linear,
                                  r_linear=self.spline_r_linear)
-
-        if fixed_spline:
-            self.spline = spline
 
         return spline
 
@@ -280,10 +280,8 @@ class CovModel:
         alt_cov = data.get_covs(self.alt_cov)
         ref_cov = data.get_covs(self.ref_cov)
 
-        spline = self.create_spline(data) if self.use_spline else None
-
-        alt_mat = utils.avg_integral(alt_cov, spline=spline)
-        ref_mat = utils.avg_integral(ref_cov, spline=spline)
+        alt_mat = utils.avg_integral(alt_cov, spline=self.spline)
+        ref_mat = utils.avg_integral(ref_cov, spline=self.spline)
 
         return alt_mat, ref_mat
 
@@ -293,12 +291,8 @@ class CovModel:
     def create_z_mat(self, data):
         raise NotImplementedError("Cannot use create_z_mat directly in CovModel class.")
 
-    def create_constraint_mat(self, data):
+    def create_constraint_mat(self) -> Tuple[np.ndarray, np.ndarray]:
         """Create constraint matrix.
-        Args:
-            data (mrtool.MRData):
-                The data frame used for storing the data
-
         Returns:
             tuple{numpy.ndarray, numpy.ndarray}:
                 Return linear constraints matrix and its uniform prior.
@@ -309,41 +303,32 @@ class CovModel:
         if not self.use_spline:
             return c_mat, c_val
 
-        spline = self.create_spline(data)
-        points = np.linspace(spline.knots[0], spline.knots[-1],
+        points = np.linspace(self.spline.knots[0],
+                             self.spline.knots[-1],
                              self.prior_spline_num_constraint_points)
         tmp_val = np.array([[-np.inf], [0.0]])
 
         # spline monotonicity constraints
-        if self.prior_spline_monotonicity is not None:
-            sign = 1.0 if self.prior_spline_monotonicity is 'decreasing' \
-                else -1.0
-            c_mat = np.vstack((c_mat,
-                               sign*spline.design_dmat(points, 1)[:, 1:]))
-            c_val = np.hstack((c_val,
-                               np.repeat(tmp_val, points.size, axis=1)))
+        if self.prior_spline_monotonicity is not None and self.use_spline:
+            sign = 1.0 if self.prior_spline_monotonicity is 'decreasing' else -1.0
+            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(points, 1)[:, 1:]))
+            c_val = np.hstack((c_val, np.repeat(tmp_val, points.size, axis=1)))
 
         # spline convexity constraints
-        if self.prior_spline_convexity is not None:
+        if self.prior_spline_convexity is not None and self.use_spline:
             sign = 1.0 if self.prior_spline_convexity is 'concave' else -1.0
-            c_mat = np.vstack((c_mat,
-                               sign*spline.design_dmat(points, 2)[:, 1:]))
-            c_val = np.hstack((c_val,
-                               np.repeat(tmp_val, points.size, axis=1)))
+            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(points, 2)[:, 1:]))
+            c_val = np.hstack((c_val, np.repeat(tmp_val, points.size, axis=1)))
 
         # spline maximum derivative constraints
         if not np.isinf(self.prior_spline_maxder_uniform).all():
-            c_mat = np.vstack((c_mat, spline.last_dmat()[:, 1:]))
+            c_mat = np.vstack((c_mat, self.spline.last_dmat()[:, 1:]))
             c_val = np.hstack((c_val, self.prior_spline_maxder_uniform))
 
         return c_mat, c_val
 
-    def create_regularization_mat(self, data):
+    def create_regularization_mat(self) -> Tuple[np.ndarray, np.ndarray]:
         """Create constraint matrix.
-        Args:
-            data (mrtool.MRData):
-                The data frame used for storing the data
-
         Returns:
             tuple{numpy.ndarray, numpy.ndarray}:
                 Return linear regularization matrix and its Gaussian prior.
@@ -353,11 +338,9 @@ class CovModel:
         if not self.use_spline:
             return r_mat, r_val
 
-        spline = self.create_spline(data)
-
         # spline maximum derivative constraints
-        if not np.isinf(self.prior_spline_maxder_gaussian[1]).all():
-            r_mat = np.vstack((r_mat, spline.last_dmat()[:, 1:]))
+        if not np.isinf(self.prior_spline_maxder_gaussian[1]).all() and self.use_spline:
+            r_mat = np.vstack((r_mat, self.spline.last_dmat()[:, 1:]))
             r_val = np.hstack((r_val, self.prior_spline_maxder_gaussian))
 
         return r_mat, r_val
@@ -365,9 +348,8 @@ class CovModel:
     @property
     def num_x_vars(self):
         if self.use_spline:
-            n = self.spline_knots.size - \
-                self.spline_l_linear - self.spline_r_linear + \
-                self.spline_degree - 2
+            assert self.spline is not None, "Attach data first to create spline."
+            n = self.spline.num_spline_bases - 1
         else:
             n = 1
         return n
@@ -414,28 +396,11 @@ class LinearCovModel(CovModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def create_x_mat(self, data):
-        """Create design matrix for the fixed effects.
-
-        Args:
-            data (mrtool.MRData):
-                The data frame used for storing the data
-
-        Returns:
-            numpy.ndarray:
-                Design matrix for fixed effects.
-        """
-        alt_mat, ref_mat = self.create_design_mat(data)
-        if ref_mat.size == 0:
-            return alt_mat
-        else:
-            return alt_mat - ref_mat
-
     def create_x_fun(self, data: MRData):
         """Create design function for the fixed effects.
         """
-        mat = self.create_x_mat(data)
-        return utils.mat_to_fun(mat)
+        alt_mat, ref_mat = self.create_design_mat(data)
+        return utils.mat_to_fun(alt_mat, ref_mat=ref_mat)
 
     def create_z_mat(self, data):
         """Create design matrix for the random effects.
@@ -481,23 +446,7 @@ class LogCovModel(CovModel):
                 Design functions for fixed effects.
         """
         alt_mat, ref_mat = self.create_design_mat(data)
-
-        if ref_mat.size == 0:
-            def fun(beta):
-                return np.log(1.0 + alt_mat.dot(beta))
-
-            def jac_fun(beta):
-                return alt_mat/(1.0 + alt_mat.dot(beta)[:, None])
-        else:
-            def fun(beta):
-                return np.log(1.0 + alt_mat.dot(beta)) - \
-                    np.log(1.0 + ref_mat.dot(beta))
-
-            def jac_fun(beta):
-                return alt_mat/(1.0 + alt_mat.dot(beta)[:, None]) - \
-                    ref_mat/(1.0 + ref_mat.dot(beta)[:, None])
-
-        return fun, jac_fun
+        return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat)
 
     def create_z_mat(self, data):
         """Create design matrix for the random effects.
@@ -521,29 +470,19 @@ class LogCovModel(CovModel):
         else:
             return alt_mat - ref_mat
 
-    def create_constraint_mat(self, data):
+    def create_constraint_mat(self):
         """Create constraint matrix.
         Overwrite the super class, adding non-negative constraints.
         """
-        c_mat, c_val = super().create_constraint_mat(data)
+        c_mat, c_val = super().create_constraint_mat()
         tmp_val = np.array([[-1.0], [np.inf]])
 
         if self.use_spline:
-            spline = self.create_spline(data)
-            points = np.linspace(spline.knots[0], spline.knots[-1],
+            points = np.linspace(self.spline.knots[0],
+                                 self.spline.knots[-1],
                                  self.prior_spline_num_constraint_points)
-            c_mat = np.vstack((c_mat,
-                               spline.design_mat(points)[:, 1:]))
-            c_val = np.hstack((c_val,
-                               np.repeat(tmp_val, points.size, axis=1)))
-        else:
-            alt_mat = utils.avg_integral(data.get_covs(self.alt_cov))
-            ref_mat = utils.avg_integral(data.get_covs(self.ref_cov))
-            cov_mat = np.hstack((alt_mat, ref_mat))
-            c_mat = np.vstack((c_mat, np.array([[np.min(cov_mat)],
-                                                [np.max(cov_mat)]])))
-            c_val = np.hstack((c_val,
-                               np.repeat(tmp_val, 2, axis=1)))
+            c_mat = np.vstack((c_mat, self.spline.design_mat(points)[:, 1:]))
+            c_val = np.hstack((c_val, np.repeat(tmp_val, points.size, axis=1)))
         return c_mat, c_val
 
     @property
@@ -551,13 +490,8 @@ class LogCovModel(CovModel):
         num_c = super().num_constraints
         if self.use_spline:
             num_c += self.prior_spline_num_constraint_points
-        else:
-            num_c += 2
         return num_c
 
     @property
     def num_z_vars(self):
-        if self.use_re:
-            return 1
-        else:
-            return 0
+        return int(self.use_re)

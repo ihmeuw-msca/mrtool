@@ -81,7 +81,7 @@ class MRData:
     def _sort_by_study_id(self):
         """Sort data by study_id.
         """
-        if self.num_obs != 0:
+        if self.num_obs != 0 and len(set(self.study_id)) != 1:
             sort_index = np.argsort(self.study_id)
             self.obs = self.obs[sort_index]
             self.obs_se = self.obs_se[sort_index]

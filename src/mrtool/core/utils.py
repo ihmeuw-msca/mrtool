@@ -436,19 +436,54 @@ def nonlinear_trans(score, slope=6.0, quantile=0.7):
     return weight_trans
 
 
-def mat_to_fun(mat):
-    mat = np.array(mat)
-    assert mat.ndim == 2
+def mat_to_fun(alt_mat, ref_mat=None):
+    alt_mat = np.array(alt_mat)
+    assert alt_mat.ndim == 2
+    if ref_mat is not None:
+        ref_mat = np.array(ref_mat)
+        assert ref_mat.ndim == 2
 
-    if mat.size == 0:
+    if alt_mat.size == 0:
         fun = None
         jac_fun = None
     else:
+        if ref_mat is None or ref_mat.size == 0:
+            mat = alt_mat
+        else:
+            mat = alt_mat - ref_mat
         def fun(x, mat=mat):
             return mat.dot(x)
 
         def jac_fun(x, mat=mat):
             return mat
+
+    return fun, jac_fun
+
+def mat_to_log_fun(alt_mat, ref_mat=None):
+    alt_mat = np.array(alt_mat)
+    assert alt_mat.ndim == 2
+    if ref_mat is not None:
+        ref_mat = np.array(ref_mat)
+        assert ref_mat.ndim == 2
+
+    if alt_mat.size == 0:
+        fun = None
+        jac_fun = None
+    else:
+        if ref_mat is None or ref_mat.size == 0:
+            def fun(beta):
+                return np.log(1.0 + alt_mat.dot(beta))
+
+            def jac_fun(beta):
+                return alt_mat/(1.0 + alt_mat.dot(beta)[:, None])
+        else:
+            def fun(beta):
+                return np.log(1.0 + alt_mat.dot(beta)) - \
+                       np.log(1.0 + ref_mat.dot(beta))
+
+            def jac_fun(beta):
+                return alt_mat/(1.0 + alt_mat.dot(beta)[:, None]) - \
+                       ref_mat/(1.0 + ref_mat.dot(beta)[:, None])
 
     return fun, jac_fun
 

@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 from limetr import LimeTr
 from .data import MRData
-from .cov_model import CovModel, LinearCovModel, LogCovModel
+from .cov_model import CovModel
 from . import utils
 
 
@@ -39,15 +39,17 @@ class MRBRT:
         ]
         self.num_cov_models = len(self.cov_models)
 
+        # attach data to cov_model
+        for cov_model in self.cov_models:
+            cov_model.attach_data(self.data)
+
         # fixed effects size and index
-        self.x_vars_sizes = [cov_model.num_x_vars
-                             for cov_model in self.cov_models]
+        self.x_vars_sizes = [cov_model.num_x_vars for cov_model in self.cov_models]
         self.x_vars_indices = utils.sizes_to_indices(self.x_vars_sizes)
         self.num_x_vars = sum(self.x_vars_sizes)
 
         # random effects size and index
-        self.z_vars_sizes = [cov_model.num_z_vars
-                             for cov_model in self.cov_models]
+        self.z_vars_sizes = [cov_model.num_z_vars for cov_model in self.cov_models]
         self.z_vars_indices = utils.sizes_to_indices(self.z_vars_sizes)
         self.num_z_vars = sum(self.z_vars_sizes)
 
@@ -130,8 +132,7 @@ class MRBRT:
         for i, cov_model in enumerate(self.cov_models):
             if cov_model.num_constraints != 0:
                 c_mat_sub = np.zeros((cov_model.num_constraints, self.num_vars))
-                c_mat_sub[:, self.x_vars_indices[i]], c_vec_sub = \
-                    cov_model.create_constraint_mat(self.data)
+                c_mat_sub[:, self.x_vars_indices[i]], c_vec_sub = cov_model.create_constraint_mat()
                 c_mat = np.vstack((c_mat, c_mat_sub))
                 c_vec = np.hstack((c_vec, c_vec_sub))
 
@@ -145,10 +146,8 @@ class MRBRT:
 
         for i, cov_model in enumerate(self.cov_models):
             if cov_model.num_regularizations != 0:
-                h_mat_sub = np.zeros((cov_model.num_regularizations,
-                                      self.num_vars))
-                h_mat_sub[:, self.x_vars_indices[i]], h_vec_sub = \
-                    cov_model.create_regularization_mat(self.data)
+                h_mat_sub = np.zeros((cov_model.num_regularizations, self.num_vars))
+                h_mat_sub[:, self.x_vars_indices[i]], h_vec_sub = cov_model.create_regularization_mat()
                 h_mat = np.vstack((h_mat, h_mat_sub))
                 h_vec = np.hstack((h_vec, h_vec_sub))
 
@@ -296,14 +295,10 @@ class MRBRT:
         x_fun, x_jac_fun = self.create_x_fun(data=data)
         z_mat = self.create_z_mat(data=data)
 
-        y_samples = np.vstack([
-            x_fun(beta_sample)
-            for beta_sample in beta_samples
-        ])
+        y_samples = np.vstack([x_fun(beta_sample) for beta_sample in beta_samples])
 
         if use_re:
-            u_samples = np.random.randn(sample_size,
-                                        self.num_z_vars)*gamma_samples
+            u_samples = np.random.randn(sample_size, self.num_z_vars)*gamma_samples
             y_samples += u_samples.dot(z_mat.T)
 
         return y_samples.T
@@ -324,8 +319,7 @@ class MRBeRT:
                 Covariates model which will be used with ensemble.
         """
         self.data = data
-        self.cov_models = cov_models if cov_models is not None else [
-            LinearCovModel('intercept')]
+        self.cov_models = cov_models if cov_models is not None else []
         self.inlier_pct = inlier_pct
 
         assert isinstance(ensemble_cov_model, CovModel)
@@ -339,9 +333,8 @@ class MRBeRT:
         self.sub_models = []
         for knots in self.ensemble_knots:
             ensemble_cov_model = deepcopy(cov_model_tmp)
-            ensemble_cov_model.spline_knots = knots.copy()
-            ensemble_cov_model.process_attr()
-            ensemble_cov_model.check_attr()
+            ensemble_cov_model.spline_knots_template = knots.copy()
+            ensemble_cov_model.attach_data(data)
             self.sub_models.append(MRBRT(data,
                                          cov_models=[*self.cov_models,
                                                      ensemble_cov_model],
@@ -455,8 +448,7 @@ class MRBeRT:
         """Create draws.
         """
         if beta_samples is None or gamma_samples is None:
-            beta_samples, gamma_samples = \
-                self.sample_soln(sample_size=sample_size)
+            beta_samples, gamma_samples = self.sample_soln(sample_size=sample_size)
         else:
             assert beta_samples.shape == (sample_size,
                                           self.sub_models[0].num_x_vars + 1)
