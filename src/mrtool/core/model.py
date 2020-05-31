@@ -190,6 +190,17 @@ class MRBRT:
 
     def fit_model(self, **fit_options: Dict):
         """Fitting the model through limetr.
+
+        Args:
+            x0 (np.ndarray): Initial guess for the optimization problem.
+            inner_print_level (int): If non-zero printing iteration information of the inner problem.
+            inner_max_iter (int): Maximum inner number of iterations.
+            inner_tol (float): Tolerance of the inner problem.
+            outer_verbose (bool): If `True` print out iteration information.
+            outer_max_iter (int): Maximum outer number of iterations.
+            outer_step_size (float): Step size of the outer problem.
+            outer_tol (float): Tolerance of the outer problem.
+            normalize_trimming_grad (bool): If `True`, normalize the gradient of the outer trimmign problem.
         """
         # dimensions
         n = self.data.study_sizes
@@ -283,16 +294,11 @@ class MRBRT:
 
     def create_draws(self,
                      data: MRData,
-                     beta_samples: Union[np.ndarray, None] = None,
-                     gamma_samples: Union[np.ndarray, None] = None,
-                     sample_soln_options: Union[dict, None] = None,
+                     beta_samples: np.ndarray,
+                     gamma_samples: np.ndarray,
                      random_study: bool = True) -> np.ndarray:
         """Create draws for the given dataset.
         """
-        sample_soln_options = dict() if sample_soln_options is None else sample_soln_options
-        if beta_samples is None or gamma_samples is None:
-            beta_samples, gamma_samples = self.sample_soln(**sample_soln_options)
-
         sample_size = beta_samples.shape[0]
         assert beta_samples.shape == (sample_size, self.num_x_vars)
         assert gamma_samples.shape == (sample_size, self.num_z_vars)
@@ -432,15 +438,11 @@ class MRBeRT:
 
     def create_draws(self,
                      data: MRData,
-                     beta_samples: Union[List[np.ndarray], None] = None,
-                     gamma_samples: Union[List[np.ndarray], None] = None,
-                     sample_soln_options: Union[dict, None] = None,
+                     beta_samples: List[np.ndarray],
+                     gamma_samples: List[np.ndarray],
                      random_study: bool = True) -> np.ndarray:
         """Create draws.
         """
-        if beta_samples is None or gamma_samples is None:
-            beta_samples, gamma_samples = self.sample_soln(**sample_soln_options)
-
         sample_sizes = [sub_beta_samples.shape[0] for sub_beta_samples in beta_samples]
         for i in range(self.num_sub_models):
             assert beta_samples[i].shape == (sample_sizes[i], self.sub_models[0].num_x_vars)
