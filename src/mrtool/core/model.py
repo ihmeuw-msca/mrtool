@@ -379,12 +379,6 @@ class MRBeRT:
                 normalize_trimming_grad=normalize_trimming_grad
             ))
 
-        self.beta_solns = np.vstack([model.beta_soln for model in self.sub_models])
-        self.gamma_solns = np.vstack([model.gamma_soln for model in self.sub_models])
-        self.w_solns = np.vstack([model.w_soln for model in self.sub_models])
-        self.u_solns = np.vstack([model.u_soln for model in self.sub_models])
-        self.re_solns = [model.re_soln for model in self.sub_models]
-
         self.score_model(scores_weights=scores_weights,
                          slopes=slopes,
                          quantiles=quantiles)
