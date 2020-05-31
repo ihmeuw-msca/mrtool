@@ -303,7 +303,7 @@ class MRBRT:
         y_samples = np.vstack([x_fun(beta_sample) for beta_sample in beta_samples])
 
         if random_study:
-            u_samples = np.random.randn(sample_size, self.num_z_vars)*gamma_samples
+            u_samples = np.random.randn(sample_size, self.num_z_vars)*np.sqrt(gamma_samples)
             y_samples += u_samples.dot(z_mat.T)
         else:
             re = self.extract_re(data.study_id)
