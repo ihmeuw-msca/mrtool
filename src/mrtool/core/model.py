@@ -5,9 +5,8 @@
 
     Model module for mrtool package.
 """
-from typing import List, Dict
+from typing import List, Dict, Union, Tuple
 from copy import deepcopy
-import pandas as pd
 import numpy as np
 from limetr import LimeTr
 from .data import MRData
@@ -235,16 +234,19 @@ class MRBRT:
         self.gamma_soln = self.lt.gamma.copy()
         self.w_soln = self.lt.w.copy()
         self.u_soln = self.lt.estimateRE()
-        self._parse_re()
-
-    def _parse_re(self):
-        """Turn the random effect optimization solution into a dictionary.
-        """
-        studies = list(self.data.studies)
         self.re_soln = {
             study: self.u_soln[i]
-            for i, study in enumerate(studies)
+            for i, study in enumerate(self.data.studies)
         }
+
+    def extract_re(self, study_id: np.ndarray) -> np.ndarray:
+        """Extract the random effect for a given dataset.
+        """
+        re = np.vstack([
+            self.re_soln[study] if study in self.re_soln else np.zeros(self.num_z_vars)
+            for study in study_id
+        ])
+        return re
 
     def predict(self, data: MRData,
                 predict_for_study=False) -> np.ndarray:
@@ -255,51 +257,58 @@ class MRBRT:
         prediction = x_fun(self.beta_soln)
         if predict_for_study:
             z_mat = self.create_z_mat(data=data)
-            re = np.vstack([
-                self.re_soln[study] if study in self.re_soln else np.zeros(self.num_z_vars)
-                for study in data.study_id
-            ])
+            re = self.extract_re(data.study_id)
             prediction += np.sum(z_mat*re, axis=1)
 
         return prediction
 
-    def sample_soln(self, sample_size=1, sim_prior=True, sim_re=True,
-                    print_level=0):
+    def sample_soln(self,
+                    sample_size: int = 1,
+                    sim_prior: bool = True,
+                    sim_re: bool = True,
+                    print_level: bool = 0) -> Tuple[np.ndarray, np.ndarray]:
         """Sample solutions.
         """
         if self.lt is None:
-            print('Fit the model first!')
-            return None, None
+            raise ValueError('Please fit the model first.')
 
         beta_soln_samples, gamma_soln_samples = \
-            self.lt.sampleSoln(self.lt, sample_size=sample_size,
+            self.lt.sampleSoln(self.lt,
+                               sample_size=sample_size,
                                sim_prior=sim_prior,
                                sim_re=sim_re,
                                print_level=print_level)
 
         return beta_soln_samples, gamma_soln_samples
 
-    def create_draws(self, data,
-                     sample_size=1,
-                     beta_samples=None,
-                     gamma_samples=None,
-                     use_re=False):
-
+    def create_draws(self,
+                     data: MRData,
+                     beta_samples: Union[np.ndarray, None] = None,
+                     gamma_samples: Union[np.ndarray, None] = None,
+                     sample_soln_options: Union[dict, None] = None,
+                     random_study: bool = True) -> np.ndarray:
+        """Create draws for the given dataset.
+        """
+        sample_soln_options = dict() if sample_soln_options is None else sample_soln_options
         if beta_samples is None or gamma_samples is None:
             beta_samples, gamma_samples = \
-                self.sample_soln(sample_size=sample_size)
-        else:
-            assert beta_samples.shape == (sample_size, self.num_x_vars)
-            assert gamma_samples.shape == (sample_size, self.num_z_vars)
+                self.sample_soln(**sample_soln_options)
+
+        sample_size = beta_samples.shape[0]
+        assert beta_samples.shape == (sample_size, self.num_x_vars)
+        assert gamma_samples.shape == (sample_size, self.num_z_vars)
 
         x_fun, x_jac_fun = self.create_x_fun(data=data)
         z_mat = self.create_z_mat(data=data)
 
         y_samples = np.vstack([x_fun(beta_sample) for beta_sample in beta_samples])
 
-        if use_re:
+        if random_study:
             u_samples = np.random.randn(sample_size, self.num_z_vars)*gamma_samples
             y_samples += u_samples.dot(z_mat.T)
+        else:
+            re = self.extract_re(data.study_id)
+            y_samples += np.sum(z_mat*re, axis=1)
 
         return y_samples.T
 
@@ -370,13 +379,6 @@ class MRBeRT:
                 normalize_trimming_grad=normalize_trimming_grad
             ))
 
-        self.beta_solns = np.vstack([model.beta_soln
-                                     for model in self.sub_models])
-        self.gamma_solns = np.vstack([model.gamma_soln
-                                      for model in self.sub_models])
-        self.w_solns = np.vstack([model.w_soln
-                                  for model in self.sub_models])
-
         self.score_model(scores_weights=scores_weights,
                          slopes=slopes,
                          quantiles=quantiles)
@@ -404,72 +406,58 @@ class MRBeRT:
         weights = np.prod(weights, axis=0)
         self.weights = weights/np.sum(weights)
 
-    def sample_soln(self, sample_size=1):
+    def sample_soln(self,
+                    sample_size: int = 1,
+                    sim_prior: bool = True,
+                    sim_re: bool = True,
+                    print_level: bool = 0) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """Sample solution.
         """
-        try:
-            sample_sizes = np.random.multinomial(sample_size, self.weights)
-        except:
-            print("Fit and evaluate the models first.")
-            return None
+        sample_sizes = np.random.multinomial(sample_size, self.weights)
 
         beta_samples = []
         gamma_samples = []
         for i, sub_model in enumerate(self.sub_models):
             if sample_sizes[i] != 0:
                 sub_beta_samples, sub_gamma_samples = \
-                    sub_model.sample_soln(sample_size=sample_sizes[i])
-                beta_samples.append(sub_beta_samples)
-                gamma_samples.append(sub_gamma_samples)
-
-        beta_samples = np.vstack(beta_samples)
-        gamma_samples = np.vstack(gamma_samples)
-
-        sub_model_id = np.repeat(np.arange(self.num_sub_models),
-                                 sample_sizes)
-        beta_samples = pd.DataFrame({
-            'beta_%i'%i: beta_samples[:, i]
-            for i in range(beta_samples.shape[1])
-        })
-        gamma_samples = pd.DataFrame({
-            'gamma_%i'%i: gamma_samples[:, i]
-            for i in range(gamma_samples.shape[1])
-        })
-        beta_samples['sub_model_id'] = sub_model_id
-        gamma_samples['sub_model_id'] = sub_model_id
+                    sub_model.sample_soln(sample_size=sample_sizes[i],
+                                          sim_prior=sim_prior,
+                                          sim_re=sim_re,
+                                          print_level=print_level)
+            else:
+                sub_beta_samples = np.array([]).reshape(0, sub_model.num_x_vars)
+                sub_gamma_samples = np.array([]).reshape(0, sub_model.num_z_vars)
+            beta_samples.append(sub_beta_samples)
+            gamma_samples.append(sub_gamma_samples)
 
         return beta_samples, gamma_samples
 
-    def create_draws(self, data,
-                     sample_size=1,
-                     beta_samples=None,
-                     gamma_samples=None,
-                     use_re=False):
+    def create_draws(self,
+                     data: MRData,
+                     beta_samples: Union[List[np.ndarray], None] = None,
+                     gamma_samples: Union[List[np.ndarray], None] = None,
+                     sample_soln_options: Union[dict, None] = None,
+                     random_study: bool = True) -> np.ndarray:
         """Create draws.
         """
         if beta_samples is None or gamma_samples is None:
-            beta_samples, gamma_samples = self.sample_soln(sample_size=sample_size)
-        else:
-            assert beta_samples.shape == (sample_size,
-                                          self.sub_models[0].num_x_vars + 1)
-            assert gamma_samples.shape == (sample_size,
-                                           self.sub_models[0].num_z_vars + 1)
+            beta_samples, gamma_samples = self.sample_soln(**sample_soln_options)
+
+        sample_sizes = [sub_beta_samples.shape[0] for sub_beta_samples in beta_samples]
+        for i in range(self.num_sub_models):
+            assert beta_samples[i].shape == (sample_sizes[i], self.sub_models[0].num_x_vars)
+            assert gamma_samples[i].shape == (sample_sizes[i], self.sub_models[0].num_z_vars)
 
         y_samples = []
         for i in range(self.num_sub_models):
-            sub_beta_samples = beta_samples[[
-                name for name in beta_samples.columns if 'beta' in name
-            ]][beta_samples['sub_model_id'] == i].values
-            sub_gamma_samples = gamma_samples[[
-                name for name in gamma_samples.columns if 'gamma' in name
-            ]][gamma_samples['sub_model_id'] == i].values
+            sub_beta_samples = beta_samples[i]
+            sub_gamma_samples = gamma_samples[i]
             if sub_beta_samples.size != 0:
                 y_samples.append(self.sub_models[i].create_draws(
                     data,
-                    sample_size=sub_beta_samples.shape[0],
                     beta_samples=sub_beta_samples,
                     gamma_samples=sub_gamma_samples,
-                    use_re=use_re
+                    random_study=random_study
                 ))
         y_samples = np.hstack(y_samples)
 
