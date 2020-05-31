@@ -291,8 +291,7 @@ class MRBRT:
         """
         sample_soln_options = dict() if sample_soln_options is None else sample_soln_options
         if beta_samples is None or gamma_samples is None:
-            beta_samples, gamma_samples = \
-                self.sample_soln(**sample_soln_options)
+            beta_samples, gamma_samples = self.sample_soln(**sample_soln_options)
 
         sample_size = beta_samples.shape[0]
         assert beta_samples.shape == (sample_size, self.num_x_vars)
@@ -345,8 +344,7 @@ class MRBeRT:
             ensemble_cov_model.spline_knots_template = knots.copy()
             ensemble_cov_model.attach_data(data)
             self.sub_models.append(MRBRT(data,
-                                         cov_models=[*self.cov_models,
-                                                     ensemble_cov_model],
+                                         cov_models=[*self.cov_models, ensemble_cov_model],
                                          inlier_pct=self.inlier_pct))
 
         self.weights = np.ones(self.num_sub_models)/self.num_sub_models
