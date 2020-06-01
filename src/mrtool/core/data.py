@@ -129,6 +129,19 @@ class MRData:
             self.study_id = empty_array()
         self.__post_init__()
 
+    def to_df(self) -> pd.DataFrame:
+        """Convert data object to data frame.
+        """
+        df = pd.DataFrame({
+            'obs': self.obs,
+            'obs_se': self.obs_se,
+            'study_id': self.study_id
+        })
+        for cov_name in self.covs:
+            df[cov_name] = self.covs[cov_name]
+
+        return df
+
     def has_covs(self, covs: List[str]) -> bool:
         """If the data has the provided covariates.
         """
