@@ -20,6 +20,22 @@ class CovFinder:
                  laplace_threshold: float = 1e-5,
                  power_range: Tuple[float, float] = (-8, 8),
                  power_step_size: float = 0.5):
+        """Covariate Finder.
+
+        Args:
+            data (MRData): Data object used for variable selection.
+            covs (List[str]): Candidate covariates.
+            num_samples (int, optional):
+                Number of samples used for judging if a variable is significance.
+            laplace_threshold (float, optional):
+                When coefficients from the Laplace regression is above this value,
+                we consider it as the potential useful covariate.
+            power_range (Tuple[float, float], optional):
+                Power range for the Laplace prior standard deviation.
+                Laplace prior standard deviation will go from `10**power_range[0]`
+                to `10**power_range[1]`.
+            power_step_size (float, optional): Step size of the swiping across the power range.
+        """
 
         self.data = data
         self.covs = covs
@@ -61,19 +77,20 @@ class CovFinder:
 
         return MRBRT(self.data, cov_models=cov_models)
 
-    def select_covs_by_laplace(self, laplace_std: float):
+    def select_covs_by_laplace(self, laplace_std: float, verbose: bool = False):
         # laplace model
         laplace_model = self.create_model(self.covs,
                                           prior_type='Laplace',
                                           laplace_std=laplace_std)
 
-        laplace_model.fit_model(x0=np.zeros(2*laplace_model.num_x_vars + 2*laplace_model.num_z_vars))
+        laplace_model.fit_model(x0=np.zeros(2*laplace_model.num_vars))
         additional_covs = [
             cov
             for i, cov in enumerate(self.covs)
             if cov not in self.selected_covs and laplace_model.beta_soln[i] > self.laplace_threshold
         ]
-        print(additional_covs)
+        if verbose:
+            print('potential additional covariates', additional_covs)
 
         if len(additional_covs) > 0:
             candidate_covs = self.selected_covs + additional_covs
@@ -82,7 +99,7 @@ class CovFinder:
             }
             gaussian_model = self.create_model(candidate_covs,
                                                prior_type='Gaussian')
-            gaussian_model.fit_model(x0=np.zeros(gaussian_model.num_x_vars + gaussian_model.num_z_vars))
+            gaussian_model.fit_model(x0=np.zeros(gaussian_model.num_vars))
             beta_soln_samples, _ = gaussian_model.sample_soln(sample_size=self.num_samples,
                                                               sim_prior=False,
                                                               sim_re=False,
@@ -90,13 +107,17 @@ class CovFinder:
             beta_soln_mean = gaussian_model.beta_soln
             beta_soln_std = np.std(beta_soln_samples, axis=0)
             beta_soln_sig = self.is_significance(beta_soln_samples, var_type='beta')
-            print(beta_soln_mean)
-            print(beta_soln_std)
+            if verbose:
+                print('    mean:', beta_soln_mean)
+                print('    std:', beta_soln_std)
+                print('    significance:', beta_soln_sig)
             # update the selected covs
             self.selected_covs.extend([
                 cov for i, cov in enumerate(candidate_covs)
                 if cov not in self.selected_covs and beta_soln_sig[i]
             ])
+            if verbose:
+                print('    selected covaraites:', self.selected_covs)
             # update beta_gprior
             self.beta_gprior.update({
                 cov: np.array([beta_soln_mean[candidate_cov_dict[cov]], self.loose_beta_gprior_std])
@@ -110,11 +131,11 @@ class CovFinder:
         if len(self.selected_covs) == self.num_covs:
             self.stop = True
 
-    def select_covs(self):
+    def select_covs(self, verbose: bool = False):
         for power in self.powers:
             if not self.stop:
                 laplace_std = 10**(0.5*power)
-                self.select_covs_by_laplace(laplace_std)
+                self.select_covs_by_laplace(laplace_std, verbose=verbose)
         self.stop = True
 
     @staticmethod

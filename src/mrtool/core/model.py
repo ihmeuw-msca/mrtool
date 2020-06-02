@@ -194,7 +194,7 @@ class MRBRT:
 
         return lprior
 
-    def fit_model(self, **fit_options: Dict):
+    def fit_model(self, **fit_options):
         """Fitting the model through limetr.
 
         Args:
@@ -283,7 +283,7 @@ class MRBRT:
                     sample_size: int = 1,
                     sim_prior: bool = True,
                     sim_re: bool = True,
-                    print_level: bool = 0) -> Tuple[np.ndarray, np.ndarray]:
+                    print_level: int = 0) -> Tuple[np.ndarray, np.ndarray]:
         """Sample solutions.
         """
         if self.lt is None:
