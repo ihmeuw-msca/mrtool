@@ -3,7 +3,7 @@
     Cov Finder
     ~~~~~~~~~~
 """
-from typing import List, Tuple
+from typing import List, Tuple, Union
 import numpy as np
 from mrtool import MRData, LinearCovModel, MRBRT
 
@@ -16,6 +16,7 @@ class CovFinder:
     def __init__(self,
                  data: MRData,
                  covs: List[str],
+                 pre_selected_covs: Union[List[str], None] = None,
                  num_samples: int = 1000,
                  laplace_threshold: float = 1e-5,
                  power_range: Tuple[float, float] = (-8, 8),
@@ -25,6 +26,8 @@ class CovFinder:
         Args:
             data (MRData): Data object used for variable selection.
             covs (List[str]): Candidate covariates.
+            pre_selected_covs (List[str] | None, optional):
+                Pre-selected covaraites, will always be in the selected list.
             num_samples (int, optional):
                 Number of samples used for judging if a variable is significance.
             laplace_threshold (float, optional):
@@ -39,7 +42,10 @@ class CovFinder:
 
         self.data = data
         self.covs = covs
-        self.selected_covs = []
+        self.pre_selected_covs = [] if pre_selected_covs is None else pre_selected_covs
+        assert len(set(self.pre_selected_covs) & set(self.covs)) == 0, \
+            "covs and pre_selected_covs should be mutually exclusive."
+        self.selected_covs = self.pre_selected_covs.copy()
         self.beta_gprior = {}
         self.stop = False
 
@@ -62,7 +68,10 @@ class CovFinder:
         if prior_type == 'Laplace':
             cov_models = [
                 LinearCovModel(cov, use_re=True,
-                               prior_beta_laplace=np.array([0.0, laplace_std]),
+                               prior_beta_laplace=np.array([0.0, laplace_std])
+                               if cov not in self.selected_covs else None,
+                               prior_beta_gaussian=None
+                               if cov not in self.pre_selected_covs else self.beta_gprior[cov],
                                prior_gamma_uniform=self.dummy_gamma_uprior)
                 for cov in covs
             ]
