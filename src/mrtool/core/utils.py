@@ -408,26 +408,7 @@ def col_diff_mat(n):
     return D
 
 
-def score_sub_models_datafit(mr):
-    """score the result of mrbert"""
-    if mr.lt.soln is None:
-        print('must optimize MR first!')
-        return None
 
-    return -mr.lt.objective(mr.lt.soln)
-
-
-def score_sub_models_variation(mr, ensemble_cov_model, n=1):
-    """score the result of mrbert"""
-    if mr.lt.soln is None:
-        print('must optimize MR first!')
-        return None
-
-    spline = mr.cov_models_dict[ensemble_cov_model].create_spline(mr.data)
-    x = np.linspace(spline.knots[0], spline.knots[-1], 201)
-    dmat = spline.design_dmat(x, n)[:, 1:]
-    d = dmat.dot(mr.beta_soln[mr.x_vars_idx[ensemble_cov_model]])
-    return -np.mean(np.abs(d))
 
 
 def nonlinear_trans(score, slope=6.0, quantile=0.7):

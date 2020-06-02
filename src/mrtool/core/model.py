@@ -86,11 +86,17 @@ class MRBRT:
     def get_cov_model(self, name: str) -> CovModel:
         """Choose covariate model with name.
         """
-        matching_index = [index for index, cov_model_name in enumerate(self.cov_models)
+        index = self.get_cov_model_index(name)
+        return self.cov_models[index]
+
+    def get_cov_model_index(self, name: str) -> int:
+        """From cov_model name get the index.
+        """
+        matching_index = [index for index, cov_model_name in enumerate(self.cov_model_names)
                           if cov_model_name == name]
         num_matching_index = len(matching_index)
         assert num_matching_index == 1, f"Number of matching index is {num_matching_index}."
-        return self.cov_models[matching_index[0]]
+        return matching_index[0]
 
     def create_x_fun(self, data=None):
         """Create the fixed effects function, link with limetr.
@@ -340,7 +346,7 @@ class MRBeRT:
         assert ensemble_cov_model.use_spline
 
         cov_model_tmp = ensemble_cov_model
-        self.ensemble_cov_model = cov_model_tmp.name
+        self.ensemble_cov_model_name = cov_model_tmp.name
         self.ensemble_knots = ensemble_knots
         self.num_sub_models = len(ensemble_knots)
 
@@ -354,6 +360,14 @@ class MRBeRT:
                                          inlier_pct=self.inlier_pct))
 
         self.weights = np.ones(self.num_sub_models)/self.num_sub_models
+
+        # inherent the dimension variable
+        self.num_x_vars = self.sub_models[0].num_x_vars
+        self.num_z_vars = self.sub_models[0].num_z_vars
+        self.num_vars = self.sub_models[0].num_vars
+        self.num_constraints = self.sub_models[0].num_constraints
+        self.num_regularizations = self.sub_models[0].num_regularizations
+        self.num_cov_models = self.sub_models[0].num_cov_models
 
     def fit_model(self,
                   x0=None,
@@ -395,9 +409,9 @@ class MRBeRT:
         """
         scores = np.zeros((2, self.num_sub_models))
         for i, sub_model in enumerate(self.sub_models):
-            scores[0][i] = utils.score_sub_models_datafit(sub_model)
-            scores[1][i] = utils.score_sub_models_variation(
-                sub_model, self.ensemble_cov_model, n=3)
+            scores[0][i] = score_sub_models_datafit(sub_model)
+            scores[1][i] = score_sub_models_variation(sub_model,
+                                                            self.ensemble_cov_model_name, n=3)
 
         weights = np.zeros(scores.shape)
         for i in range(2):
@@ -436,6 +450,17 @@ class MRBeRT:
 
         return beta_samples, gamma_samples
 
+    def predict(self, data: MRData,
+                predict_for_study=False) -> np.ndarray:
+        """Create new prediction with existing solution.
+        """
+        prediction = np.vstack([
+            sub_model.predict(data, predict_for_study=predict_for_study)
+            for sub_model in self.sub_models
+        ])
+
+        return prediction
+
     def create_draws(self,
                      data: MRData,
                      beta_samples: List[np.ndarray],
@@ -462,3 +487,26 @@ class MRBeRT:
         y_samples = np.hstack(y_samples)
 
         return y_samples
+
+
+def score_sub_models_datafit(mr: MRBRT):
+    """score the result of mrbert"""
+    if mr.lt.soln is None:
+        raise ValueError('Must optimize MRBRT first.')
+
+    return -mr.lt.objective(mr.lt.soln)
+
+
+def score_sub_models_variation(mr: MRBRT,
+                               ensemble_cov_model_name: str,
+                               n: int = 1) -> float:
+    """score the result of mrbert"""
+    if mr.lt.soln is None:
+        raise ValueError('Must optimize MRBRT first.')
+
+    index = mr.get_cov_model_index(ensemble_cov_model_name)
+    spline = mr.cov_models[index].spline
+    x = np.linspace(spline.knots[0], spline.knots[-1], 201)
+    dmat = spline.design_dmat(x, n)[:, 1:]
+    d = dmat.dot(mr.beta_soln[mr.x_vars_indices[index]])
+    return -np.mean(np.abs(d))
