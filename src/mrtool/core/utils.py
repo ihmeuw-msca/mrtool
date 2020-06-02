@@ -4,6 +4,7 @@
     ~~~~~
     `utils` module of the `mrtool` package.
 """
+from typing import Union
 import numpy as np
 import pandas as pd
 import cdd
@@ -275,9 +276,38 @@ def avg_integral(mat, spline=None):
             return mat[:, 1:]
 
 # random knots
-def sample_knots(k, b=None, d=None, N=1):
+def sample_knots(num_intervals: int,
+                 knot_bounds: Union[np.ndarray, None] = None,
+                 interval_sizes: Union[np.ndarray, None] = None,
+                 num_samples: int = 1) -> Union[np.ndarray, None]:
     """Sample knots given a set of rules.
+
+    Args:
+        num_intervals (int): Number of intervals (number of knots minus 1).
+        knot_bounds (np.ndarray | None, optional):
+            Bounds for the interior knots. Here we assume the domain span 0 to 1,
+            bound for a knot should be between 0 and 1, e.g. [0.1, 0.2].
+            `knot_bounds` should have number of interior knots of rows, and each row
+            is a bound for corresponding knot, e.g.
+                `knot_bounds=np.array([[0.0, 0.2], [0.3, 0.4], [0.3, 1.0]])`,
+            for when we have three interior knots.
+        interval_sizes (np.ndarray | None, optional):
+            Bounds for the distances between knots. For the same reason, we assume
+            elements in `interval_sizes` to be between 0 and 1. For example,
+                `interval_distances=np.array([[0.1, 0.2], [0.1, 0.3], [0.1, 0.5], [0.1, 0.5]])`
+            means that the distance between first (0) and second knot has to be between 0.1 and 0.2, etc.
+            And the number of rows for `interval_sizes` has to be same with `num_intervals`.
+        num_samples (int): Number of knots samples.
+
+    Returns:
+        np.ndarray: Return knots sample as array, with `num_samples` rows and number of knots columns.
     """
+    # rename variables
+    k = num_intervals
+    b = knot_bounds
+    d = interval_sizes
+    N = num_samples
+
     t0 = 0.0
     tk = 1.0
     # check input
