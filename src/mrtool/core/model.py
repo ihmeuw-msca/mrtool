@@ -451,13 +451,22 @@ class MRBeRT:
         return beta_samples, gamma_samples
 
     def predict(self, data: MRData,
-                predict_for_study=False) -> np.ndarray:
+                predict_for_study=False,
+                return_avg: bool = True) -> np.ndarray:
         """Create new prediction with existing solution.
+
+        Args:
+            return_avg (bool):
+                When it is `True`, the function will return an average prediction based on the score,
+                and when it is `False` the function will return a list of predictions from all groups.
         """
         prediction = np.vstack([
             sub_model.predict(data, predict_for_study=predict_for_study)
             for sub_model in self.sub_models
         ])
+
+        if return_avg:
+            prediction = prediction.T.dot(self.weights)
 
         return prediction
 
