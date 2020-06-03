@@ -37,9 +37,9 @@ class MRBRT:
             cov_model.name for cov_model in self.cov_models
         ]
         self.num_cov_models = len(self.cov_models)
-        self.cov_names = sum([
-            cov_model.covs for cov_model in self.cov_models
-        ])
+        self.cov_names = []
+        for cov_model in self.cov_models:
+            self.cov_names.extend(cov_model.covs)
         self.num_covs = len(self.cov_names)
 
         # attach data to cov_model
