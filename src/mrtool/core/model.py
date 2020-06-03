@@ -37,6 +37,10 @@ class MRBRT:
             cov_model.name for cov_model in self.cov_models
         ]
         self.num_cov_models = len(self.cov_models)
+        self.cov_names = sum([
+            cov_model.covs for cov_model in self.cov_models
+        ])
+        self.num_covs = len(self.cov_names)
 
         # attach data to cov_model
         for cov_model in self.cov_models:
@@ -269,7 +273,7 @@ class MRBRT:
                 predict_for_study=False) -> np.ndarray:
         """Create new prediction with existing solution.
         """
-        assert data.has_covs(self.cov_model_names), "Prediction data do not have covariates used for fitting."
+        assert data.has_covs(self.cov_names), "Prediction data do not have covariates used for fitting."
         x_fun, _ = self.create_x_fun(data=data)
         prediction = x_fun(self.beta_soln)
         if predict_for_study:
