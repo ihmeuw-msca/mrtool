@@ -88,6 +88,12 @@ def test_is_empty(df):
     assert d.is_empty()
 
 
+def test_assert_not_empty():
+    d = MRData()
+    with pytest.raises(ValueError):
+        d.assert_not_empty()
+
+
 def test_has_covs(df):
     d = MRData()
     d.load_df(df,

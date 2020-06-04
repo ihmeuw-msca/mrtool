@@ -5,7 +5,7 @@
 
     Model module for mrtool package.
 """
-from typing import List, Dict, Union, Tuple
+from typing import List, Tuple, Union
 from copy import deepcopy
 import numpy as np
 from limetr import LimeTr
@@ -26,8 +26,7 @@ class MRBRT:
             data (MRData): Data for meta-regression.
             cov_models (List[CovModel]): A list of covariates models.
             inlier_pct (float, optional):
-                A float number between 0 and 1 indicate the percentage of
-                inliers.
+                A float number between 0 and 1 indicate the percentage of inliers.
         """
         self.data = data
         self.cov_models = cov_models
@@ -272,6 +271,16 @@ class MRBRT:
     def predict(self, data: MRData,
                 predict_for_study=False) -> np.ndarray:
         """Create new prediction with existing solution.
+
+        Args:
+            data (MRData): MRData object contains the predict data.
+            predict_for_study (bool, optional):
+                If `True`, use the random effects information to prediction for specific
+                study. If the `study_id` in `data` do not contain in the fitting data, it
+                will assume the corresponding random effects equal to 0.
+
+        Returns:
+            np.ndarray: Predicted outcome array.
         """
         assert data.has_covs(self.cov_names), "Prediction data do not have covariates used for fitting."
         x_fun, _ = self.create_x_fun(data=data)
@@ -289,6 +298,18 @@ class MRBRT:
                     sim_re: bool = True,
                     print_level: int = 0) -> Tuple[np.ndarray, np.ndarray]:
         """Sample solutions.
+
+        Args:
+            sample_size (int, optional): Number of samples.
+            sim_prior (bool, optional): If `True`, simulate priors.
+            sim_re (bool, optional): If `True`, simulate random effects.
+            print_level (int, optional):
+                Level detailed of optimization information printed out during sampling process.
+                If 0, no information will be printed out.
+
+        Return:
+            Tuple[np.ndarray, np.ndarray]:
+                Return beta samples and gamma samples.
         """
         if self.lt is None:
             raise ValueError('Please fit the model first.')
@@ -307,7 +328,17 @@ class MRBRT:
                      beta_samples: np.ndarray,
                      gamma_samples: np.ndarray,
                      random_study: bool = True) -> np.ndarray:
-        """Create draws for the given dataset.
+        """Create draws for the given data set.
+
+        Args:
+            data (MRData): MRData object contains predict data.
+            beta_samples (np.ndarray): Samples of beta.
+            gamma_samples (np.ndarray): Samples of gamma.
+            random_study (bool, optional):
+                If `True` the draws will include uncertainty from study heterogeneity.
+
+        Returns:
+            np.ndarray: Returns outcome sample matrix.
         """
         sample_size = beta_samples.shape[0]
         assert beta_samples.shape == (sample_size, self.num_x_vars)
@@ -331,16 +362,21 @@ class MRBRT:
 class MRBeRT:
     """Ensemble model of MRBRT.
     """
-    def __init__(self, data,
-                 ensemble_cov_model,
-                 ensemble_knots,
-                 cov_models=None,
-                 inlier_pct=1.0):
+    def __init__(self,
+                 data: MRData,
+                 ensemble_cov_model: CovModel,
+                 ensemble_knots: np.ndarray,
+                 cov_models: Union[List[CovModel], None] = None,
+                 inlier_pct: float = 1.0):
         """Constructor of `MRBeRT`
 
         Args:
-            ensemble_cov_model (mrtool.CovModel):
+            data (MRData): Data for meta-regression.
+            ensemble_cov_model (CovModel):
                 Covariates model which will be used with ensemble.
+            cov_models (Union[List[CovModel], None], optional):
+                Other covariate models, assume to be mutual exclusive with ensemble_cov_mdoel.
+            inlier_pct (float): A float number between 0 and 1 indicate the percentage of inliers.
         """
         self.data = data
         self.cov_models = cov_models if cov_models is not None else []
@@ -480,6 +516,7 @@ class MRBeRT:
                      gamma_samples: List[np.ndarray],
                      random_study: bool = True) -> np.ndarray:
         """Create draws.
+        For function description please check `create_draws` for `MRBRT`.
         """
         sample_sizes = [sub_beta_samples.shape[0] for sub_beta_samples in beta_samples]
         for i in range(self.num_sub_models):

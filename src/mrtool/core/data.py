@@ -101,6 +101,12 @@ class MRData:
         """
         return self.num_obs == 0
 
+    def assert_not_empty(self):
+        """Raise ValueError when object is empty.
+        """
+        if self.is_empty():
+            raise ValueError("MRData object is empty.")
+
     def is_cov_normalized(self, covs: Union[List[str], str, None] = None) -> bool:
         """Return true when covariates are normalized.
         """
