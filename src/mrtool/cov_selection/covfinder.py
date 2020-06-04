@@ -4,6 +4,7 @@
     ~~~~~~~~~~
 """
 from typing import List, Tuple, Union
+from copy import deepcopy
 import numpy as np
 from mrtool import MRData, LinearCovModel, MRBRT
 
@@ -17,6 +18,7 @@ class CovFinder:
                  data: MRData,
                  covs: List[str],
                  pre_selected_covs: Union[List[str], None] = None,
+                 normalized_covs: bool = True,
                  num_samples: int = 1000,
                  laplace_threshold: float = 1e-5,
                  power_range: Tuple[float, float] = (-8, 8),
@@ -26,6 +28,7 @@ class CovFinder:
         Args:
             data (MRData): Data object used for variable selection.
             covs (List[str]): Candidate covariates.
+            normalized_covs (bool): If true, will normalize the covariates.
             pre_selected_covs (List[str] | None, optional):
                 Pre-selected covaraites, will always be in the selected list.
             num_samples (int, optional):
@@ -45,6 +48,10 @@ class CovFinder:
         self.pre_selected_covs = [] if pre_selected_covs is None else pre_selected_covs
         assert len(set(self.pre_selected_covs) & set(self.covs)) == 0, \
             "covs and pre_selected_covs should be mutually exclusive."
+        self.normalize_covs = normalized_covs
+        if self.normalize_covs:
+            self.data = deepcopy(data)
+            self.data.normalize_covs()
         self.selected_covs = self.pre_selected_covs.copy()
         self.beta_gprior = {}
         self.stop = False
