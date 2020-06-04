@@ -96,16 +96,21 @@ class MRData:
                 self.covs[cov_name] = self.covs[cov_name][sort_index]
             self.study_id = self.study_id[sort_index]
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         """Return true when object contain data.
         """
         return self.num_obs == 0
 
-    def is_cov_normalized(self):
+    def is_cov_normalized(self, covs: Union[List[str], None] = None) -> bool:
         """Return true when covariates are normalized.
         """
+        if covs is None:
+            covs = [cov_name for cov_name in self.covs]
+        else:
+            assert self.has_covs(covs)
         if not self.is_empty():
-            return reduce(and_, [np.max(np.abs(cov)) == 1.0 for cov in self.covs.values()])
+            return reduce(and_, [np.max(np.abs(self.covs[cov_names])) == 1.0
+                                 for cov_names in covs])
         else:
             return False
 
@@ -172,11 +177,15 @@ class MRData:
         else:
             return reduce(and_, [cov in self.covs for cov in covs])
 
-    def normalize_covs(self):
+    def normalize_covs(self, covs: Union[List[str], None] = None):
         """Normalize covariates by the largest absolute value for each covariate.
         """
+        if covs is None:
+            covs = [cov_names for cov_names in self.covs]
+        else:
+            assert self.has_covs(covs)
         if not self.is_empty():
-            for cov_name in self.covs:
+            for cov_name in covs:
                 self.covs[cov_name] = self.covs[cov_name]/self.cov_scales[cov_name]
 
     def get_covs(self, covs: List[str]) -> np.ndarray:
