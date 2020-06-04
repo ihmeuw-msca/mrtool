@@ -4,7 +4,7 @@
     ~~~~~
     `utils` module of the `mrtool` package.
 """
-from typing import Union
+from typing import Union, List, Any
 import numpy as np
 import pandas as pd
 import cdd
@@ -501,3 +501,19 @@ def mat_to_log_fun(alt_mat, ref_mat=None):
 
 def empty_array():
     return np.array(list())
+
+def to_list(obj: Any) -> List[Any]:
+    """Convert objective to list of object.
+
+    Args:
+        obj (Any): Object need to be convert.
+
+    Returns:
+        List[Any]:
+            If `obj` already is a list object, return `obj` itself,
+            otherwise wrap `obj` with a list and return it.
+    """
+    if isinstance(obj, list):
+        return obj
+    else:
+        return [obj]

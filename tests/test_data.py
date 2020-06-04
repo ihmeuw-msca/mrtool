@@ -74,3 +74,60 @@ def test_study_id(df, study_id):
         assert d.num_studies == 3
         assert np.allclose(d.studies, np.array([0, 1, 2]))
         assert np.allclose(d.study_sizes, np.array([2, 2, 1]))
+
+
+def test_is_empty(df):
+    d = MRData()
+    assert d.is_empty()
+    d.load_df(df,
+              col_obs='obs',
+              col_obs_se='obs_se',
+              col_covs=['cov0', 'cov1', 'cov2'])
+    assert not d.is_empty()
+    d.reset()
+    assert d.is_empty()
+
+
+def test_has_covs(df):
+    d = MRData()
+    d.load_df(df,
+              col_obs='obs',
+              col_obs_se='obs_se',
+              col_covs=['cov0', 'cov1', 'cov2'])
+    assert d.has_covs(['cov0'])
+    assert d.has_covs(['cov0', 'cov1'])
+    assert not d.has_covs(['cov3'])
+
+def test_assert_has_covs(df):
+    d = MRData()
+    d.load_df(df,
+              col_obs='obs',
+              col_obs_se='obs_se',
+              col_covs=['cov0', 'cov1', 'cov2'])
+    with pytest.raises(ValueError):
+        d.assert_has_covs('cov3')
+
+
+def test_get_covs(df):
+    d = MRData()
+    d.load_df(df,
+              col_obs='obs',
+              col_obs_se='obs_se',
+              col_covs=['cov0', 'cov1', 'cov2'])
+    for cov_name in ['cov0', 'cov1', 'cov2']:
+        assert np.allclose(d.get_covs(cov_name), df[cov_name].to_numpy()[:, None])
+
+    cov_mat = d.get_covs(['cov0', 'cov1', 'cov2'])
+    assert np.allclose(cov_mat, df[['cov0', 'cov1', 'cov2']].to_numpy())
+
+
+@pytest.mark.parametrize('covs', [None, 'cov0', ['cov0', 'cov1']])
+def test_normalize_covs(df, covs):
+    d = MRData()
+    d.load_df(df,
+              col_obs='obs',
+              col_obs_se='obs_se',
+              col_covs=['cov0', 'cov1', 'cov2'])
+
+    d.normalize_covs(covs)
+    assert d.is_cov_normalized(covs)

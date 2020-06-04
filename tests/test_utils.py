@@ -90,3 +90,12 @@ def test_is_gaussian_prior(prior, result):
                           ('uniform_prior', False)])
 def test_is_uniform_prior(prior, result):
     assert utils.is_uniform_prior(prior) == result
+
+
+@pytest.mark.parametrize('obj', [1, 1.0, 'a', True, [1], [1.0], ['a'], [True]])
+def test_to_list(obj):
+    obj_list = utils.to_list(obj)
+    if isinstance(obj, list):
+        assert obj_list is obj
+    else:
+        assert isinstance(obj_list, list)

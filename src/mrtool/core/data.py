@@ -11,7 +11,7 @@ from operator import and_
 from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
-from .utils import empty_array
+from .utils import empty_array, to_list
 
 
 @dataclass
@@ -101,18 +101,16 @@ class MRData:
         """
         return self.num_obs == 0
 
-    def is_cov_normalized(self, covs: Union[List[str], None] = None) -> bool:
+    def is_cov_normalized(self, covs: Union[List[str], str, None] = None) -> bool:
         """Return true when covariates are normalized.
         """
         if covs is None:
-            covs = [cov_name for cov_name in self.covs]
+            covs = list(self.covs.keys())
         else:
+            covs = to_list(covs)
             assert self.has_covs(covs)
-        if not self.is_empty():
-            return reduce(and_, [np.max(np.abs(self.covs[cov_names])) == 1.0
-                                 for cov_names in covs])
-        else:
-            return False
+        return (not self.is_empty()) and \
+               reduce(and_, [np.max(np.abs(self.covs[cov_names])) == 1.0 for cov_names in covs])
 
     def reset(self):
         """Reset all the attributes to default values.
@@ -167,37 +165,44 @@ class MRData:
 
         return df
 
-    def has_covs(self, covs: List[str]) -> bool:
+    def has_covs(self, covs: Union[List[str], str]) -> bool:
         """If the data has the provided covariates.
         """
-        if isinstance(covs, str):
-            covs = [covs]
+        covs = to_list(covs)
         if len(covs) == 0:
             return True
         else:
             return reduce(and_, [cov in self.covs for cov in covs])
 
-    def normalize_covs(self, covs: Union[List[str], None] = None):
-        """Normalize covariates by the largest absolute value for each covariate.
+    def assert_has_covs(self, covs: Union[List[str], str]):
+        """Assert has covariates otherwise raise ValueError.
         """
-        if covs is None:
-            covs = [cov_names for cov_names in self.covs]
-        else:
-            assert self.has_covs(covs)
-        if not self.is_empty():
-            for cov_name in covs:
-                self.covs[cov_name] = self.covs[cov_name]/self.cov_scales[cov_name]
+        if not self.has_covs(covs):
+            covs = to_list(covs)
+            missing_covs = [cov for cov in covs if cov not in self.covs]
+            raise ValueError(f"MRData object do not contain covariates: {missing_covs}.")
 
-    def get_covs(self, covs: List[str]) -> np.ndarray:
+    def get_covs(self, covs: Union[List[str], str]) -> np.ndarray:
         """Get covariate matrix.
         """
-        if isinstance(covs, str):
-            covs = [covs]
-        assert self.has_covs(covs)
+        covs = to_list(covs)
+        self.assert_has_covs(covs)
         if len(covs) == 0:
             return np.array([]).reshape(self.num_obs, 0)
         else:
             return np.hstack([self.covs[cov_names][:, None] for cov_names in covs])
+
+    def normalize_covs(self, covs: Union[List[str], str, None] = None):
+        """Normalize covariates by the largest absolute value for each covariate.
+        """
+        if covs is None:
+            covs = list(self.covs.keys())
+        else:
+            covs = to_list(covs)
+            self.assert_has_covs(covs)
+        if not self.is_empty():
+            for cov_name in covs:
+                self.covs[cov_name] = self.covs[cov_name]/self.cov_scales[cov_name]
 
     def __repr__(self):
         """Summary of the object.
