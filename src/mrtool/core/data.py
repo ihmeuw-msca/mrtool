@@ -22,12 +22,19 @@ class MRData:
     obs_se: np.ndarray = field(default_factory=empty_array)
     covs: Dict[str, np.ndarray] = field(default_factory=dict)
     study_id: np.ndarray = field(default_factory=empty_array)
+    cov_scales: Dict[str, float] = field(init=False, default_factory=dict)
 
     def __post_init__(self):
         self._check_attr()
         self.num_obs = self._get_num_obs()
         self._process_attr()
         self.num_covs = len(self.covs)
+        if self.is_empty():
+            self.cov_scales = {cov_name: np.nan for cov_name in self.covs.keys()}
+        else:
+            self.cov_scales = {cov_name: np.max(np.abs(cov))
+                               for cov_name, cov in self.covs.items()}
+
         self.studies, self.study_sizes = np.unique(self.study_id,
                                                    return_counts=True)
         self.num_studies = len(self.studies)
@@ -88,6 +95,19 @@ class MRData:
             for cov_name in self.covs:
                 self.covs[cov_name] = self.covs[cov_name][sort_index]
             self.study_id = self.study_id[sort_index]
+
+    def is_empty(self):
+        """Return true when object contain data.
+        """
+        return self.num_obs == 0
+
+    def is_cov_normalized(self):
+        """Return true when covariates are normalized.
+        """
+        if not self.is_empty():
+            return reduce(and_, [np.max(np.abs(cov)) == 1.0 for cov in self.covs.values()])
+        else:
+            return False
 
     def reset(self):
         """Reset all the attributes to default values.
@@ -151,6 +171,13 @@ class MRData:
             return True
         else:
             return reduce(and_, [cov in self.covs for cov in covs])
+
+    def normalize_covs(self):
+        """Normalize covariates by the largest absolute value for each covariate.
+        """
+        if not self.is_empty():
+            for cov_name in self.covs:
+                self.covs[cov_name] = self.covs[cov_name]/self.cov_scales[cov_name]
 
     def get_covs(self, covs: List[str]) -> np.ndarray:
         """Get covariate matrix.
