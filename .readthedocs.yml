@@ -1,0 +1,4 @@
+build:
+  image: latest
+sphinx:
+  configuration: docs/source/conf.py
