@@ -51,7 +51,7 @@ class CovFinder:
         self.normalize_covs = normalized_covs
         if self.normalize_covs:
             self.data = deepcopy(data)
-            self.data.normalize_covs()
+            self.data.normalize_covs(self.covs)
         self.selected_covs = self.pre_selected_covs.copy()
         self.beta_gprior = {}
         self.stop = False
