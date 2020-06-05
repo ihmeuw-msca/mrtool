@@ -3,8 +3,6 @@ MRTool
 ======
 
 .. image:: https://readthedocs.org/projects/mrtool/badge/?version=latest
-:target: https://mrtool.readthedocs.io/en/latest/?badge=latest
-:alt: Documentation Status
 
 **MRTool** (Meta-Regression Tool) package is designed to solve general meta-regression problem.
 The most common features include,
