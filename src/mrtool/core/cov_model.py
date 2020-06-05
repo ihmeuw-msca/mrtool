@@ -28,7 +28,9 @@ class CovModel:
                  spline_l_linear=False,
                  spline_r_linear=False,
                  prior_spline_monotonicity=None,
+                 prior_spline_monotonicity_domain=(0.0, 1.0),
                  prior_spline_convexity=None,
+                 prior_spline_convexity_domain=(0.0, 1.0),
                  prior_spline_num_constraint_points=20,
                  prior_spline_maxder_gaussian=None,
                  prior_spline_maxder_uniform=None,
@@ -120,7 +122,11 @@ class CovModel:
         self.spline_r_linear = spline_r_linear
 
         self.prior_spline_monotonicity = prior_spline_monotonicity
+        self.prior_spline_monotonicity_domain = None
+        self.prior_spline_monotonicity_domain_template = np.array(prior_spline_monotonicity_domain)
         self.prior_spline_convexity = prior_spline_convexity
+        self.prior_spline_convexity_domain = None
+        self.prior_spline_convexity_domain_template = np.array(prior_spline_convexity_domain)
         self.prior_spline_num_constraint_points = prior_spline_num_constraint_points
         self.prior_spline_maxder_gaussian = prior_spline_maxder_gaussian
         self.prior_spline_maxder_uniform = prior_spline_maxder_uniform
@@ -159,6 +165,10 @@ class CovModel:
         assert self.spline_degree >= 0
         assert isinstance(self.spline_l_linear, bool)
         assert isinstance(self.spline_r_linear, bool)
+        assert len(self.prior_spline_monotonicity_domain_template) == 2
+        assert len(self.prior_spline_convexity_domain_template) == 2
+        assert self.prior_spline_monotonicity_domain_template[0] <= self.prior_spline_monotonicity_domain_template[1]
+        assert self.prior_spline_convexity_domain_template[0] <= self.prior_spline_convexity_domain_template[1]
 
         # priors
         assert (self.prior_spline_monotonicity in ['increasing', 'decreasing'] or
@@ -261,6 +271,11 @@ class CovModel:
         else:
             spline_knots = min(cov) + self.spline_knots_template*(max(cov) - min(cov))
 
+        self.prior_spline_monotonicity_domain = min(cov) + \
+                                                self.prior_spline_monotonicity_domain_template*(max(cov) - min(cov))
+        self.prior_spline_convexity_domain = min(cov) + \
+                                             self.prior_spline_convexity_domain_template*(max(cov) - min(cov))
+
         spline = xspline.XSpline(spline_knots,
                                  self.spline_degree,
                                  l_linear=self.spline_l_linear,
@@ -303,22 +318,23 @@ class CovModel:
         if not self.use_spline:
             return c_mat, c_val
 
-        points = np.linspace(self.spline.knots[0],
-                             self.spline.knots[-1],
-                             self.prior_spline_num_constraint_points)
+        mono_points = np.linspace(*self.prior_spline_monotonicity_domain,
+                                  self.prior_spline_num_constraint_points)
+        cvcv_points = np.linspace(*self.prior_spline_convexity_domain,
+                                  self.prior_spline_num_constraint_points)
         tmp_val = np.array([[-np.inf], [0.0]])
 
         # spline monotonicity constraints
         if self.prior_spline_monotonicity is not None and self.use_spline:
             sign = 1.0 if self.prior_spline_monotonicity is 'decreasing' else -1.0
-            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(points, 1)[:, 1:]))
-            c_val = np.hstack((c_val, np.repeat(tmp_val, points.size, axis=1)))
+            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(mono_points, 1)[:, 1:]))
+            c_val = np.hstack((c_val, np.repeat(tmp_val, mono_points.size, axis=1)))
 
         # spline convexity constraints
         if self.prior_spline_convexity is not None and self.use_spline:
             sign = 1.0 if self.prior_spline_convexity is 'concave' else -1.0
-            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(points, 2)[:, 1:]))
-            c_val = np.hstack((c_val, np.repeat(tmp_val, points.size, axis=1)))
+            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(cvcv_points, 2)[:, 1:]))
+            c_val = np.hstack((c_val, np.repeat(tmp_val, cvcv_points.size, axis=1)))
 
         # spline maximum derivative constraints
         if not np.isinf(self.prior_spline_maxder_uniform).all():
