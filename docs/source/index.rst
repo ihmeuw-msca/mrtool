@@ -1,5 +1,5 @@
 =====================
-MRTools Documentation
+MRTool Documentation
 =====================
 
 **MRTool** (Meta-Regression Tool) package is designed to solve general meta-regression problem.
@@ -15,8 +15,10 @@ Advanced features include,
 * spline knots ensemble,
 * automatic covariate selection.
 
+
 Installation
 ------------
+
 Required packages include,
 
 * basic scientific computing suite, Numpy, Scipy and Pandas,
@@ -33,6 +35,25 @@ After install the required packages, clone the repository and install MRTool.
    cd MRTool && python setup.py install
 
 
+Getting Started
+---------------
+
+To build and run a model, we only need four steps,
+
+1. create ``MRData`` object and load data from data frame
+2. configure the ``CovModel`` with covariates and priors
+3. create ``MRModel`` object with data object and covriate models and fit the model
+4. predict or create draws with new data and model result
+
+In the following, we will list a set of examples to help user get familiar with
+the syntax.
+
+* :ref:`simple linear model <example_linear>`
+
+
+
 .. toctree::
    :maxdepth: 2
    :hidden:
+
+   examples/index.rst
