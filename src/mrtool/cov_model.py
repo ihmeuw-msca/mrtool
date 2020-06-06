@@ -26,6 +26,8 @@ class CovModel:
                  spline_degree=3,
                  spline_l_linear=False,
                  spline_r_linear=False,
+                 prior_spline_funval_uniform=None,
+                 prior_spline_funval_domain=(0.0, 1.0),
                  prior_spline_monotonicity=None,
                  prior_spline_monotonicity_domain=(0.0, 1.0),
                  prior_spline_convexity=None,
@@ -113,6 +115,8 @@ class CovModel:
         self.spline_l_linear = spline_l_linear
         self.spline_r_linear = spline_r_linear
 
+        self.prior_spline_funval_uniform = prior_spline_funval_uniform
+        self.prior_spline_funval_domain = np.array(prior_spline_funval_domain)
         self.prior_spline_monotonicity = prior_spline_monotonicity
         self.prior_spline_monotonicity_domain = np.array(prior_spline_monotonicity_domain)
         self.prior_spline_convexity = prior_spline_convexity
@@ -167,6 +171,7 @@ class CovModel:
         assert utils.is_uniform_prior(self.prior_spline_maxder_uniform)
         assert utils.is_uniform_prior(self.prior_beta_uniform)
         assert utils.is_uniform_prior(self.prior_gamma_uniform)
+        assert utils.is_uniform_prior(self.prior_spline_funval_uniform)
 
     def process_attr(self):
         """Process attributes.
@@ -210,6 +215,9 @@ class CovModel:
             self.prior_gamma_uniform, self.num_z_vars
         )
         self.prior_gamma_uniform = np.maximum(0.0, self.prior_gamma_uniform)
+        self.prior_spline_funval_uniform = utils.input_uniform_prior(
+            self.prior_spline_funval_uniform, self.prior_spline_num_constraint_points
+        )
 
     def create_spline(self, data, fixed_spline=True):
         """Create spline given current spline parameters.
@@ -250,6 +258,8 @@ class CovModel:
                                                 self.prior_spline_monotonicity_domain*(cov.max() - cov.min())
         self.prior_spline_convexity_domain = cov.min() + \
                                              self.prior_spline_convexity_domain*(cov.max() - cov.min())
+        self.prior_spline_funval_domain = cov.min() + \
+                                          self.prior_spline_funval_domain*(cov.max() - cov.min())
 
         spline = xspline.XSpline(spline_knots,
                                  self.spline_degree,
@@ -300,6 +310,8 @@ class CovModel:
             return c_mat, c_val
 
         spline = self.create_spline(data)
+        funval_points = np.linspace(*self.prior_spline_funval_domain,
+                                    self.prior_spline_num_constraint_points)
         mono_points = np.linspace(*self.prior_spline_monotonicity_domain,
                                   self.prior_spline_num_constraint_points)
         cvcv_points = np.linspace(*self.prior_spline_convexity_domain,
@@ -323,6 +335,11 @@ class CovModel:
         if not np.isinf(self.prior_spline_maxder_uniform).all():
             c_mat = np.vstack((c_mat, spline.last_dmat()[:, 1:]))
             c_val = np.hstack((c_val, self.prior_spline_maxder_uniform))
+
+        # spline function value constraints
+        if not np.isinf(self.prior_spline_funval_uniform).all():
+            c_mat = np.vstack((c_mat, spline.design_mat(funval_points)[:, 1:]))
+            c_val = np.hstack((c_val, self.prior_spline_funval_uniform))
 
         return c_mat, c_val
 
@@ -377,7 +394,8 @@ class CovModel:
         else:
             num_c = self.prior_spline_num_constraint_points*(
                     (self.prior_spline_monotonicity is not None) +
-                    (self.prior_spline_convexity is not None)
+                    (self.prior_spline_convexity is not None) +
+                    (self.prior_spline_funval_uniform is not None)
             )
             if not np.isinf(self.prior_spline_maxder_uniform).all():
                 num_c += self.prior_spline_maxder_uniform.shape[1]
