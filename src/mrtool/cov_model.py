@@ -395,7 +395,7 @@ class CovModel:
             num_c = self.prior_spline_num_constraint_points*(
                     (self.prior_spline_monotonicity is not None) +
                     (self.prior_spline_convexity is not None) +
-                    (self.prior_spline_funval_uniform is not None)
+                    (not np.isinf(self.prior_spline_funval_uniform).all())
             )
             if not np.isinf(self.prior_spline_maxder_uniform).all():
                 num_c += self.prior_spline_maxder_uniform.shape[1]
