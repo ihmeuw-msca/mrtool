@@ -71,11 +71,11 @@ class Scorelator:
     def normalize_ln_rr_draws(self):
         """Normalize log relative risk draws.
         """
-        scale = np.array([
+        shift = np.array([
             np.interp(self.ref_exposure, self.exposures, ln_rr_draw)
             for ln_rr_draw in self.ln_rr_draws
         ])
-        return self.ln_rr_draws - scale[:, None]
+        return self.ln_rr_draws - shift[:, None]
 
     def get_evidence_score(self,
                            lower_draw_quantile: float = 0.025,
@@ -95,12 +95,11 @@ class Scorelator:
 
         valid_index = (self.exposures >= self.exposure_domain[0]) & (self.exposures <= self.exposure_domain[1])
 
+        ab_area = seq_area_between_curves(rr_lower, rr_upper)
         if self.rr_type == 'protective':
-            ab_area = seq_area_between_curves(rr_lower, rr_upper)
             bc_area = seq_area_between_curves(rr_mean, np.ones(self.num_exposures))
-            abc_area = seq_area_between_curves(rr_upper, np.ones(self.num_exposures))
+            abc_area = seq_area_between_curves(rr_lower, np.ones(self.num_exposures))
         elif self.rr_type == 'harmful':
-            ab_area = seq_area_between_curves(rr_lower, rr_upper)
             bc_area = seq_area_between_curves(np.ones(self.num_exposures), rr_mean)
             abc_area = seq_area_between_curves(np.ones(self.num_exposures), rr_upper)
         else:
