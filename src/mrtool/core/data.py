@@ -11,7 +11,7 @@ from operator import and_
 from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
-from .utils import empty_array, to_list
+from .utils import empty_array, to_list, is_numeric_array
 
 
 @dataclass
@@ -32,7 +32,7 @@ class MRData:
         if self.is_empty():
             self.cov_scales = {cov_name: np.nan for cov_name in self.covs.keys()}
         else:
-            self.cov_scales = {cov_name: np.max(np.abs(cov))
+            self.cov_scales = {cov_name: np.max(np.abs(cov)) if is_numeric_array(cov) else np.nan
                                for cov_name, cov in self.covs.items()}
 
         self.studies, self.study_sizes = np.unique(self.study_id,
