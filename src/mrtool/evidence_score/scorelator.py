@@ -3,7 +3,10 @@
     ~~~~~~~~~~
 """
 from typing import List, Union
+from pathlib import Path
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 from scipy.integrate import trapz
 
 
@@ -35,7 +38,7 @@ class Scorelator:
                 If `None`, `ref_exposure` will be set to the minimum value of `exposures`.
                 Default to None.
         """
-        self.ln_rr_draws = np.array(ln_rr_draws).T
+        self.ln_rr_draws = np.array(ln_rr_draws)
         self.exposures = np.array(exposures)
         self.exposure_domain = [np.min(self.exposures),
                                 np.max(self.exposures)] if exposure_domain is None else exposure_domain
@@ -79,12 +82,16 @@ class Scorelator:
 
     def get_evidence_score(self,
                            lower_draw_quantile: float = 0.025,
-                           upper_draw_quantile: float = 0.975) -> float:
+                           upper_draw_quantile: float = 0.975,
+                           path_to_diagnostic: Union[str, Path, None] = None) -> float:
         """Get evidence score.
 
         Args:
             lower_draw_quantile (float, optional): Lower quantile of the draw for the score.
             upper_draw_quantile (float, optioanl): Upper quantile of the draw for the score.
+            path_to_diagnostic (Union[str, Path, None], optional):
+                Path of where the picture is saved, if None the plot will not be saved.
+                Default to None.
 
         Returns:
             float: Evidence score.
@@ -97,17 +104,81 @@ class Scorelator:
 
         ab_area = seq_area_between_curves(rr_lower, rr_upper)
         if self.rr_type == 'protective':
-            bc_area = seq_area_between_curves(rr_mean, np.ones(self.num_exposures))
             abc_area = seq_area_between_curves(rr_lower, np.ones(self.num_exposures))
         elif self.rr_type == 'harmful':
-            bc_area = seq_area_between_curves(np.ones(self.num_exposures), rr_mean)
             abc_area = seq_area_between_curves(np.ones(self.num_exposures), rr_upper)
         else:
             raise ValueError('Unknown relative risk type.')
 
         score = np.round((ab_area/abc_area)[valid_index[1:]].min(), 2)
 
+        # plot diagnostic
+        if path_to_diagnostic is not None:
+            fig, ax = plt.subplots(1, 2, figsize=(22, 8.5))
+            # plot rr uncertainty
+            ax[0].fill_between(self.exposures, rr_lower, rr_upper, color='#69b3a2', alpha=0.3)
+            ax[0].plot(self.exposures, rr_mean, color='#69b3a2')
+            ax[0].axhline(1, color='#003333', alpha=0.5)
+            ax[0].set_xlim(np.min(self.exposures), np.max(self.exposures))
+            ax[0].set_ylim(np.min(rr_lower) - rr_mean.ptp()*0.1, np.max(rr_upper) + rr_mean.ptp()*0.1)
+            # compute coordinate of annotation of A, B and C
+            if self.rr_type == 'protective':
+                self.annotate_between_curve('A', self.exposures, rr_lower, rr_mean, ax[0])
+                self.annotate_between_curve('B', self.exposures, rr_mean, rr_upper, ax[0])
+                self.annotate_between_curve('C', self.exposures, rr_upper, np.ones(self.num_exposures),
+                                            ax[0], mark_area=True)
+            else:
+                self.annotate_between_curve('A', self.exposures, rr_mean, rr_upper, ax[0])
+                self.annotate_between_curve('B', self.exposures, rr_lower, rr_mean, ax[0])
+                self.annotate_between_curve('C', self.exposures, np.ones(self.num_exposures), rr_lower,
+                                            ax[0], mark_area=True)
+
+            # plot the score as function of exposure
+            ax[1].plot(self.exposures[1:], ab_area/abc_area,
+                       color='dodgerblue',
+                       label=f'A+B / A+B+C: {score}')
+            ax[1].legend()
+            ax[1].set_xlim(np.min(self.exposures), np.max(self.exposures))
+            ax[1].legend(loc=1, fontsize='x-large')
+
+            # plot the exposure domain
+            ax[0].axvline(self.exposure_domain[0], linestyle='--', color='#003333')
+            ax[0].axvline(self.exposure_domain[1], linestyle='--', color='#003333')
+            ax[1].axvline(self.exposure_domain[0], linestyle='--', color='#003333')
+            ax[1].axvline(self.exposure_domain[1], linestyle='--', color='#003333')
+
+            plt.savefig(path_to_diagnostic, bbox_inches='tight')
+
         return score
+
+    @staticmethod
+    def annotate_between_curve(annotation: str,
+                               x: np.ndarray, y_lower: np.ndarray, y_upper: np.ndarray, ax: Axes,
+                               mark_area: bool = False):
+        """Annotate between the curve.
+
+        Args:
+            annotation (str): the annotation between the curve.
+            x (np.ndarray): independent variable.
+            y_lower (np.ndarray): lower bound of the curve.
+            y_upper (np.ndarray): upper bound of the curve.
+            ax (Axes): axis of the plot.
+            mark_area (bool, optional): If True mark the area. Default to False.
+        """
+        y_diff = y_upper - y_lower
+        label_index = np.argmax(y_diff)
+        if label_index > 0.95*len(x) or label_index < 0.05*len(x):
+            label_index = int(0.4*len(x))
+        label_x = x[label_index]
+        label_y = 0.5*(y_lower[label_index] + y_upper[label_index])
+        if label_y < y_upper[label_index]:
+            ax.text(label_x, label_y, annotation, color='dodgerblue',
+                    horizontalalignment='center', verticalalignment='center', size=20)
+
+        if mark_area:
+            ax.fill_between(x, y_lower, y_upper, linestyle='--', where=y_lower < y_upper,
+                            edgecolor='black', facecolor="none", alpha=0.5)
+
 
 
 def area_between_curves(lower: np.ndarray,
