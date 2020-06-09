@@ -517,3 +517,24 @@ def to_list(obj: Any) -> List[Any]:
         return obj
     else:
         return [obj]
+
+
+def is_numeric_array(array: np.ndarray) -> bool:
+    """Check if an array is numeric.
+
+    Args:
+        array (np.ndarray): Array need to be checked.
+
+    Returns:
+        bool: True if the array is numeric.
+    """
+    numerical_dtype_kinds = {'b',  # boolean
+                             'u',  # unsigned integer
+                             'i',  # signed integer
+                             'f',  # floats
+                             'c'}  # complex
+    try:
+        return array.dtype.kind in numerical_dtype_kinds
+    except AttributeError:
+        # in case it's not a numpy array it will probably have no dtype.
+        return np.asarray(array).dtype.kind in numerical_dtype_kinds

@@ -11,7 +11,7 @@ from operator import and_
 from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
-from .utils import empty_array, to_list
+from .utils import empty_array, to_list, is_numeric_array
 
 
 @dataclass
@@ -32,7 +32,7 @@ class MRData:
         if self.is_empty():
             self.cov_scales = {cov_name: np.nan for cov_name in self.covs.keys()}
         else:
-            self.cov_scales = {cov_name: np.max(np.abs(cov))
+            self.cov_scales = {cov_name: np.max(np.abs(cov)) if is_numeric_array(cov) else np.nan
                                for cov_name, cov in self.covs.items()}
 
         self.studies, self.study_sizes = np.unique(self.study_id,
@@ -115,8 +115,11 @@ class MRData:
         else:
             covs = to_list(covs)
             assert self.has_covs(covs)
-        return (not self.is_empty()) and \
-               reduce(and_, [np.max(np.abs(self.covs[cov_names])) == 1.0 for cov_names in covs])
+        ok = not self.is_empty()
+        for cov_name in covs:
+            ok = ok and ((not is_numeric_array(self.covs[cov_name])) or
+                         (np.max(np.abs(self.covs[cov_name])) == 1.0))
+        return ok
 
     def reset(self):
         """Reset all the attributes to default values.
@@ -208,7 +211,8 @@ class MRData:
             self.assert_has_covs(covs)
         if not self.is_empty():
             for cov_name in covs:
-                self.covs[cov_name] = self.covs[cov_name]/self.cov_scales[cov_name]
+                if is_numeric_array(self.covs[cov_name]):
+                    self.covs[cov_name] = self.covs[cov_name]/self.cov_scales[cov_name]
 
     def __repr__(self):
         """Summary of the object.
