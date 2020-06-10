@@ -7,7 +7,17 @@
 from typing import Union, List, Any
 import numpy as np
 import pandas as pd
-import cdd
+try:
+    from cdd import Matrix, RepType, Polyhedron
+except:
+    Warning("no cdd module installed, create fake classes.")
+    class Matrix:
+        pass
+    class RepType:
+        INEQUALITY = None
+    class Polyhedron:
+        def get_generators(self):
+            pass
 
 
 def get_cols(df, cols):

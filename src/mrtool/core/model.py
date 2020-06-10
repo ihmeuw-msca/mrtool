@@ -8,10 +8,16 @@
 from typing import List, Tuple, Union
 from copy import deepcopy
 import numpy as np
-from limetr import LimeTr
 from .data import MRData
 from .cov_model import CovModel
 from . import utils
+
+try:
+    from limetr import LimeTr
+except:
+    Warning("no limetr module, create fake Limetr class")
+    class LimeTr:
+        pass
 
 
 class MRBRT:
