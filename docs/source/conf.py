@@ -12,17 +12,29 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 
-import sphinx_rtd_theme
+from pathlib import Path
+import sys
+
+import mrtool
+base_dir = Path(mrtool.__file__).parent
+
+about = {}
+with (base_dir / '__about__.py').open() as f:
+    exec(f.read(), about)
+
+sys.path.insert(0, Path('..').resolve())
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'MRTool'
-copyright = '2020, Peng Zheng'
-author = 'Peng Zheng'
+project = about['__title__']
+copyright = f"2020, {about['__author__']}"
+author = about['__author__']
 
-# The full version, including alpha/beta/rc tags
-release = '0.0.1'
+# The short X.Y version.
+version = about['__version__']
+# The full version, including alpha/beta/rc tags.
+release = about['__version__']
 
 # -- General configuration ---------------------------------------------------
 
