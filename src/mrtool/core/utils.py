@@ -359,9 +359,9 @@ def sample_knots(num_intervals: int,
     b = np.hstack((b1, b2))
 
     mat = np.insert(-A, 0, b, axis=1)
-    mat = cdd.Matrix(mat)
-    mat.rep_type = cdd.RepType.INEQUALITY
-    poly = cdd.Polyhedron(mat)
+    mat = Matrix(mat)
+    mat.rep_type = RepType.INEQUALITY
+    poly = Polyhedron(mat)
     ext = poly.get_generators()
     vertices_and_rays = np.array(ext)
 
