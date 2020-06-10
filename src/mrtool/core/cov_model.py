@@ -326,13 +326,13 @@ class CovModel:
 
         # spline monotonicity constraints
         if self.prior_spline_monotonicity is not None and self.use_spline:
-            sign = 1.0 if self.prior_spline_monotonicity is 'decreasing' else -1.0
+            sign = 1.0 if self.prior_spline_monotonicity == 'decreasing' else -1.0
             c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(mono_points, 1)[:, 1:]))
             c_val = np.hstack((c_val, np.repeat(tmp_val, mono_points.size, axis=1)))
 
         # spline convexity constraints
         if self.prior_spline_convexity is not None and self.use_spline:
-            sign = 1.0 if self.prior_spline_convexity is 'concave' else -1.0
+            sign = 1.0 if self.prior_spline_convexity == 'concave' else -1.0
             c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(cvcv_points, 2)[:, 1:]))
             c_val = np.hstack((c_val, np.repeat(tmp_val, cvcv_points.size, axis=1)))
 
