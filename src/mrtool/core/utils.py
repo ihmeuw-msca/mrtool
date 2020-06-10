@@ -289,12 +289,12 @@ def sample_knots(num_intervals: int,
             bound for a knot should be between 0 and 1, e.g. [0.1, 0.2].
             `knot_bounds` should have number of interior knots of rows, and each row
             is a bound for corresponding knot, e.g.
-                `knot_bounds=np.array([[0.0, 0.2], [0.3, 0.4], [0.3, 1.0]])`,
+            `knot_bounds=np.array([[0.0, 0.2], [0.3, 0.4], [0.3, 1.0]])`,
             for when we have three interior knots.
         interval_sizes (np.ndarray | None, optional):
             Bounds for the distances between knots. For the same reason, we assume
             elements in `interval_sizes` to be between 0 and 1. For example,
-                `interval_distances=np.array([[0.1, 0.2], [0.1, 0.3], [0.1, 0.5], [0.1, 0.5]])`
+            `interval_distances=np.array([[0.1, 0.2], [0.1, 0.3], [0.1, 0.5], [0.1, 0.5]])`
             means that the distance between first (0) and second knot has to be between 0.1 and 0.2, etc.
             And the number of rows for `interval_sizes` has to be same with `num_intervals`.
         num_samples (int): Number of knots samples.

@@ -56,4 +56,5 @@ the syntax.
    :maxdepth: 2
    :hidden:
 
-   examples/index.rst
+   examples/index
+   api_reference/index
