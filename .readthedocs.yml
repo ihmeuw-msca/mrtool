@@ -3,7 +3,7 @@ build:
 python:
   version: 3.7
   setup_py_install: true
-    install:
-      - requirements: docs/requirements-doc.txt
+  install:
+    - requirements: docs/requirements-doc.txt
 sphinx:
-  configuration: docs/source/conf.py
+  configuration: docs/conf.py
