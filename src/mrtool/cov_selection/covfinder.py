@@ -22,7 +22,9 @@ class CovFinder:
                  num_samples: int = 1000,
                  laplace_threshold: float = 1e-5,
                  power_range: Tuple[float, float] = (-8, 8),
-                 power_step_size: float = 0.5):
+                 power_step_size: float = 0.5,
+                 inlier_pct: float = 1.0,
+                 alpha: float = 0.05):
         """Covariate Finder.
 
         Args:
@@ -41,6 +43,8 @@ class CovFinder:
                 Laplace prior standard deviation will go from `10**power_range[0]`
                 to `10**power_range[1]`.
             power_step_size (float, optional): Step size of the swiping across the power range.
+            inlier_pct (float, optional): Trimming option inlier percentage. Default to 1.
+            alpha (float, optional): Significance threshold. Default to 0.05.
         """
 
         self.data = data
@@ -49,6 +53,8 @@ class CovFinder:
         assert len(set(self.pre_selected_covs) & set(self.covs)) == 0, \
             "covs and pre_selected_covs should be mutually exclusive."
         self.normalize_covs = normalized_covs
+        self.inlier_pct = inlier_pct
+        self.alpha = alpha
         if self.normalize_covs:
             self.data = deepcopy(data)
             self.data.normalize_covs(self.covs)
@@ -62,7 +68,7 @@ class CovFinder:
         self.power_step_size = power_step_size
         self.powers = np.arange(*self.power_range, self.power_step_size)
 
-        self.num_covs = len(covs)
+        self.num_covs = len(pre_selected_covs) + len(covs)
 
     def create_model(self,
                      covs: List[str],
@@ -91,7 +97,7 @@ class CovFinder:
                 for cov in covs
             ]
 
-        return MRBRT(self.data, cov_models=cov_models)
+        return MRBRT(self.data, cov_models=cov_models, inlier_pct=self.inlier_pct)
 
     def select_covs_by_laplace(self, laplace_std: float, verbose: bool = False):
         # laplace model
@@ -122,7 +128,7 @@ class CovFinder:
                                                               print_level=5)
             beta_soln_mean = gaussian_model.beta_soln
             beta_soln_std = np.std(beta_soln_samples, axis=0)
-            beta_soln_sig = self.is_significance(beta_soln_samples, var_type='beta')
+            beta_soln_sig = self.is_significance(beta_soln_samples, var_type='beta', alpha=self.alpha)
             if verbose:
                 print('    mean:', beta_soln_mean)
                 print('    std:', beta_soln_std)
@@ -133,7 +139,7 @@ class CovFinder:
                 if cov not in self.selected_covs and beta_soln_sig[i]
             ])
             if verbose:
-                print('    selected covaraites:', self.selected_covs)
+                print('    selected covariates:', self.selected_covs)
             # update beta_gprior
             self.beta_gprior.update({
                 cov: np.array([beta_soln_mean[candidate_cov_dict[cov]], self.loose_beta_gprior_std])
@@ -156,9 +162,11 @@ class CovFinder:
 
     @staticmethod
     def is_significance(var_samples: np.ndarray,
-                        var_type: str = 'beta') -> List[bool]:
+                        var_type: str = 'beta',
+                        alpha: float = 0.05) -> List[bool]:
         assert var_type == 'beta', "Only support variable type beta."
-        var_uis = np.percentile(var_samples, (2.5, 97.5), axis=0)
+        assert 0.0 < alpha < 1.0, "Significance threshold has to be between 0 and 1."
+        var_uis = np.quantile(var_samples, (0.5*alpha, 1 - 0.5*alpha), axis=0)
         var_sig = var_uis.prod(axis=0) > 0
 
         return var_sig
