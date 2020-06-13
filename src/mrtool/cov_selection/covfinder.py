@@ -3,7 +3,7 @@
     Cov Finder
     ~~~~~~~~~~
 """
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Iterable
 from copy import deepcopy
 import numpy as np
 from mrtool import MRData, LinearCovModel, MRBRT
@@ -12,7 +12,7 @@ class CovFinder:
     """Class in charge of the covariate selection.
     """
     loose_beta_gprior_std = 100.0
-    dummy_gamma_uprior = np.array([100.0, 100.0])
+    default_gamma_uprior = np.array([100.0, 100.0])
 
     def __init__(self,
                  data: MRData,
@@ -70,6 +70,33 @@ class CovFinder:
 
         self.num_covs = len(pre_selected_covs) + len(covs)
 
+    def set_loose_beta_gprior_std(self, std: float):
+        """Set class variable of the loose beta gaussian prior standard deviation.
+
+        Args:
+            std (float): Standard deviation for the beta gaussian prior.
+        """
+        if std <= 0.0:
+            raise ValueError("Standard deviation cannot be nonpositive number.")
+        self.loose_beta_gprior_std = std
+
+    def set_default_gamma_uprior(self, prior: Iterable):
+        """Set class variable, dummy gamma uniform prior.
+
+        Args:
+            prior (np.ndarray): Default gamma uniform prior.
+        """
+        prior = np.array(prior).ravel()
+        if prior.size != 2:
+            raise ValueError("Default gamma uniform prior should have length 2,"
+                             "with lower and upper bounds.")
+
+        if prior[0] > prior[1]:
+            raise ValueError("Uniform prior lower bound should be less or equal than"
+                             "upper bound.")
+
+        self.default_gamma_uprior = prior
+
     def create_model(self,
                      covs: List[str],
                      prior_type: str = 'Laplace',
@@ -84,8 +111,8 @@ class CovFinder:
                                prior_beta_laplace=np.array([0.0, laplace_std])
                                if cov not in self.selected_covs else None,
                                prior_beta_gaussian=None
-                               if cov not in self.pre_selected_covs else self.beta_gprior[cov],
-                               prior_gamma_uniform=self.dummy_gamma_uprior)
+                               if cov not in self.selected_covs else self.beta_gprior[cov],
+                               prior_gamma_uniform=self.default_gamma_uprior)
                 for cov in covs
             ]
         else:
@@ -93,7 +120,7 @@ class CovFinder:
                 LinearCovModel(cov, use_re=True,
                                prior_beta_gaussian=np.array([0.0, self.loose_beta_gprior_std])
                                if cov not in self.beta_gprior else self.beta_gprior[cov],
-                               prior_gamma_uniform=self.dummy_gamma_uprior)
+                               prior_gamma_uniform=self.default_gamma_uprior)
                 for cov in covs
             ]
 
