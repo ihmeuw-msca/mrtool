@@ -111,7 +111,7 @@ class CovFinder:
                                prior_beta_laplace=np.array([0.0, laplace_std])
                                if cov not in self.selected_covs else None,
                                prior_beta_gaussian=None
-                               if cov not in self.selected_covs else self.beta_gprior[cov],
+                               if cov not in self.beta_gprior else self.beta_gprior[cov],
                                prior_gamma_uniform=self.default_gamma_uprior)
                 for cov in covs
             ]
