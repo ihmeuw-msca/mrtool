@@ -82,7 +82,7 @@ def extract_simple_lme_specs(model: MRBRT) -> SimpleLMESpecs:
         raise ValueError("Model has to be simple mixed effects model.")
 
     x_fun, x_jac_fun = model.create_x_fun()
-    x_mat = x_jac_fun(np.zeros(model.beta_soln))
+    x_mat = x_jac_fun(model.beta_soln)
     z_mat = model.create_z_mat()
     gprior = model.create_gprior()
 
