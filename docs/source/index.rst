@@ -51,10 +51,22 @@ the syntax.
 * :ref:`simple linear model <example_linear>`
 
 
+Important Concepts
+------------------
+
+To correctly setup the model and solve problems,
+it is very important to understand some key :ref:`concepts <concepts>`.
+We introduce them under three categories,
+
+* How can we match the data generating mechansim?
+* How can we incorporate prior knowledge?
+* How do the underlying optimization algorithms work?
+
 
 .. toctree::
    :maxdepth: 2
    :hidden:
 
    examples/index
+   concepts/index
    api_reference/index
