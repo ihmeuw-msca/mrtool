@@ -7,6 +7,7 @@ from typing import List, Tuple, Union, Iterable
 from copy import deepcopy
 import numpy as np
 from mrtool import MRData, LinearCovModel, MRBRT
+from mrtool.core.other_sampling import sample_simple_lme_beta
 
 class CovFinder:
     """Class in charge of the covariate selection.
@@ -132,7 +133,8 @@ class CovFinder:
                                           prior_type='Laplace',
                                           laplace_std=laplace_std)
 
-        laplace_model.fit_model(x0=np.zeros(2*laplace_model.num_vars))
+        laplace_model.fit_model(x0=np.zeros(2*laplace_model.num_vars),
+                                inner_max_iter=500)
         additional_covs = [
             cov
             for i, cov in enumerate(self.covs)
@@ -149,10 +151,12 @@ class CovFinder:
             gaussian_model = self.create_model(candidate_covs,
                                                prior_type='Gaussian')
             gaussian_model.fit_model(x0=np.zeros(gaussian_model.num_vars))
-            beta_soln_samples, _ = gaussian_model.sample_soln(sample_size=self.num_samples,
-                                                              sim_prior=False,
-                                                              sim_re=False,
-                                                              print_level=5)
+            # beta_soln_samples, _ = gaussian_model.sample_soln(sample_size=self.num_samples,
+            #                                                   sim_prior=False,
+            #                                                   sim_re=False,
+            #                                                   print_level=5)
+            beta_soln_samples = sample_simple_lme_beta(sample_size=self.num_samples,
+                                                       model=gaussian_model)
             beta_soln_mean = gaussian_model.beta_soln
             beta_soln_std = np.std(beta_soln_samples, axis=0)
             beta_soln_sig = self.is_significance(beta_soln_samples, var_type='beta', alpha=self.alpha)
