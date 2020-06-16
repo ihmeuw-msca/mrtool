@@ -3,7 +3,7 @@
     Cov Finder
     ~~~~~~~~~~
 """
-from typing import List, Tuple, Union, Iterable
+from typing import List, Dict, Tuple, Union, Iterable
 from copy import deepcopy
 import numpy as np
 from mrtool import MRData, LinearCovModel, MRBRT
@@ -12,8 +12,8 @@ from mrtool.core.other_sampling import sample_simple_lme_beta
 class CovFinder:
     """Class in charge of the covariate selection.
     """
-    loose_beta_gprior_std = 100.0
-    default_gamma_uprior = np.array([100.0, 100.0])
+    loose_beta_gprior_std = 0.1
+    default_gamma_uprior = np.array([0.0, 1.0])
 
     def __init__(self,
                  data: MRData,
@@ -25,7 +25,8 @@ class CovFinder:
                  power_range: Tuple[float, float] = (-8, 8),
                  power_step_size: float = 0.5,
                  inlier_pct: float = 1.0,
-                 alpha: float = 0.05):
+                 alpha: float = 0.05,
+                 use_re: Union[Dict, None] = None):
         """Covariate Finder.
 
         Args:
@@ -46,6 +47,9 @@ class CovFinder:
             power_step_size (float, optional): Step size of the swiping across the power range.
             inlier_pct (float, optional): Trimming option inlier percentage. Default to 1.
             alpha (float, optional): Significance threshold. Default to 0.05.
+            use_re (Union[Dict, None], optional):
+                A dictionary of use_re for each covariate. When `None` we have an uninformative prior
+                for the random effects variance. Default to `None`.
         """
 
         self.data = data
@@ -60,8 +64,16 @@ class CovFinder:
             self.data = deepcopy(data)
             self.data.normalize_covs(self.covs)
         self.selected_covs = self.pre_selected_covs.copy()
-        self.beta_gprior = {}
+        self.beta_gprior = {
+            cov: np.array([0.0, np.inf])
+            for cov in self.selected_covs
+        }
+        self.all_covs = self.pre_selected_covs + self.covs
         self.stop = False
+        self.use_re = {} if use_re is None else use_re
+        for cov in self.all_covs:
+            if cov not in self.use_re:
+                self.use_re[cov] = False
 
         self.num_samples = num_samples
         self.laplace_threshold = laplace_threshold
@@ -108,19 +120,19 @@ class CovFinder:
 
         if prior_type == 'Laplace':
             cov_models = [
-                LinearCovModel(cov, use_re=True,
+                LinearCovModel(cov, use_re=self.use_re[cov],
                                prior_beta_laplace=np.array([0.0, laplace_std])
                                if cov not in self.selected_covs else None,
                                prior_beta_gaussian=None
-                               if cov not in self.beta_gprior else self.beta_gprior[cov],
+                               if cov not in self.selected_covs else self.beta_gprior[cov],
                                prior_gamma_uniform=self.default_gamma_uprior)
                 for cov in covs
             ]
         else:
             cov_models = [
-                LinearCovModel(cov, use_re=True,
+                LinearCovModel(cov, use_re=self.use_re[cov],
                                prior_beta_gaussian=np.array([0.0, self.loose_beta_gprior_std])
-                               if cov not in self.beta_gprior else self.beta_gprior[cov],
+                               if cov not in self.selected_covs else self.beta_gprior[cov],
                                prior_gamma_uniform=self.default_gamma_uprior)
                 for cov in covs
             ]
@@ -129,16 +141,18 @@ class CovFinder:
 
     def select_covs_by_laplace(self, laplace_std: float, verbose: bool = False):
         # laplace model
-        laplace_model = self.create_model(self.covs,
+        laplace_model = self.create_model(self.pre_selected_covs + self.covs,
                                           prior_type='Laplace',
                                           laplace_std=laplace_std)
 
         laplace_model.fit_model(x0=np.zeros(2*laplace_model.num_vars),
-                                inner_max_iter=500)
+                                inner_print_level=5,
+                                inner_max_iter=1000)
         additional_covs = [
             cov
             for i, cov in enumerate(self.covs)
-            if cov not in self.selected_covs and laplace_model.beta_soln[i] > self.laplace_threshold
+            if cov not in self.selected_covs and \
+               np.abs(laplace_model.beta_soln[i + len(self.pre_selected_covs)]) > self.laplace_threshold
         ]
         if verbose:
             print('potential additional covariates', additional_covs)
@@ -150,7 +164,9 @@ class CovFinder:
             }
             gaussian_model = self.create_model(candidate_covs,
                                                prior_type='Gaussian')
-            gaussian_model.fit_model(x0=np.zeros(gaussian_model.num_vars))
+            gaussian_model.fit_model(x0=np.zeros(gaussian_model.num_vars),
+                                     inner_print_level=5,
+                                     inner_max_iter=1000)
             # beta_soln_samples, _ = gaussian_model.sample_soln(sample_size=self.num_samples,
             #                                                   sim_prior=False,
             #                                                   sim_re=False,
