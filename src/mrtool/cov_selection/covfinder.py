@@ -13,7 +13,8 @@ class CovFinder:
     """Class in charge of the covariate selection.
     """
     loose_beta_gprior_std = 0.1
-    default_gamma_uprior = np.array([0.0, 1.0])
+    zero_gamma_uprior = np.array([0.0, 0.0])
+    nonzero_gamma_uprior = np.array([1.0, 1.0])
 
     def __init__(self,
                  data: MRData,
@@ -93,8 +94,8 @@ class CovFinder:
             raise ValueError("Standard deviation cannot be nonpositive number.")
         self.loose_beta_gprior_std = std
 
-    def set_default_gamma_uprior(self, prior: Iterable):
-        """Set class variable, dummy gamma uniform prior.
+    def set_zero_gamma_uprior(self, prior: Iterable):
+        """Set class variable, zero gamma uniform prior.
 
         Args:
             prior (np.ndarray): Default gamma uniform prior.
@@ -108,7 +109,7 @@ class CovFinder:
             raise ValueError("Uniform prior lower bound should be less or equal than"
                              "upper bound.")
 
-        self.default_gamma_uprior = prior
+        self.zero_gamma_uprior = prior
 
     def create_model(self,
                      covs: List[str],
@@ -120,20 +121,22 @@ class CovFinder:
 
         if prior_type == 'Laplace':
             cov_models = [
-                LinearCovModel(cov, use_re=self.use_re[cov],
+                LinearCovModel(cov, use_re=True,
                                prior_beta_laplace=np.array([0.0, laplace_std])
                                if cov not in self.selected_covs else None,
                                prior_beta_gaussian=None
                                if cov not in self.selected_covs else self.beta_gprior[cov],
-                               prior_gamma_uniform=self.default_gamma_uprior)
+                               prior_gamma_uniform=self.nonzero_gamma_uprior if self.use_re[cov] else \
+                                   self.zero_gamma_uprior)
                 for cov in covs
             ]
         else:
             cov_models = [
-                LinearCovModel(cov, use_re=self.use_re[cov],
+                LinearCovModel(cov, use_re=True,
                                prior_beta_gaussian=np.array([0.0, self.loose_beta_gprior_std])
                                if cov not in self.selected_covs else self.beta_gprior[cov],
-                               prior_gamma_uniform=self.default_gamma_uprior)
+                               prior_gamma_uniform=self.nonzero_gamma_uprior if self.use_re[cov] else \
+                                   self.zero_gamma_uprior)
                 for cov in covs
             ]
 
@@ -141,7 +144,7 @@ class CovFinder:
 
     def select_covs_by_laplace(self, laplace_std: float, verbose: bool = False):
         # laplace model
-        laplace_model = self.create_model(self.pre_selected_covs + self.covs,
+        laplace_model = self.create_model(self.all_covs,
                                           prior_type='Laplace',
                                           laplace_std=laplace_std)
 
@@ -155,7 +158,8 @@ class CovFinder:
                np.abs(laplace_model.beta_soln[i + len(self.pre_selected_covs)]) > self.laplace_threshold
         ]
         if verbose:
-            print('potential additional covariates', additional_covs)
+            print(f'Laplace std: {laplace_std}')
+            print('    potential additional covariates', additional_covs)
 
         if len(additional_covs) > 0:
             candidate_covs = self.selected_covs + additional_covs
@@ -167,6 +171,8 @@ class CovFinder:
             gaussian_model.fit_model(x0=np.zeros(gaussian_model.num_vars),
                                      inner_print_level=5,
                                      inner_max_iter=1000)
+            empirical_gamma = np.var(gaussian_model.u_soln, axis=0)
+            gaussian_model.lt.gamma = empirical_gamma
             # beta_soln_samples, _ = gaussian_model.sample_soln(sample_size=self.num_samples,
             #                                                   sim_prior=False,
             #                                                   sim_re=False,
@@ -177,8 +183,9 @@ class CovFinder:
             beta_soln_std = np.std(beta_soln_samples, axis=0)
             beta_soln_sig = self.is_significance(beta_soln_samples, var_type='beta', alpha=self.alpha)
             if verbose:
-                print('    mean:', beta_soln_mean)
-                print('    std:', beta_soln_std)
+                print('    Gaussian model fe_mean:', beta_soln_mean)
+                print('    Gaussiam model fe_std: ', beta_soln_std)
+                print('    Gaussian model re_var: ', empirical_gamma)
                 print('    significance:', beta_soln_sig)
             # update the selected covs
             self.selected_covs.extend([
@@ -203,7 +210,7 @@ class CovFinder:
     def select_covs(self, verbose: bool = False):
         for power in self.powers:
             if not self.stop:
-                laplace_std = 10**(0.5*power)
+                laplace_std = 10**power
                 self.select_covs_by_laplace(laplace_std, verbose=verbose)
         self.stop = True
 

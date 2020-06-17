@@ -86,9 +86,9 @@ def extract_simple_lme_specs(model: MRBRT) -> SimpleLMESpecs:
     z_mat = model.create_z_mat()
     gprior = model.create_gprior()
 
-    beta_soln = model.beta_soln
-    gamma_soln = model.gamma_soln
-    w_soln = model.w_soln
+    beta_soln = model.lt.beta.copy()
+    gamma_soln = model.lt.gamma.copy()
+    w_soln = model.lt.w.copy()
 
     return SimpleLMESpecs(
         obs=model.data.obs,
