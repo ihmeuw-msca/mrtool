@@ -91,7 +91,7 @@ def test_is_empty(df):
 def test_assert_not_empty():
     d = MRData()
     with pytest.raises(ValueError):
-        d.assert_not_empty()
+        d._assert_not_empty()
 
 
 def test_has_covs(df):
@@ -111,7 +111,7 @@ def test_assert_has_covs(df):
               col_obs_se='obs_se',
               col_covs=['cov0', 'cov1', 'cov2'])
     with pytest.raises(ValueError):
-        d.assert_has_covs('cov3')
+        d._assert_has_covs('cov3')
 
 
 def test_get_covs(df):
