@@ -229,6 +229,9 @@ class MRBRT:
         # create x fun and z mat
         x_fun, x_fun_jac = self.create_x_fun()
         z_mat = self.create_z_mat()
+        # scale z_mat
+        z_scale = np.max(np.abs(z_mat), axis=0)
+        z_mat /= z_scale
 
         # priors
         c_mat, c_vec = self.create_c_mat()
@@ -257,7 +260,8 @@ class MRBRT:
 
         self.lt.fitModel(**fit_options)
         self.beta_soln = self.lt.beta.copy()
-        self.gamma_soln = self.lt.gamma.copy()
+        self.lt.Z *= z_scale
+        self.gamma_soln = self.lt.gamma.copy()/z_scale**2
         self.w_soln = self.lt.w.copy()
         self.u_soln = self.lt.estimateRE()
         self.re_soln = {
