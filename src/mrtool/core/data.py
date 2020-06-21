@@ -10,7 +10,7 @@ import warnings
 from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
-from .utils import empty_array, to_list, is_numeric_array
+from .utils import empty_array, to_list, is_numeric_array, expand_array
 
 
 @dataclass
@@ -25,7 +25,16 @@ class MRData:
 
     def __post_init__(self):
         self._check_attr_type()
-        self._process_attr()
+
+        self.obs = expand_array(self.obs, (self.num_points,), np.nan, 'obs')
+        self.obs_se = expand_array(self.obs_se, (self.num_points,), 1.0, 'obs_se')
+        self.study_id = expand_array(self.study_id, (self.num_points,), 'Unknown', 'study_id')
+        self.covs.update({'intercept': np.ones(self.num_points)})
+        for cov_name, cov in self.covs.items():
+            assert len(cov) == self.num_points, f"covs[{cov_name}], inconsistent shape."
+
+        self._get_cov_scales()
+        self._get_study_structure()
         self._remove_nan_in_covs()
 
     @property
@@ -65,35 +74,6 @@ class MRData:
         for cov in self.covs.values():
             assert isinstance(cov, np.ndarray)
             assert is_numeric_array(cov)
-
-    def _process_attr(self):
-        """Process attribute, including sorting and getting dimensions.
-        """
-        # add observations
-        if len(self.obs) == 0:
-            self.obs = np.full(self.num_points, np.nan)
-        else:
-            assert len(self.obs) == self.num_obs, "obs, inconsistent size."
-
-        # add obs_se
-        if len(self.obs_se) == 0:
-            self.obs_se = np.ones(self.num_points)
-        else:
-            assert len(self.obs_se) == self.num_obs, "obs_se, inconsistent size."
-
-        # add intercept
-        self.covs.update({'intercept': np.ones(self.num_points)})
-        for cov_name in self.covs:
-            assert len(self.covs[cov_name]) == self.num_obs, f"covs[{cov_name}], inconsistent size."
-
-        # add study_id
-        if len(self.study_id) == 0:
-            self.study_id = np.array(['Unknown']*self.num_points)
-        else:
-            assert len(self.study_id) == self.num_obs, "study_id, inconsistent size."
-
-        self._get_cov_scales()
-        self._get_study_structure()
 
     def _get_cov_scales(self):
         """Compute the covariate scale.
@@ -194,26 +174,12 @@ class MRData:
         """
         self.reset()
 
-        if col_obs is not None:
-            self.obs = df[col_obs].to_numpy()
-        else:
-            self.obs = empty_array()
+        self.obs = empty_array() if col_obs is None else df[col_obs].to_numpy()
+        self.obs_se = empty_array() if col_obs_se is None else df[col_obs_se].to_numpy()
+        self.study_id = empty_array() if col_study_id is None else df[col_study_id].to_numpy()
+        self.covs = dict() if col_covs is None else {col_cov: df[col_cov].to_numpy()
+                                                     for col_cov in col_covs}
 
-        if col_obs_se is not None:
-            self.obs_se = df[col_obs_se].to_numpy()
-        else:
-            self.obs_se = empty_array()
-
-        if col_covs is not None:
-            self.covs = {col_cov: df[col_cov].to_numpy()
-                         for col_cov in col_covs}
-        else:
-            self.covs = dict()
-
-        if col_study_id is not None:
-            self.study_id = df[col_study_id].to_numpy()
-        else:
-            self.study_id = empty_array()
         self.__post_init__()
 
     def to_df(self) -> pd.DataFrame:
