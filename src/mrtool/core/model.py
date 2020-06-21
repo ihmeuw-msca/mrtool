@@ -240,8 +240,11 @@ class MRBRT:
         h_fun, h_fun_jac = utils.mat_to_fun(h_mat)
 
         uprior = self.create_uprior()
+        uprior[:, self.num_x_vars:self.num_vars] *= z_scale**2
         gprior = self.create_gprior()
+        gprior[:, self.num_x_vars:self.num_vars] *= z_scale**2
         lprior = self.create_lprior()
+        lprior[:, self.num_x_vars:self.num_vars] *= z_scale**2
 
         if np.isneginf(uprior[0]).all() and np.isposinf(uprior[1]).all():
             uprior = None
@@ -259,9 +262,17 @@ class MRBRT:
                          inlier_percentage=self.inlier_pct)
 
         self.lt.fitModel(**fit_options)
-        self.beta_soln = self.lt.beta.copy()
         self.lt.Z *= z_scale
-        self.gamma_soln = self.lt.gamma.copy()/z_scale**2
+        if hasattr(self.lt, 'gprior'):
+            self.lt.gprior[:, self.lt.idx_gamma] /= z_scale**2
+        if hasattr(self.lt, 'uprior'):
+            self.lt.uprior[:, self.lt.idx_gamma] /= z_scale**2
+        if hasattr(self.lt, 'lprior'):
+            self.lt.lprior[:, self.lt.idx_gamma] /= z_scale**2
+        self.lt.gamma /= z_scale**2
+
+        self.beta_soln = self.lt.beta.copy()
+        self.gamma_soln = self.lt.gamma.copy()
         self.w_soln = self.lt.w.copy()
         self.u_soln = self.lt.estimateRE()
         self.re_soln = {
