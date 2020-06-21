@@ -33,9 +33,9 @@ class MRData:
         for cov_name, cov in self.covs.items():
             assert len(cov) == self.num_points, f"covs[{cov_name}], inconsistent shape."
 
-        self._get_cov_scales()
-        self._get_study_structure()
         self._remove_nan_in_covs()
+        self._get_study_structure()
+        self._get_cov_scales()
 
     @property
     def num_points(self):
@@ -111,7 +111,7 @@ class MRData:
                 cov_index = np.isnan(cov)
                 if cov_index.any():
                     warnings.warn(f"There are {cov_index.sum()} nans in covaraite {cov_name}.")
-                index = index & cov_index
+                index = index | cov_index
             self._remove_data(index)
 
     def _remove_data(self, index: np.ndarray):
@@ -129,7 +129,6 @@ class MRData:
         for cov_name, cov in self.covs.items():
             self.covs[cov_name] = cov[keep_index]
         self.study_id = self.study_id[keep_index]
-        self._get_study_structure()
 
     def is_empty(self) -> bool:
         """Return true when object contain data.

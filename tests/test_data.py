@@ -137,3 +137,16 @@ def test_normalize_covs(df, covs):
 
     d.normalize_covs(covs)
     assert d.is_cov_normalized(covs)
+
+
+@pytest.mark.parametrize('covs', [['cov0', 'cov1']])
+def test_remove_nan_in_covs(df, covs):
+    df.loc[:0, covs] = np.nan
+    d = MRData()
+    with pytest.warns(Warning):
+        d.load_df(df,
+                  col_obs='obs',
+                  col_obs_se='obs_se',
+                  col_covs=covs)
+
+    assert d.num_obs == df.shape[0] - 1
