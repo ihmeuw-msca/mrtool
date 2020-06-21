@@ -4,7 +4,7 @@
     ~~~~~
     `utils` module of the `mrtool` package.
 """
-from typing import Union, List, Any
+from typing import Union, List, Any, Tuple
 import numpy as np
 import pandas as pd
 try:
@@ -550,3 +550,28 @@ def is_numeric_array(array: np.ndarray) -> bool:
     except AttributeError:
         # in case it's not a numpy array it will probably have no dtype.
         return np.asarray(array).dtype.kind in numerical_dtype_kinds
+
+
+def expand_array(array: np.ndarray,
+                 shape: Tuple[int],
+                 value: Any,
+                 name: str) -> np.ndarray:
+    """Expand array when it is empty.
+
+    Args:
+        array (np.ndarray):
+            Target array. If array is empty, fill in the ``value``. And
+            When it is not empty assert the ``shape`` agrees and return the original array.
+        shape (Tuple[int]): The expected shape of the array.
+        value (Any): The expected value in final array.
+        name (str): Variable name of the array (for error message).
+
+    Returns:
+        np.ndarray: Expanded array.
+    """
+    array = np.array(array)
+    if len(array) == 0:
+        array = np.full(shape, value)
+    else:
+        assert array.shape == shape, f"{name}, inconsistent shape."
+    return array

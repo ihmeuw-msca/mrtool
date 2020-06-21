@@ -6,12 +6,11 @@
     `data` module for `mrtool` package.
 """
 from typing import Dict, List, Union
-from functools import reduce
-from operator import and_
+import warnings
 from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
-from .utils import empty_array, to_list, is_numeric_array
+from .utils import empty_array, to_list, is_numeric_array, expand_array
 
 
 @dataclass
@@ -25,83 +24,118 @@ class MRData:
     cov_scales: Dict[str, float] = field(init=False, default_factory=dict)
 
     def __post_init__(self):
-        self._check_attr()
-        self.num_obs = self._get_num_obs()
-        self._process_attr()
-        self.num_covs = len(self.covs)
+        self._check_attr_type()
+
+        self.obs = expand_array(self.obs, (self.num_points,), np.nan, 'obs')
+        self.obs_se = expand_array(self.obs_se, (self.num_points,), 1.0, 'obs_se')
+        self.study_id = expand_array(self.study_id, (self.num_points,), 'Unknown', 'study_id')
+        self.covs.update({'intercept': np.ones(self.num_points)})
+        for cov_name, cov in self.covs.items():
+            assert len(cov) == self.num_points, f"covs[{cov_name}], inconsistent shape."
+
+        self._remove_nan_in_covs()
+        self._get_study_structure()
+        self._get_cov_scales()
+
+    @property
+    def num_points(self):
+        """Number of data points.
+        """
+        return max([len(self.obs), len(self.obs_se), len(self.study_id)] +
+                   [len(cov) for cov in self.covs.values()])
+
+    @property
+    def num_obs(self):
+        """Number of observations.
+        """
+        return len(self.obs)
+
+    @property
+    def num_covs(self):
+        """Number of covariates.
+        """
+        return len(self.covs)
+
+    @property
+    def num_studies(self):
+        """Number of studies.
+        """
+        return len(self.studies)
+
+    def _check_attr_type(self):
+        """Check the type of the attributes.
+        """
+        assert isinstance(self.obs, np.ndarray)
+        assert is_numeric_array(self.obs)
+        assert isinstance(self.obs_se, np.ndarray)
+        assert is_numeric_array(self.obs_se)
+        assert isinstance(self.study_id, np.ndarray)
+        assert isinstance(self.covs, dict)
+        for cov in self.covs.values():
+            assert isinstance(cov, np.ndarray)
+            assert is_numeric_array(cov)
+
+    def _get_cov_scales(self):
+        """Compute the covariate scale.
+        """
         if self.is_empty():
             self.cov_scales = {cov_name: np.nan for cov_name in self.covs.keys()}
         else:
             self.cov_scales = {cov_name: np.max(np.abs(cov)) if is_numeric_array(cov) else np.nan
                                for cov_name, cov in self.covs.items()}
 
+    def _get_study_structure(self):
+        """Get the study structure.
+        """
         self.studies, self.study_sizes = np.unique(self.study_id,
                                                    return_counts=True)
-        self.num_studies = len(self.studies)
-
-    def _check_attr(self):
-        """Check the type of the attributes.
-        """
-        assert isinstance(self.obs, np.ndarray)
-        assert isinstance(self.obs_se, np.ndarray)
-        assert isinstance(self.study_id, np.ndarray)
-        assert isinstance(self.covs, dict)
-        for cov in self.covs.values():
-            assert isinstance(cov, np.ndarray)
-
-    def _get_num_obs(self):
-        """Get number of observations.
-        """
-        num_obs = max([len(self.obs), len(self.obs_se), len(self.study_id)] +
-                      [len(cov) for cov in self.covs.values()])
-        return num_obs
-
-    def _process_attr(self):
-        """Process attribute, including sorting and getting dimensions.
-        """
-        # add observations
-        if len(self.obs) == 0:
-            self.obs = np.full(self.num_obs, np.nan)
-        else:
-            assert len(self.obs) == self.num_obs, "obs, inconsistent size."
-
-        # add obs_se
-        if len(self.obs_se) == 0:
-            self.obs_se = np.ones(self.num_obs)
-        else:
-            assert len(self.obs_se) == self.num_obs, "obs_se, inconsistent size."
-
-        # add intercept
-        self.covs.update({'intercept': np.ones(self.num_obs)})
-        for cov_name in self.covs:
-            assert len(self.covs[cov_name]) == self.num_obs, f"covs[{cov_name}], inconsistent size."
-
-        # add study_id
-        if len(self.study_id) == 0:
-            self.study_id = np.array(['Unknown']*self.num_obs)
-        else:
-            assert len(self.study_id) == self.num_obs, "study_id, inconsistent size."
-
-        # sort by study_id
         self._sort_by_study_id()
 
     def _sort_by_study_id(self):
         """Sort data by study_id.
         """
-        if self.num_obs != 0 and len(set(self.study_id)) != 1:
+        if not self.is_empty() and self.num_studies != 1:
             sort_index = np.argsort(self.study_id)
             self.obs = self.obs[sort_index]
             self.obs_se = self.obs_se[sort_index]
-            for cov_name in self.covs:
-                self.covs[cov_name] = self.covs[cov_name][sort_index]
+            for cov_name, cov in self.covs.items():
+                self.covs[cov_name] = cov[sort_index]
             self.study_id = self.study_id[sort_index]
+
+    def _remove_nan_in_covs(self):
+        """Remove potential nans in covaraites.
+        """
+        if not self.is_empty():
+            index = np.full(self.num_obs, False)
+            for cov_name, cov in self.covs.items():
+                cov_index = np.isnan(cov)
+                if cov_index.any():
+                    warnings.warn(f"There are {cov_index.sum()} nans in covaraite {cov_name}.")
+                index = index | cov_index
+            self._remove_data(index)
+
+    def _remove_data(self, index: np.ndarray):
+        """Remove the data point by index.
+
+        Args:
+            index (np.ndarray): Bool array, when ``True`` delete corresponding data.
+        """
+        assert len(index) == self.num_obs
+        assert all([isinstance(i, (bool, np.bool_)) for i in index])
+
+        keep_index = ~index
+        self.obs = self.obs[keep_index]
+        self.obs_se = self.obs_se[keep_index]
+        for cov_name, cov in self.covs.items():
+            self.covs[cov_name] = cov[keep_index]
+        self.study_id = self.study_id[keep_index]
 
     def is_empty(self) -> bool:
         """Return true when object contain data.
         """
-        return self.num_obs == 0
+        return self.num_points == 0
 
-    def assert_not_empty(self):
+    def _assert_not_empty(self):
         """Raise ValueError when object is empty.
         """
         if self.is_empty():
@@ -139,26 +173,12 @@ class MRData:
         """
         self.reset()
 
-        if col_obs is not None:
-            self.obs = df[col_obs].to_numpy()
-        else:
-            self.obs = empty_array()
+        self.obs = empty_array() if col_obs is None else df[col_obs].to_numpy()
+        self.obs_se = empty_array() if col_obs_se is None else df[col_obs_se].to_numpy()
+        self.study_id = empty_array() if col_study_id is None else df[col_study_id].to_numpy()
+        self.covs = dict() if col_covs is None else {col_cov: df[col_cov].to_numpy()
+                                                     for col_cov in col_covs}
 
-        if col_obs_se is not None:
-            self.obs_se = df[col_obs_se].to_numpy()
-        else:
-            self.obs_se = empty_array()
-
-        if col_covs is not None:
-            self.covs = {col_cov: df[col_cov].to_numpy()
-                         for col_cov in col_covs}
-        else:
-            self.covs = dict()
-
-        if col_study_id is not None:
-            self.study_id = df[col_study_id].to_numpy()
-        else:
-            self.study_id = empty_array()
         self.__post_init__()
 
     def to_df(self) -> pd.DataFrame:
@@ -181,9 +201,9 @@ class MRData:
         if len(covs) == 0:
             return True
         else:
-            return reduce(and_, [cov in self.covs for cov in covs])
+            return all([cov in self.covs for cov in covs])
 
-    def assert_has_covs(self, covs: Union[List[str], str]):
+    def _assert_has_covs(self, covs: Union[List[str], str]):
         """Assert has covariates otherwise raise ValueError.
         """
         if not self.has_covs(covs):
@@ -195,7 +215,7 @@ class MRData:
         """Get covariate matrix.
         """
         covs = to_list(covs)
-        self.assert_has_covs(covs)
+        self._assert_has_covs(covs)
         if len(covs) == 0:
             return np.array([]).reshape(self.num_obs, 0)
         else:
@@ -208,7 +228,7 @@ class MRData:
             covs = list(self.covs.keys())
         else:
             covs = to_list(covs)
-            self.assert_has_covs(covs)
+            self._assert_has_covs(covs)
         if not self.is_empty():
             for cov_name in covs:
                 if is_numeric_array(self.covs[cov_name]):
