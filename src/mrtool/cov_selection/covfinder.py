@@ -12,9 +12,9 @@ from mrtool.core.other_sampling import sample_simple_lme_beta
 class CovFinder:
     """Class in charge of the covariate selection.
     """
-    loose_beta_gprior_std = 0.1
+    loose_beta_gprior_std = 1.0
     zero_gamma_uprior = np.array([0.0, 0.0])
-    nonzero_gamma_uprior = np.array([1.0, 1.0])
+    loose_gamma_uprior = np.array([1.0, 1.0])
 
     def __init__(self,
                  data: MRData,
@@ -65,10 +65,7 @@ class CovFinder:
             self.data = deepcopy(data)
             self.data.normalize_covs(self.covs)
         self.selected_covs = self.pre_selected_covs.copy()
-        self.beta_gprior = {
-            cov: np.array([0.0, np.inf])
-            for cov in self.selected_covs
-        }
+        self.beta_gprior = dict()
         self.all_covs = self.pre_selected_covs + self.covs
         self.stop = False
         self.use_re = {} if use_re is None else use_re
@@ -84,37 +81,20 @@ class CovFinder:
 
         self.num_covs = len(pre_selected_covs) + len(covs)
 
-    def set_loose_beta_gprior_std(self, std: float):
-        """Set class variable of the loose beta gaussian prior standard deviation.
-
-        Args:
-            std (float): Standard deviation for the beta gaussian prior.
-        """
-        if std <= 0.0:
-            raise ValueError("Standard deviation cannot be nonpositive number.")
-        self.loose_beta_gprior_std = std
-
-    def set_zero_gamma_uprior(self, prior: Iterable):
-        """Set class variable, zero gamma uniform prior.
-
-        Args:
-            prior (np.ndarray): Default gamma uniform prior.
-        """
-        prior = np.array(prior).ravel()
-        if prior.size != 2:
-            raise ValueError("Default gamma uniform prior should have length 2,"
-                             "with lower and upper bounds.")
-
-        if prior[0] > prior[1]:
-            raise ValueError("Uniform prior lower bound should be less or equal than"
-                             "upper bound.")
-
-        self.zero_gamma_uprior = prior
-
     def create_model(self,
                      covs: List[str],
                      prior_type: str = 'Laplace',
                      laplace_std: float = None) -> MRBRT:
+        """Create Gaussian or Laplace model.
+
+        Args:
+            covs (List[str]): A list of covariates need to be included in the model.
+            prior_type (str): Indicate if use ``Gaussian`` or ``Laplace`` model.
+            laplace_std (float): Standard deviation of the Laplace prior. Default to None.
+
+        Return:
+            MRBRT: Created model object.
+        """
         assert prior_type in ['Laplace', 'Gaussian'], "Prior type can only 'Laplace' or 'Gaussian'."
         if prior_type == 'Laplace':
             assert laplace_std is not None, "Use Laplace prior must provide standard deviation."
@@ -126,80 +106,113 @@ class CovFinder:
                                if cov not in self.selected_covs else None,
                                prior_beta_gaussian=None
                                if cov not in self.selected_covs else self.beta_gprior[cov],
-                               prior_gamma_uniform=self.nonzero_gamma_uprior if self.use_re[cov] else \
+                               prior_gamma_uniform=self.loose_gamma_uprior if self.use_re[cov] else \
                                    self.zero_gamma_uprior)
                 for cov in covs
             ]
         else:
             cov_models = [
                 LinearCovModel(cov, use_re=True,
-                               prior_beta_gaussian=np.array([0.0, self.loose_beta_gprior_std])
-                               if cov not in self.selected_covs else self.beta_gprior[cov],
-                               prior_gamma_uniform=self.nonzero_gamma_uprior if self.use_re[cov] else \
+                               prior_beta_gaussian=None
+                               if cov not in self.beta_gprior else self.beta_gprior[cov],
+                               prior_gamma_uniform=self.loose_gamma_uprior if self.use_re[cov] else \
                                    self.zero_gamma_uprior)
                 for cov in covs
             ]
 
         return MRBRT(self.data, cov_models=cov_models, inlier_pct=self.inlier_pct)
 
-    def select_covs_by_laplace(self, laplace_std: float, verbose: bool = False):
-        # laplace model
-        laplace_model = self.create_model(self.all_covs,
-                                          prior_type='Laplace',
-                                          laplace_std=laplace_std)
+    def fit_gaussian_model(self, covs: List[str]) -> MRBRT:
+        """Fit Gaussian model.
 
+        Args:
+            covs (List[str]): A list of covariates need to be included in the model.
+
+        Returns:
+            MRBRT: the fitted model object.
+        """
+        gaussian_model = self.create_model(covs, prior_type='Gaussian')
+        gaussian_model.fit_model(x0=np.zeros(gaussian_model.num_vars),
+                                 inner_print_level=5, inner_max_iter=1000)
+        empirical_gamma = np.var(gaussian_model.u_soln, axis=0)
+        gaussian_model.gamma_soln = empirical_gamma
+        gaussian_model.lt.gamma = empirical_gamma
+        return gaussian_model
+
+    def fit_laplace_model(self, covs: List[str], laplace_std: float) -> MRBRT:
+        """Fit Laplace model.
+
+        Args:
+            covs (List[str]): A list of covariates need to be included in the model.
+            laplace_std (float): The Laplace prior std.
+
+        Returns:
+            MRBRT: the fitted model object.
+        """
+        laplace_model = self.create_model(covs, prior_type='Laplace', laplace_std=laplace_std)
         laplace_model.fit_model(x0=np.zeros(2*laplace_model.num_vars),
-                                inner_print_level=5,
-                                inner_max_iter=1000)
-        additional_covs = [
-            cov
-            for i, cov in enumerate(self.covs)
-            if cov not in self.selected_covs and \
-               np.abs(laplace_model.beta_soln[i + len(self.pre_selected_covs)]) > self.laplace_threshold
-        ]
+                                inner_print_level=5, inner_max_iter=1000)
+        return laplace_model
+
+    def summary_gaussian_model(self, gaussian_model: MRBRT) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Summary the gaussian model.
+        Return the mean standard deviation and the significance indicator of beta.
+
+        Args:
+            gaussian_model (MRBRT): Gaussian model object.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                Mean, standard deviation and indicator of the significance of beta solution.
+        """
+        beta_samples = sample_simple_lme_beta(sample_size=self.num_samples,
+                                              model=gaussian_model)
+        beta_mean = gaussian_model.beta_soln
+        beta_std = np.std(beta_samples, axis=0)
+        beta_sig = self.is_significance(beta_samples, var_type='beta', alpha=self.alpha)
+        return beta_mean, beta_std, beta_sig
+
+    def fit_pre_selected_covs(self):
+        """Fit the pre-selected covariates.
+        """
+        if len(self.pre_selected_covs) != 0:
+            gaussian_model = self.fit_gaussian_model(self.pre_selected_covs)
+            beta_mean, beta_std, _ = self.summary_gaussian_model(gaussian_model)
+            beta_std.fill(self.loose_beta_gprior_std)
+            self.update_beta_gprior(self.pre_selected_covs, beta_mean, beta_std)
+
+    def select_covs_by_laplace(self, laplace_std: float, verbose: bool = False):
+        # fit laplace model and select the potential additional covariates
+        laplace_model = self.fit_laplace_model(self.all_covs, laplace_std)
+        additional_covs = []
+        for i, cov in enumerate(self.all_covs):
+            if np.abs(laplace_model.beta_soln[i]) > self.laplace_threshold and cov not in self.selected_covs:
+                additional_covs.append(cov)
+
         if verbose:
             print(f'Laplace std: {laplace_std}')
             print('    potential additional covariates', additional_covs)
 
         if len(additional_covs) > 0:
             candidate_covs = self.selected_covs + additional_covs
-            candidate_cov_dict = {
-                cov: i for i, cov in enumerate(candidate_covs)
-            }
-            gaussian_model = self.create_model(candidate_covs,
-                                               prior_type='Gaussian')
-            gaussian_model.fit_model(x0=np.zeros(gaussian_model.num_vars),
-                                     inner_print_level=5,
-                                     inner_max_iter=1000)
-            empirical_gamma = np.var(gaussian_model.u_soln, axis=0)
-            gaussian_model.lt.gamma = empirical_gamma
-            # beta_soln_samples, _ = gaussian_model.sample_soln(sample_size=self.num_samples,
-            #                                                   sim_prior=False,
-            #                                                   sim_re=False,
-            #                                                   print_level=5)
-            beta_soln_samples = sample_simple_lme_beta(sample_size=self.num_samples,
-                                                       model=gaussian_model)
-            beta_soln_mean = gaussian_model.beta_soln
-            beta_soln_std = np.std(beta_soln_samples, axis=0)
-            beta_soln_sig = self.is_significance(beta_soln_samples, var_type='beta', alpha=self.alpha)
+            gaussian_model = self.fit_gaussian_model(candidate_covs)
+            beta_soln_mean, beta_soln_std, beta_soln_sig = self.summary_gaussian_model(gaussian_model)
             if verbose:
                 print('    Gaussian model fe_mean:', beta_soln_mean)
                 print('    Gaussiam model fe_std: ', beta_soln_std)
-                print('    Gaussian model re_var: ', empirical_gamma)
+                print('    Gaussian model re_var: ', gaussian_model.gamma_soln)
                 print('    significance:', beta_soln_sig)
             # update the selected covs
-            self.selected_covs.extend([
-                cov for i, cov in enumerate(candidate_covs)
-                if cov not in self.selected_covs and beta_soln_sig[i]
-            ])
+            i_start = len(self.selected_covs)
+            i_end = len(candidate_covs)
+            for i in range(i_start, i_end):
+                if beta_soln_sig[i]:
+                    self.selected_covs.append(candidate_covs[i])
+                    self.update_beta_gprior([candidate_covs[i]],
+                                            np.array([beta_soln_mean[i]]),
+                                            np.array([self.loose_beta_gprior_std]))
             if verbose:
                 print('    selected covariates:', self.selected_covs)
-            # update beta_gprior
-            self.beta_gprior.update({
-                cov: np.array([beta_soln_mean[candidate_cov_dict[cov]], self.loose_beta_gprior_std])
-                for cov in self.selected_covs
-                if cov not in self.beta_gprior
-            })
             # update the stop
             self.stop = not all(beta_soln_sig)
 
@@ -207,7 +220,22 @@ class CovFinder:
         if len(self.selected_covs) == self.num_covs:
             self.stop = True
 
+    def update_beta_gprior(self, covs: List[str], mean: np.ndarray, std: np.ndarray):
+        """Update the beta Gaussian prior.
+
+        Args:
+            covs (List[str]): Name of the covariates.
+            mean (np.ndarray): Mean of the priors.
+            std (np.ndarray): Standard deviation of the priors.
+        """
+        for i, cov in enumerate(covs):
+            if cov not in self.all_covs:
+                raise ValueError(f"Unrecognized covaraite {cov} for beta Gaussian prior update.")
+            if cov not in self.beta_gprior:
+                self.beta_gprior[cov] = np.array([mean[i], std[i]])
+
     def select_covs(self, verbose: bool = False):
+        self.fit_pre_selected_covs()
         for power in self.powers:
             if not self.stop:
                 laplace_std = 10**power
@@ -217,7 +245,7 @@ class CovFinder:
     @staticmethod
     def is_significance(var_samples: np.ndarray,
                         var_type: str = 'beta',
-                        alpha: float = 0.05) -> List[bool]:
+                        alpha: float = 0.05) -> np.ndarray:
         assert var_type == 'beta', "Only support variable type beta."
         assert 0.0 < alpha < 1.0, "Significance threshold has to be between 0 and 1."
         var_uis = np.quantile(var_samples, (0.5*alpha, 1 - 0.5*alpha), axis=0)
