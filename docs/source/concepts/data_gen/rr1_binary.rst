@@ -8,8 +8,8 @@ Relative risk (RR) is the most common measurement type for the applications of `
 Here we take a chance to introduce the basic concepts regarding relative risk, and
 how we build different type of relative risk models in ``MRTool``.
 
-Relative risk the probability ratio of certain outcome between exposed and unexposed group.
-For more information please check `wiki page <https://en.wikipedia.org/wiki/Relative_risk>`_.
+Relative risk the probability ratio of a certain outcome between exposed and unexposed group.
+For more information please check the `wiki page <https://en.wikipedia.org/wiki/Relative_risk>`_.
 Here we use smoking and lung cancer as a risk-outcome pair to explain the idea.
 
 Imagine the experiment is conducted with two groups, smoking (e) and non-smoking (u) group.
@@ -32,10 +32,14 @@ To setup the binary model, we simply parametrize the log relative risk with an i
 
 .. math::
 
-   \ln(RR) = \mathbf{1} \beta_0
+   \ln(RR) = \mathbf{1} (\beta_0 + u_0),
 
+where :math:`\beta_0` is the fixed effect for intercept and :math:`u_0` is the random effect.
 When :math:`\beta_0` is `significantly <https://en.wikipedia.org/wiki/Statistical_significance>`_
-non-zero, we say that smoking is harmful (when :math:`\beta_0 > 0`), or protective (when :math:`\beta_0 < 0`).
+greater than zero, we say that it is harmful.
+For other risk outcome pair, there is possibility that :math:`\beta_0` is significantly less than zero,
+in which case we will call it protective.
+
 Very often instead of only considering smoking vs non-smoking (binary), we also want to study the effects
 under different exposure to smoking. The most common assumption is log linear, please check
 :ref:`rr2_log_linear` for the details.
