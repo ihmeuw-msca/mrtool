@@ -10,6 +10,7 @@ import warnings
 from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
+import xarray as xr
 from .utils import empty_array, to_list, is_numeric_array, expand_array
 
 
@@ -164,7 +165,7 @@ class MRData:
         self.study_id = empty_array()
         self.__post_init__()
 
-    def load_df(self, df: pd.DataFrame,
+    def load_df(self, data: pd.DataFrame,
                 col_obs: Union[str, None] = None,
                 col_obs_se: Union[str, None] = None,
                 col_covs: Union[List[str], None] = None,
@@ -173,11 +174,32 @@ class MRData:
         """
         self.reset()
 
-        self.obs = empty_array() if col_obs is None else df[col_obs].to_numpy()
-        self.obs_se = empty_array() if col_obs_se is None else df[col_obs_se].to_numpy()
-        self.study_id = empty_array() if col_study_id is None else df[col_study_id].to_numpy()
-        self.covs = dict() if col_covs is None else {col_cov: df[col_cov].to_numpy()
-                                                     for col_cov in col_covs}
+        self.obs = empty_array() if col_obs is None else data[col_obs].to_numpy()
+        self.obs_se = empty_array() if col_obs_se is None else data[col_obs_se].to_numpy()
+        self.study_id = empty_array() if col_study_id is None else data[col_study_id].to_numpy()
+        self.covs = dict() if col_covs is None else {cov_name: data[cov_name].to_numpy()
+                                                     for cov_name in col_covs}
+
+        self.__post_init__()
+
+    def load_xr(self, data: xr.Dataset,
+                var_obs: Union[str, None] = None,
+                var_obs_se: Union[str, None] = None,
+                var_covs: Union[List[str], None] = None,
+                coord_study_id: Union[str, None] = None):
+        """Load data from xarray.
+        """
+        self.reset()
+
+        self.obs = empty_array() if var_obs is None else data[var_obs].data.flatten()
+        self.obs_se = empty_array() if var_obs_se is None else data[var_obs_se].data.flatten()
+        if coord_study_id is None:
+            self.study_id = empty_array()
+        else:
+            index = data.coords.to_index().to_frame(index=False)
+            self.study_id = index[coord_study_id].to_numpy()
+        self.covs = dict() if var_covs is None else {cov_name: data[cov_name].data.flatten()
+                                                     for cov_name in var_covs}
 
         self.__post_init__()
 

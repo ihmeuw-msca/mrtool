@@ -18,6 +18,7 @@ if __name__ == '__main__':
         'pandas',
         'scipy',
         'xspline',
+        'xarray'
     ]
 
     unsolved_requirements = [

@@ -6,6 +6,7 @@
 """
 import numpy as np
 import pandas as pd
+import xarray as xr
 import pytest
 from mrtool import MRData
 
@@ -21,6 +22,40 @@ def df():
         'cov2': np.random.randn(num_obs),
     })
     return df
+
+@pytest.fixture()
+def xarray():
+    example_dataset = xr.Dataset({
+        "y":
+            xr.DataArray(
+                np.random.random([2, 2]),
+                dims=["age_group_id", "location_id"],
+                name="random_met_need",
+                coords={"age_group_id": [2, 3],
+                        "location_id": [6, 102]}),
+        "y_se":
+            xr.DataArray(
+                np.ones([2, 2]),
+                dims=["age_group_id", "location_id"],
+                name="random_met_need",
+                coords={"age_group_id": [2, 3],
+                        "location_id": [6, 102]}),
+        "sdi":
+            xr.DataArray(
+                np.ones([2, 2])*5,
+                dims=["age_group_id", "location_id"],
+                name="random_education",
+                coords={"age_group_id": [2, 3],
+                        "location_id": [6, 102]}),
+        "sdi_se":
+            xr.DataArray(
+                np.ones([2, 2])*0,
+                dims=["age_group_id", "location_id"],
+                name="random_education",
+                coords={"age_group_id": [2, 3],
+                        "location_id": [6, 102]}),
+    })
+    return example_dataset
 
 
 @pytest.mark.parametrize('obs', ['obs', None])
@@ -150,3 +185,17 @@ def test_remove_nan_in_covs(df, covs):
                   col_covs=covs)
 
     assert d.num_obs == df.shape[0] - 1
+
+
+def test_load_xr(xarray):
+    d = MRData()
+    d.load_xr(xarray,
+              var_obs='y',
+              var_obs_se='y_se',
+              var_covs=['sdi'],
+              coord_study_id='location_id')
+
+    assert np.allclose(np.sort(d.obs), np.sort(xarray['y'].data.flatten()))
+    assert np.allclose(np.sort(d.obs_se), np.sort(xarray['y_se'].data.flatten()))
+    assert np.allclose(np.sort(d.covs['sdi']), np.sort(xarray['sdi'].data.flatten()))
+    assert np.allclose(np.sort(d.studies), np.sort(xarray.coords['location_id']))
