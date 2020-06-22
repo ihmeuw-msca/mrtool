@@ -10,7 +10,6 @@ We list them here under the topics of **data generating mechanisms**,
 
 .. toctree::
    :maxdepth: 2
-   :hidden:
    :glob:
 
    data_gen/index
