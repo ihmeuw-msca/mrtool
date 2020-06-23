@@ -42,7 +42,7 @@ release = about['__version__']
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 
-needs_sphinx = '1.5'
+needs_sphinx = '3.0'
 
 extensions = [
     'sphinx.ext.autodoc',
