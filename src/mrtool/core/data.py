@@ -183,10 +183,10 @@ class MRData:
         self.__post_init__()
 
     def load_xr(self, data: xr.Dataset,
-                var_obs: Union[str, None] = None,
-                var_obs_se: Union[str, None] = None,
-                var_covs: Union[List[str], None] = None,
-                coord_study_id: Union[str, None] = None):
+                var_obs: str = None,
+                var_obs_se: str = None,
+                var_covs: List[str] = None,
+                coord_study_id: str = None):
         """Load data from xarray.
         """
         self.reset()
