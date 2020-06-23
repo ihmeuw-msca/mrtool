@@ -182,26 +182,26 @@ class MRData:
 
         self.__post_init__()
 
-    # def load_xr(self, data: xr.Dataset,
-    #             var_obs: str = None,
-    #             var_obs_se: str = None,
-    #             var_covs: List[str] = None,
-    #             coord_study_id: str = None):
-    #     """Load data from xarray.
-    #     """
-    #     self.reset()
-    #
-    #     self.obs = empty_array() if var_obs is None else data[var_obs].data.flatten()
-    #     self.obs_se = empty_array() if var_obs_se is None else data[var_obs_se].data.flatten()
-    #     if coord_study_id is None:
-    #         self.study_id = empty_array()
-    #     else:
-    #         index = data.coords.to_index().to_frame(index=False)
-    #         self.study_id = index[coord_study_id].to_numpy()
-    #     self.covs = dict() if var_covs is None else {cov_name: data[cov_name].data.flatten()
-    #                                                  for cov_name in var_covs}
-    #
-    #     self.__post_init__()
+    def load_xr(self, data,
+                var_obs: Union[str, None] = None,
+                var_obs_se: Union[str, None] = None,
+                var_covs: Union[List[str], None] = None,
+                coord_study_id: Union[str, None] = None):
+        """Load data from xarray.
+        """
+        self.reset()
+
+        self.obs = empty_array() if var_obs is None else data[var_obs].data.flatten()
+        self.obs_se = empty_array() if var_obs_se is None else data[var_obs_se].data.flatten()
+        if coord_study_id is None:
+            self.study_id = empty_array()
+        else:
+            index = data.coords.to_index().to_frame(index=False)
+            self.study_id = index[coord_study_id].to_numpy()
+        self.covs = dict() if var_covs is None else {cov_name: data[cov_name].data.flatten()
+                                                     for cov_name in var_covs}
+
+        self.__post_init__()
 
     def to_df(self) -> pd.DataFrame:
         """Convert data object to data frame.
