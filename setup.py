@@ -33,7 +33,7 @@ if __name__ == '__main__':
     ]
 
     doc_requirements = [
-        'sphinx<2.1',
+        'sphinx>3.0',
         'sphinx-autodoc-typehints',
         'sphinx-rtd-theme',
         'IPython',
