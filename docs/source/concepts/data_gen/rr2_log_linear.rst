@@ -4,9 +4,9 @@
 Relative Risk 2: Log Linear
 ===========================
 
-When consider relative risk regarding different exposure, the most simple and common
-assumption is log linear. We parametrize the log risk as a linear
-function of exposure,
+When analyzing relative risk across different exposure levels,
+the most widely used assumption is that the model is log linear.
+We parametrize the log risk as a linear function of exposure,
 
 .. math::
 
@@ -19,10 +19,11 @@ They are consistent with previous notation, "exposed" and "unexposed".
 **Remark 1**: **No intercept!**
 
 Notice that in this model, we do NOT include the intercept to model the log risk.
-The relative risk data is not capable to infer the absolute position of the risk curve,
+It is not possible to infer the absolute position of the risk curve using relative risk data,
 only the relative position.
 
-Assume we have the intercept in the log risk formulation, :math:`\ln(R) = (\beta_0 + u_0) + x (\beta_1 + u_1)`,
+To see this, first assume that we have intercept in the log risk formulation,
+:math:`\ln(R) = (\beta_0 + u_0) + x (\beta_1 + u_1)`,
 when we construct the log relative risk,
 
 .. math::
@@ -56,10 +57,10 @@ Compare to :ref:`rr1_binary`, where we use the intercept to model the log relati
 Sample Code
 -----------
 
-To setup the problem, we will only need ``LinearCovModel`` as well.
+To setup the problem, we will only need ``LinearCovModel``, just as in :ref:`rr1_binary`.
 
 If there is already a column in the data frame corresponding to the exposure differences,
-we could simply use it as the covariate.
+we can simply use it as the covariate.
 
 .. code-block:: python
 
@@ -77,7 +78,7 @@ we could simply use it as the covariate.
    model = MRBRT(data, cov_models=[cov_model])
 
 Otherwise if you pass in the exposure for the "alternative" and "reference" group,
-the ``LinearCovModel`` can take care that for you.
+the ``LinearCovModel`` will setup the model for you.
 
 .. code-block:: python
 
