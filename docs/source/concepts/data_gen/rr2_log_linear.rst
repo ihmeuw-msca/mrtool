@@ -89,4 +89,4 @@ the ``LinearCovModel`` will setup the model for you.
        col_covs=['exposure_alt', 'exposure_ref']
        col_study_id='study_id'
    )
-   cov_model = LinearCovModel(alt_cov='exposure_alt', ref='exposure_ref', use_re=True)
+   cov_model = LinearCovModel(alt_cov='exposure_alt', ref_cov='exposure_ref', use_re=True)
