@@ -111,6 +111,21 @@ def test_study_id(df, study_id):
         assert np.allclose(d.study_sizes, np.array([2, 2, 1]))
 
 
+@pytest.mark.parametrize('data_id', [None, 'data_id'])
+def test_data_id(df, data_id):
+    if data_id is not None:
+        df[data_id] = np.arange(df.shape[0])
+
+    d = MRData()
+    d.load_df(df,
+              col_obs='obs',
+              col_obs_se='obs_se',
+              col_covs=['cov0', 'cov1', 'cov2'],
+              col_data_id=data_id)
+
+    assert (d.data_id == np.arange(d.num_obs)).all()
+
+
 def test_is_empty(df):
     d = MRData()
     assert d.is_empty()
