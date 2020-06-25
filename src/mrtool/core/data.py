@@ -21,8 +21,8 @@ class MRData:
     obs_se: np.ndarray = field(default_factory=empty_array)
     covs: Dict[str, np.ndarray] = field(default_factory=dict)
     study_id: np.ndarray = field(default_factory=empty_array)
-    data_id: np.ndarray = field(default_factory=empty_array)
     cov_scales: Dict[str, float] = field(init=False, default_factory=dict)
+    data_id: np.ndarray = field(init=False)
 
     def __post_init__(self):
         self._check_attr_type()
@@ -30,9 +30,7 @@ class MRData:
         self.obs = expand_array(self.obs, (self.num_points,), np.nan, 'obs')
         self.obs_se = expand_array(self.obs_se, (self.num_points,), 1.0, 'obs_se')
         self.study_id = expand_array(self.study_id, (self.num_points,), 'Unknown', 'study_id')
-        if self.data_id.size == 0:
-            self.data_id = np.arange(self.num_obs)
-        assert len(set(self.data_id)) == self.num_obs, "data_id has to be unique for each data point."
+        self.data_id = np.arange(self.num_obs)
         self.covs.update({'intercept': np.ones(self.num_points)})
         for cov_name, cov in self.covs.items():
             assert len(cov) == self.num_points, f"covs[{cov_name}], inconsistent shape."
@@ -74,7 +72,6 @@ class MRData:
         assert isinstance(self.obs_se, np.ndarray)
         assert is_numeric_array(self.obs_se)
         assert isinstance(self.study_id, np.ndarray)
-        assert isinstance(self.data_id, np.ndarray)
         assert isinstance(self.covs, dict)
         for cov in self.covs.values():
             assert isinstance(cov, np.ndarray)
@@ -96,17 +93,34 @@ class MRData:
                                                    return_counts=True)
         self._sort_by_study_id()
 
+    def _sort_data(self, index: np.ndarray):
+        """Sort the object.
+
+        Args:
+            index (np.ndarray): Sorting index.
+        """
+        index = np.array(index)
+        assert (np.sort(index) == np.arange(self.num_obs)).all(), "Sorting index must go from 0 to num_obs - 1."
+        self.obs = self.obs[index]
+        self.obs_se = self.obs_se[index]
+        for cov_name, cov in self.covs.items():
+            self.covs[cov_name] = cov[index]
+        self.study_id = self.study_id[index]
+        self.data_id = self.data_id[index]
+
     def _sort_by_study_id(self):
         """Sort data by study_id.
         """
         if not self.is_empty() and self.num_studies != 1:
             sort_index = np.argsort(self.study_id)
-            self.obs = self.obs[sort_index]
-            self.obs_se = self.obs_se[sort_index]
-            for cov_name, cov in self.covs.items():
-                self.covs[cov_name] = cov[sort_index]
-            self.study_id = self.study_id[sort_index]
-            self.data_id = self.data_id[sort_index]
+            self._sort_data(sort_index)
+
+    def _sort_by_data_id(self):
+        """Sort data by data_id.
+        """
+        if not self.is_empty():
+            sort_index = np.argsort(self.data_id)
+            self._sort_data(sort_index)
 
     def _remove_nan_in_covs(self):
         """Remove potential nans in covaraites.
@@ -169,15 +183,13 @@ class MRData:
         self.obs_se = empty_array()
         self.covs = dict()
         self.study_id = empty_array()
-        self.data_id = empty_array()
         self.__post_init__()
 
     def load_df(self, data: pd.DataFrame,
                 col_obs: Union[str, None] = None,
                 col_obs_se: Union[str, None] = None,
                 col_covs: Union[List[str], None] = None,
-                col_study_id: Union[str, None] = None,
-                col_data_id: Union[str, None] = None):
+                col_study_id: Union[str, None] = None):
         """Load data from data frame.
         """
         self.reset()
@@ -185,7 +197,6 @@ class MRData:
         self.obs = empty_array() if col_obs is None else data[col_obs].to_numpy()
         self.obs_se = empty_array() if col_obs_se is None else data[col_obs_se].to_numpy()
         self.study_id = empty_array() if col_study_id is None else data[col_study_id].to_numpy()
-        self.data_id = empty_array() if col_data_id is None else data[col_data_id].to_numpy()
         self.covs = dict() if col_covs is None else {cov_name: data[cov_name].to_numpy()
                                                      for cov_name in col_covs}
 

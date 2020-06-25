@@ -290,7 +290,8 @@ class MRBRT:
         return re
 
     def predict(self, data: MRData,
-                predict_for_study=False) -> np.ndarray:
+                predict_for_study: bool = False,
+                sort_by_data_id: bool = False) -> np.ndarray:
         """Create new prediction with existing solution.
 
         Args:
@@ -299,6 +300,9 @@ class MRBRT:
                 If `True`, use the random effects information to prediction for specific
                 study. If the `study_id` in `data` do not contain in the fitting data, it
                 will assume the corresponding random effects equal to 0.
+            sort_by_data_id (bool, optional):
+                If `True`, will sort the final prediction as the order of the original
+                data frame that used to create the `data`. Default to False.
 
         Returns:
             np.ndarray: Predicted outcome array.
@@ -310,6 +314,9 @@ class MRBRT:
             z_mat = self.create_z_mat(data=data)
             re = self.extract_re(data.study_id)
             prediction += np.sum(z_mat*re, axis=1)
+
+        if sort_by_data_id:
+            prediction = prediction[np.argsort(data.data_id)]
 
         return prediction
 
@@ -512,7 +519,8 @@ class MRBeRT:
         return beta_samples, gamma_samples
 
     def predict(self, data: MRData,
-                predict_for_study=False,
+                predict_for_study: bool = False,
+                sort_by_data_id: bool = False,
                 return_avg: bool = True) -> np.ndarray:
         """Create new prediction with existing solution.
 
@@ -522,7 +530,9 @@ class MRBeRT:
                 and when it is `False` the function will return a list of predictions from all groups.
         """
         prediction = np.vstack([
-            sub_model.predict(data, predict_for_study=predict_for_study)
+            sub_model.predict(data,
+                              predict_for_study=predict_for_study,
+                              sort_by_data_id=sort_by_data_id)
             for sub_model in self.sub_models
         ])
 
