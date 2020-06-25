@@ -27,6 +27,14 @@ class CovModel:
                  spline_degree=3,
                  spline_l_linear=False,
                  spline_r_linear=False,
+                 prior_spline_derval_gaussian=None,
+                 prior_spline_derval_gaussian_domain=(0.0, 1.0),
+                 prior_spline_derval_uniform=None,
+                 prior_spline_derval_uniform_domain=(0.0, 1.0),
+                 prior_spline_funval_gaussian=None,
+                 prior_spline_funval_gaussian_domain=(0.0, 1.0),
+                 prior_spline_funval_uniform=None,
+                 prior_spline_funval_uniform_domain=(0.0, 1.0),
                  prior_spline_monotonicity=None,
                  prior_spline_monotonicity_domain=(0.0, 1.0),
                  prior_spline_convexity=None,
@@ -71,6 +79,22 @@ class CovModel:
                 If use left linear tail.
             spline_r_linear (bool, optional):
                 If use right linear tail.
+            prior_spline_derval_gaussian (np.ndarray, optional):
+                Gaussian prior for the derivative value of the spline.
+            prior_spline_derval_gaussian_domain (Tuple[float, float], optional):
+                Domain for the Gaussian prior for the derivative value of the spline.
+            prior_spline_derval_uniform (np.ndarray, optional):
+                Uniform prior for the derivative value of the spline.
+            prior_spline_derval_uniform_domain (Tuple[float, float], optional):
+                Domain for the uniform prior for the derivative value of the spline.
+            prior_spline_funval_gaussian (np.ndarray, optional):
+                Gaussian prior for the function value of the spline.
+            prior_spline_funval_gaussian_domain (Tuple[float, float], optional):
+                Domain for the Gaussian prior for the function value of the spline.
+            prior_spline_funval_uniform (np.ndarray, optional):
+                Uniform prior for the function value of the spline.
+            prior_spline_funval_uniform_domain (Tuple[float, float], optional):
+                Domain for the uniform prior for the function value of the spline.
             prior_spline_monotonicity (str | None, optional):
                 Spline shape prior, `'increasing'` indicates spline is
                 increasing, `'decreasing'` indicates spline is decreasing.
@@ -121,6 +145,15 @@ class CovModel:
         self.spline_l_linear = spline_l_linear
         self.spline_r_linear = spline_r_linear
 
+        self.prior_spline_derval_gaussian = prior_spline_derval_gaussian
+        self.prior_spline_derval_gaussian_domain_template = np.array(prior_spline_funval_gaussian_domain)
+        self.prior_spline_derval_uniform = prior_spline_derval_uniform
+        self.prior_spline_derval_uniform_domain_template = np.array(prior_spline_derval_uniform_domain)
+        self.prior_spline_funval_gaussian = prior_spline_funval_gaussian
+        self.prior_spline_funval_gaussian_domain_template = np.array(prior_spline_funval_gaussian_domain)
+        self.prior_spline_funval_uniform = prior_spline_funval_uniform
+        self.prior_spline_funval_uniform_domain_template = np.array(prior_spline_funval_uniform_domain)
+
         self.prior_spline_monotonicity = prior_spline_monotonicity
         self.prior_spline_monotonicity_domain = None
         self.prior_spline_monotonicity_domain_template = np.array(prior_spline_monotonicity_domain)
@@ -167,8 +200,17 @@ class CovModel:
         assert isinstance(self.spline_r_linear, bool)
         assert len(self.prior_spline_monotonicity_domain_template) == 2
         assert len(self.prior_spline_convexity_domain_template) == 2
-        assert self.prior_spline_monotonicity_domain_template[0] <= self.prior_spline_monotonicity_domain_template[1]
-        assert self.prior_spline_convexity_domain_template[0] <= self.prior_spline_convexity_domain_template[1]
+        assert len(self.prior_spline_derval_uniform_domain_template) == 2
+        assert len(self.prior_spline_funval_uniform_domain_template) == 2
+        assert len(self.prior_spline_derval_gaussian_domain_template) == 2
+        assert len(self.prior_spline_funval_gaussian_domain_template) == 2
+
+        assert (np.diff(self.prior_spline_monotonicity_domain_template) >= 0.0).all()
+        assert (np.diff(self.prior_spline_convexity_domain_template) >= 0.0).all()
+        assert (np.diff(self.prior_spline_derval_gaussian_domain_template) >= 0.0).all()
+        assert (np.diff(self.prior_spline_derval_uniform_domain_template) >= 0.0).all()
+        assert (np.diff(self.prior_spline_funval_gaussian_domain_template) >= 0.0).all()
+        assert (np.diff(self.prior_spline_funval_uniform_domain_template) >= 0.0).all()
 
         # priors
         assert (self.prior_spline_monotonicity in ['increasing', 'decreasing'] or
@@ -177,9 +219,14 @@ class CovModel:
                 self.prior_spline_convexity is None)
         assert isinstance(self.prior_spline_num_constraint_points, int)
         assert self.prior_spline_num_constraint_points > 0
+        assert utils.is_gaussian_prior(self.prior_spline_derval_gaussian)
+        assert utils.is_gaussian_prior(self.prior_spline_funval_gaussian)
         assert utils.is_gaussian_prior(self.prior_spline_maxder_gaussian)
         assert utils.is_gaussian_prior(self.prior_beta_gaussian)
         assert utils.is_gaussian_prior(self.prior_gamma_gaussian)
+
+        assert utils.is_uniform_prior(self.prior_spline_derval_uniform)
+        assert utils.is_uniform_prior(self.prior_spline_funval_uniform)
         assert utils.is_uniform_prior(self.prior_spline_maxder_uniform)
         assert utils.is_uniform_prior(self.prior_beta_uniform)
         assert utils.is_uniform_prior(self.prior_gamma_uniform)
