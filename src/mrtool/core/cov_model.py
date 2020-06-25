@@ -263,6 +263,18 @@ class CovModel:
             self.prior_spline_maxder_uniform = utils.input_uniform_prior(
                 self.prior_spline_maxder_uniform, self.spline_knots.size - 1
             )
+            self.prior_spline_derval_gaussian = utils.input_gaussian_prior(
+                self.prior_spline_derval_gaussian, self.prior_spline_num_constraint_points
+            )
+            self.prior_spline_derval_uniform = utils.input_uniform_prior(
+                self.prior_spline_derval_uniform, self.prior_spline_num_constraint_points
+            )
+            self.prior_spline_funval_gaussian = utils.input_gaussian_prior(
+                self.prior_spline_funval_gaussian, self.prior_spline_num_constraint_points
+            )
+            self.prior_spline_funval_uniform = utils.input_uniform_prior(
+                self.prior_spline_funval_uniform, self.prior_spline_num_constraint_points
+            )
         else:
             self.prior_spline_maxder_gaussian = None
             self.prior_spline_maxder_uniform = None
@@ -323,6 +335,15 @@ class CovModel:
         self.prior_spline_convexity_domain = min(cov) + \
                                              self.prior_spline_convexity_domain_template*(max(cov) - min(cov))
 
+        self.prior_spline_derval_gaussian_domain = min(cov) + \
+            self.prior_spline_derval_gaussian_domain_template*(max(cov) - min(cov))
+        self.prior_spline_derval_uniform_domain = min(cov) + \
+            self.prior_spline_derval_uniform_domain_template*(max(cov) - min(cov))
+        self.prior_spline_funval_gaussian_domain = min(cov) + \
+            self.prior_spline_funval_gaussian_domain_template*(max(cov) - min(cov))
+        self.prior_spline_funval_uniform_domain = min(cov) + \
+            self.prior_spline_funval_uniform_domain_template*(max(cov) - min(cov))
+
         spline = xspline.XSpline(spline_knots,
                                  self.spline_degree,
                                  l_linear=self.spline_l_linear,
@@ -365,11 +386,25 @@ class CovModel:
         if not self.use_spline:
             return c_mat, c_val
 
+        derval_points = np.linspace(*self.prior_spline_derval_uniform_domain,
+                                    self.prior_spline_num_constraint_points)
+        funval_points = np.linspace(*self.prior_spline_funval_uniform_domain,
+                                    self.prior_spline_num_constraint_points)
         mono_points = np.linspace(*self.prior_spline_monotonicity_domain,
                                   self.prior_spline_num_constraint_points)
         cvcv_points = np.linspace(*self.prior_spline_convexity_domain,
                                   self.prior_spline_num_constraint_points)
         tmp_val = np.array([[-np.inf], [0.0]])
+
+        # spline derval uniform priors
+        if not np.isinf(self.prior_spline_derval_uniform).all() and self.use_spline:
+            c_mat = np.vstack((c_mat, self.spline.design_dmat(derval_points, 1)[:, 1:]))
+            c_val = np.hstack((c_val, self.prior_spline_derval_uniform))
+
+        # spline funval uniform priors
+        if not np.isinf(self.prior_spline_funval_uniform).all() and self.use_spline:
+            c_mat = np.vstack((c_mat, self.spline.design_mat(funval_points)[:, 1:]))
+            c_val = np.hstack((c_val, self.prior_spline_funval_uniform))
 
         # spline monotonicity constraints
         if self.prior_spline_monotonicity is not None and self.use_spline:
@@ -384,7 +419,7 @@ class CovModel:
             c_val = np.hstack((c_val, np.repeat(tmp_val, cvcv_points.size, axis=1)))
 
         # spline maximum derivative constraints
-        if not np.isinf(self.prior_spline_maxder_uniform).all():
+        if not np.isinf(self.prior_spline_maxder_uniform).all() and self.use_spline:
             c_mat = np.vstack((c_mat, self.spline.last_dmat()[:, 1:]))
             c_val = np.hstack((c_val, self.prior_spline_maxder_uniform))
 
@@ -400,6 +435,21 @@ class CovModel:
         r_val = np.array([]).reshape(2, 0)
         if not self.use_spline:
             return r_mat, r_val
+
+        derval_points = np.linspace(*self.prior_spline_derval_gaussian_domain,
+                                    self.prior_spline_num_constraint_points)
+        funval_points = np.linspace(*self.prior_spline_funval_gaussian_domain,
+                                    self.prior_spline_num_constraint_points)
+
+        # spline derval gaussian priors
+        if not np.isinf(self.prior_spline_derval_gaussian[1]).all() and self.use_spline:
+            r_mat = np.vstack((r_mat, self.spline.design_dmat(derval_points, 1)[:, 1:]))
+            r_val = np.hstack((r_val, self.prior_spline_derval_gaussian))
+
+        # spline funval gaussian priors
+        if not np.isinf(self.prior_spline_funval_gaussian[1]).all() and self.use_spline:
+            r_mat = np.vstack((r_mat, self.spline.design_mat(funval_points)[:, 1:]))
+            r_val = np.hstack((r_val, self.prior_spline_funval_gaussian))
 
         # spline maximum derivative constraints
         if not np.isinf(self.prior_spline_maxder_gaussian[1]).all() and self.use_spline:
@@ -438,6 +488,10 @@ class CovModel:
             )
             if not np.isinf(self.prior_spline_maxder_uniform).all():
                 num_c += self.prior_spline_maxder_uniform.shape[1]
+            if not np.isinf(self.prior_spline_derval_uniform).all():
+                num_c += self.prior_spline_num_constraint_points
+            if not np.isinf(self.prior_spline_funval_uniform).all():
+                num_c += self.prior_spline_num_constraint_points
 
             return num_c
 
@@ -449,6 +503,10 @@ class CovModel:
             num_r = 0
             if not np.isinf(self.prior_spline_maxder_gaussian[1]).all():
                 num_r += self.prior_spline_maxder_gaussian.shape[1]
+            if not np.isinf(self.prior_spline_derval_gaussian[1]).all():
+                num_r += self.prior_spline_num_constraint_points
+            if not np.isinf(self.prior_spline_funval_gaussian[1]).all():
+                num_r += self.prior_spline_num_constraint_points
 
             return num_r
 
