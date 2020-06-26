@@ -84,11 +84,10 @@ class MRData:
             self.cov_scales = {cov_name: np.nan for cov_name in self.covs.keys()}
         else:
             self.cov_scales = {cov_name: np.max(np.abs(cov)) for cov_name, cov in self.covs.items()}
-            drop_covs = [cov_name for cov_name, cov_scale in self.cov_scales.items() if cov_scale == 0.0]
-            for cov_name in drop_covs:
-                warnings.warn(f"numbers in covariate {cov_name} are all zero, drop {cov_name}.")
-                del self.covs[cov_name]
-                del self.cov_scales[cov_name]
+            zero_covs = [cov_name for cov_name, cov_scale in self.cov_scales.items() if cov_scale == 0.0]
+            for cov_name in zero_covs:
+                warnings.warn(f"numbers in covariate[{cov_name}] are all zero. "
+                              f"Please use this in spline range exposure or when preidct.")
 
     def _get_study_structure(self):
         """Get the study structure.
