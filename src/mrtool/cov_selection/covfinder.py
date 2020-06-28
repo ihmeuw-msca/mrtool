@@ -3,7 +3,8 @@
     Cov Finder
     ~~~~~~~~~~
 """
-from typing import List, Dict, Tuple, Union, Iterable
+from typing import List, Dict, Tuple, Union
+import warnings
 from copy import deepcopy
 import numpy as np
 from mrtool import MRData, LinearCovModel, MRBRT
@@ -80,6 +81,9 @@ class CovFinder:
         self.powers = np.arange(*self.power_range, self.power_step_size)
 
         self.num_covs = len(pre_selected_covs) + len(covs)
+        if len(covs) == 0:
+            warnings.warn("There is no covariates to select, will return the pre-selected covariates.")
+            self.stop = True
 
     def create_model(self,
                      covs: List[str],
@@ -150,7 +154,9 @@ class CovFinder:
             MRBRT: the fitted model object.
         """
         laplace_model = self.create_model(covs, prior_type='Laplace', laplace_std=laplace_std)
-        laplace_model.fit_model(x0=np.zeros(2*laplace_model.num_vars),
+        lprior = laplace_model.create_lprior()
+        scale = 1 if np.isinf(lprior[1]).all() else 2
+        laplace_model.fit_model(x0=np.zeros(scale*laplace_model.num_vars),
                                 inner_print_level=5, inner_max_iter=1000)
         return laplace_model
 
@@ -235,12 +241,13 @@ class CovFinder:
                 self.beta_gprior[cov] = np.array([mean[i], std[i]])
 
     def select_covs(self, verbose: bool = False):
-        self.fit_pre_selected_covs()
-        for power in self.powers:
-            if not self.stop:
-                laplace_std = 10**power
-                self.select_covs_by_laplace(laplace_std, verbose=verbose)
-        self.stop = True
+        if len(self.covs) != 0:
+            self.fit_pre_selected_covs()
+            for power in self.powers:
+                if not self.stop:
+                    laplace_std = 10**power
+                    self.select_covs_by_laplace(laplace_std, verbose=verbose)
+            self.stop = True
 
     @staticmethod
     def is_significance(var_samples: np.ndarray,

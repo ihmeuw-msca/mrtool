@@ -215,7 +215,7 @@ class MRBRT:
             outer_max_iter (int): Maximum outer number of iterations.
             outer_step_size (float): Step size of the outer problem.
             outer_tol (float): Tolerance of the outer problem.
-            normalize_trimming_grad (bool): If `True`, normalize the gradient of the outer trimmign problem.
+            normalize_trimming_grad (bool): If `True`, normalize the gradient of the outer trimming problem.
         """
         # dimensions
         n = self.data.study_sizes
