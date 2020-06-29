@@ -324,6 +324,7 @@ class CovModel:
             cov = np.hstack((cov, alt_cov.mean(axis=1)))
         if ref_cov.size != 0:
             cov = np.hstack((cov, ref_cov.mean(axis=1)))
+        cov = np.unique(cov)
 
         if self.spline_knots_type == 'frequency':
             spline_knots = np.quantile(cov, self.spline_knots_template)
