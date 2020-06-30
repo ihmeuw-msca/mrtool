@@ -275,6 +275,10 @@ class MRBRT:
         self.gamma_soln = self.lt.gamma.copy()
         self.w_soln = self.lt.w.copy()
         self.u_soln = self.lt.estimateRE()
+        self.fe_soln = {
+            cov_name: self.beta_soln[self.x_vars_indices[self.get_cov_model_index(cov_name)]]
+            for cov_name in self.cov_names
+        }
         self.re_soln = {
             study: self.u_soln[i]
             for i, study in enumerate(self.data.studies)
