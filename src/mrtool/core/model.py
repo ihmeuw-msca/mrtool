@@ -277,7 +277,7 @@ class MRBRT:
         self.u_soln = self.lt.estimateRE()
         self.fe_soln = {
             cov_name: self.beta_soln[self.x_vars_indices[self.get_cov_model_index(cov_name)]]
-            for cov_name in self.cov_names
+            for cov_name in self.cov_model_names
         }
         self.re_soln = {
             study: self.u_soln[i]
