@@ -635,11 +635,13 @@ def create_knots_samples(data: MRData,
     alt_covs = data.get_covs(['b_0', 'b_1'] if alt_cov_names is None else alt_cov_names).T
     ref_covs = data.get_covs(['a_0', 'a_1'] if ref_cov_names is None else ref_cov_names).T
     all_covs = np.vstack((alt_covs, ref_covs))
+
     dose_min = 0 if l_zero else np.min(all_covs)
     dose_max = np.max(all_covs)
-    start_midpoints = alt_covs.mean(axis=0)
-    # end_midpoints = ref_covs.mean(axis=0)
-    dose = np.hstack([start_midpoints, ref_covs[0]])
+
+    start_midpoints = ref_covs.mean(axis=0)
+    # end_midpoints = alt_covs.mean(axis=0)
+    dose = np.hstack([start_midpoints, alt_covs[0]])
     start = (np.percentile(dose, 10) - dose_min) / (dose_max - dose_min)
     end = (np.percentile(dose, 90) - dose_min) / (dose_max - dose_min)
     knot_bounds = np.array([[start, end]] * (num_knots - 2))
