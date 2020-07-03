@@ -247,6 +247,7 @@ def test_get_data(index, data):
     assert np.allclose(data.obs[index], sub_data.obs)
     assert np.allclose(data.obs_se[index], sub_data.obs_se)
     assert np.allclose(data.study_id[index], sub_data.study_id)
+    assert np.allclose(data.data_id[index], sub_data.data_id)
     for cov_name in data.covs:
         assert np.allclose(data.covs[cov_name][index], sub_data.covs[cov_name])
 

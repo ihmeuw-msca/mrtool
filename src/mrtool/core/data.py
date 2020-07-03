@@ -21,8 +21,8 @@ class MRData:
     obs_se: np.ndarray = field(default_factory=empty_array)
     covs: Dict[str, np.ndarray] = field(default_factory=dict)
     study_id: np.ndarray = field(default_factory=empty_array)
+    data_id: np.ndarray = field(default_factory=empty_array)
     cov_scales: Dict[str, float] = field(init=False, default_factory=dict)
-    data_id: np.ndarray = field(init=False)
 
     def __post_init__(self):
         self._check_attr_type()
@@ -30,7 +30,8 @@ class MRData:
         self.obs = expand_array(self.obs, (self.num_points,), np.nan, 'obs')
         self.obs_se = expand_array(self.obs_se, (self.num_points,), 1.0, 'obs_se')
         self.study_id = expand_array(self.study_id, (self.num_points,), 'Unknown', 'study_id')
-        self.data_id = np.arange(self.num_obs)
+        self.data_id = expand_array(self.data_id, (self.num_points,), np.arange(self.num_points), 'data_id')
+        assert len(np.unique(self.data_id)) == self.num_points, "data_id must be unique for each data point."
         self.covs.update({'intercept': np.ones(self.num_points)})
         for cov_name, cov in self.covs.items():
             assert len(cov) == self.num_points, f"covs[{cov_name}], inconsistent shape."
@@ -72,6 +73,7 @@ class MRData:
         assert isinstance(self.obs_se, np.ndarray)
         assert is_numeric_array(self.obs_se)
         assert isinstance(self.study_id, np.ndarray)
+        assert isinstance(self.data_id, np.ndarray)
         assert isinstance(self.covs, dict)
         for cov in self.covs.values():
             assert isinstance(cov, np.ndarray)
@@ -169,8 +171,9 @@ class MRData:
         for cov_name, cov in self.covs.items():
             covs[cov_name] = cov[index].copy()
         study_id = self.study_id[index].copy()
+        data_id = self.data_id[index].copy()
 
-        return MRData(obs, obs_se, covs, study_id)
+        return MRData(obs, obs_se, covs, study_id, data_id)
 
     def is_empty(self) -> bool:
         """Return true when object contain data.
@@ -204,6 +207,7 @@ class MRData:
         self.obs_se = empty_array()
         self.covs = dict()
         self.study_id = empty_array()
+        self.data_id = empty_array()
         self.__post_init__()
 
     def load_df(self, data: pd.DataFrame,
