@@ -571,7 +571,12 @@ def expand_array(array: np.ndarray,
     """
     array = np.array(array)
     if len(array) == 0:
-        array = np.full(shape, value)
+        if hasattr(value, '__iter__') and not isinstance(value, str):
+            value = np.array(value)
+            assert value.shape == shape, f"{name}, alternative value inconsistent shape."
+            array = value
+        else:
+            array = np.full(shape, value)
     else:
         assert array.shape == shape, f"{name}, inconsistent shape."
     return array

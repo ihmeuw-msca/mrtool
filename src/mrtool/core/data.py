@@ -5,7 +5,7 @@
 
     `data` module for `mrtool` package.
 """
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Any
 import warnings
 from dataclasses import dataclass, field
 import numpy as np
@@ -21,8 +21,8 @@ class MRData:
     obs_se: np.ndarray = field(default_factory=empty_array)
     covs: Dict[str, np.ndarray] = field(default_factory=dict)
     study_id: np.ndarray = field(default_factory=empty_array)
+    data_id: np.ndarray = field(default_factory=empty_array)
     cov_scales: Dict[str, float] = field(init=False, default_factory=dict)
-    data_id: np.ndarray = field(init=False)
 
     def __post_init__(self):
         self._check_attr_type()
@@ -30,7 +30,8 @@ class MRData:
         self.obs = expand_array(self.obs, (self.num_points,), np.nan, 'obs')
         self.obs_se = expand_array(self.obs_se, (self.num_points,), 1.0, 'obs_se')
         self.study_id = expand_array(self.study_id, (self.num_points,), 'Unknown', 'study_id')
-        self.data_id = np.arange(self.num_obs)
+        self.data_id = expand_array(self.data_id, (self.num_points,), np.arange(self.num_points), 'data_id')
+        assert len(np.unique(self.data_id)) == self.num_points, "data_id must be unique for each data point."
         self.covs.update({'intercept': np.ones(self.num_points)})
         for cov_name, cov in self.covs.items():
             assert len(cov) == self.num_points, f"covs[{cov_name}], inconsistent shape."
@@ -72,6 +73,7 @@ class MRData:
         assert isinstance(self.obs_se, np.ndarray)
         assert is_numeric_array(self.obs_se)
         assert isinstance(self.study_id, np.ndarray)
+        assert isinstance(self.data_id, np.ndarray)
         assert isinstance(self.covs, dict)
         for cov in self.covs.values():
             assert isinstance(cov, np.ndarray)
@@ -154,6 +156,25 @@ class MRData:
         self.study_id = self.study_id[keep_index]
         self.data_id = self.data_id[keep_index]
 
+    def _get_data(self, index: np.ndarray) -> 'MRData':
+        """Get the data point by index.
+
+        Args:
+            index (np.ndarray): Indices of the data we want to get.
+
+        Returns:
+            MRData: data object contains the data from indices.
+        """
+        obs = self.obs[index].copy()
+        obs_se = self.obs_se[index].copy()
+        covs = {}
+        for cov_name, cov in self.covs.items():
+            covs[cov_name] = cov[index].copy()
+        study_id = self.study_id[index].copy()
+        data_id = self.data_id[index].copy()
+
+        return MRData(obs, obs_se, covs, study_id, data_id)
+
     def is_empty(self) -> bool:
         """Return true when object contain data.
         """
@@ -185,14 +206,16 @@ class MRData:
         self.obs = empty_array()
         self.obs_se = empty_array()
         self.covs = dict()
+        self.covs['intercept'] = np.ones(0)
         self.study_id = empty_array()
-        self.__post_init__()
+        self.data_id = empty_array()
 
     def load_df(self, data: pd.DataFrame,
                 col_obs: Union[str, None] = None,
                 col_obs_se: Union[str, None] = None,
                 col_covs: Union[List[str], None] = None,
-                col_study_id: Union[str, None] = None):
+                col_study_id: Union[str, None] = None,
+                col_data_id: Union[str, None] = None):
         """Load data from data frame.
         """
         self.reset()
@@ -200,6 +223,7 @@ class MRData:
         self.obs = empty_array() if col_obs is None else data[col_obs].to_numpy()
         self.obs_se = empty_array() if col_obs_se is None else data[col_obs_se].to_numpy()
         self.study_id = empty_array() if col_study_id is None else data[col_study_id].to_numpy()
+        self.data_id = empty_array() if col_data_id is None else data[col_data_id].to_numpy()
         self.covs = dict() if col_covs is None else {cov_name: data[cov_name].to_numpy()
                                                      for cov_name in col_covs}
 
@@ -241,12 +265,35 @@ class MRData:
 
     def has_covs(self, covs: Union[List[str], str]) -> bool:
         """If the data has the provided covariates.
+
+        Args:
+            covs (Union[List[str], str]):
+                List of covariate names or one covariate name.
+
+        Returns:
+            bool: If has covariates return `True`.
         """
         covs = to_list(covs)
         if len(covs) == 0:
             return True
         else:
             return all([cov in self.covs for cov in covs])
+
+    def has_studies(self, studies: Union[List[Any], Any]) -> bool:
+        """If the data has provided study_id
+
+        Args:
+            studies Union[List[Any], Any]:
+                List of studies or one study.
+
+        Returns:
+            bool: If has studies return `True`.
+        """
+        studies = to_list(studies)
+        if len(studies) == 0:
+            return True
+        else:
+            return all([study in self.studies for study in studies])
 
     def _assert_has_covs(self, covs: Union[List[str], str]):
         """Assert has covariates otherwise raise ValueError.
@@ -256,8 +303,23 @@ class MRData:
             missing_covs = [cov for cov in covs if cov not in self.covs]
             raise ValueError(f"MRData object do not contain covariates: {missing_covs}.")
 
+    def _assert_has_studies(self, studies: Union[List[Any], Any]):
+        """Assert has studies otherwise raise ValueError.
+        """
+        if not self.has_studies(studies):
+            studies = to_list(studies)
+            missing_studies = [study for study in studies if study not in self.studies]
+            raise ValueError(f"MRData object do not contain studies: {missing_studies}.")
+
     def get_covs(self, covs: Union[List[str], str]) -> np.ndarray:
         """Get covariate matrix.
+
+        Args:
+            covs (Union[List[str], str]):
+                List of covariate names or one covariate name.
+
+        Returns:
+            np.ndarray: Covariates matrix, in the column fashion.
         """
         covs = to_list(covs)
         self._assert_has_covs(covs)
@@ -265,6 +327,20 @@ class MRData:
             return np.array([]).reshape(self.num_obs, 0)
         else:
             return np.hstack([self.covs[cov_names][:, None] for cov_names in covs])
+
+    def get_study_data(self, studies: Union[List[Any], Any]) -> 'MRData':
+        """Get study specific data.
+
+        Args:
+            studies (Union[List[Any], Any]): List of studies or  one study.
+
+        Returns
+            MRData: Data object contains the study specific data.
+        """
+        self._assert_has_studies(studies)
+        studies = to_list(studies)
+        index = np.array([study in studies for study in self.study_id])
+        return self._get_data(index)
 
     def normalize_covs(self, covs: Union[List[str], str, None] = None):
         """Normalize covariates by the largest absolute value for each covariate.

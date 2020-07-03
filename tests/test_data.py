@@ -58,6 +58,20 @@ def xarray():
     return example_dataset
 
 
+@pytest.fixture
+def data(df):
+    df['study_id'] = np.array([0, 0, 1, 1, 2])
+    d = MRData()
+    d.load_df(
+        df,
+        col_obs='obs',
+        col_obs_se='obs_se',
+        col_covs=[f'cov{i}' for i in range(3)],
+        col_study_id='study_id'
+    )
+    return d
+
+
 @pytest.mark.parametrize('obs', ['obs', None])
 @pytest.mark.parametrize('obs_se', ['obs_se', None])
 def test_obs(df, obs, obs_se):
@@ -223,3 +237,39 @@ def test_load_xr(xarray):
     assert np.allclose(np.sort(d.obs_se), np.sort(xarray['y_se'].data.flatten()))
     assert np.allclose(np.sort(d.covs['sdi']), np.sort(xarray['sdi'].data.flatten()))
     assert np.allclose(np.sort(d.studies), np.sort(xarray.coords['location_id']))
+
+
+@pytest.mark.parametrize('index', [np.array([True, True, False, False, False]),
+                                   np.array([0, 1])])
+def test_get_data(index, data):
+    sub_data = data._get_data(index)
+
+    assert np.allclose(data.obs[index], sub_data.obs)
+    assert np.allclose(data.obs_se[index], sub_data.obs_se)
+    assert np.allclose(data.study_id[index], sub_data.study_id)
+    assert np.allclose(data.data_id[index], sub_data.data_id)
+    for cov_name in data.covs:
+        assert np.allclose(data.covs[cov_name][index], sub_data.covs[cov_name])
+
+
+@pytest.mark.parametrize(('studies', 'result'), [([0, 1, 2], True),
+                                                 ([3, 4, 0], False),
+                                                 (0, True),
+                                                 (3, False)])
+def test_has_studies(studies, result, data):
+    assert data.has_studies(studies) == result
+
+
+def test_assert_has_studies(data):
+    with pytest.raises(ValueError):
+        data._assert_has_studies(3)
+
+
+@pytest.mark.parametrize('studies', [0, [0], [0, 1], [0, 1, 2]])
+def test_get_study_data(studies, data):
+    sub_data = data.get_study_data(studies)
+
+    if not isinstance(studies, list):
+        assert sub_data.num_studies == 1
+    else:
+        assert sub_data.num_studies == len(studies)
