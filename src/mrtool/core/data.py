@@ -5,7 +5,7 @@
 
     `data` module for `mrtool` package.
 """
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Any
 import warnings
 from dataclasses import dataclass, field
 import numpy as np
@@ -154,6 +154,24 @@ class MRData:
         self.study_id = self.study_id[keep_index]
         self.data_id = self.data_id[keep_index]
 
+    def _get_data(self, index: np.ndarray) -> 'MRData':
+        """Get the data point by index.
+
+        Args:
+            index (np.ndarray): Indices of the data we want to get.
+
+        Returns:
+            MRData: data object contains the data from indices.
+        """
+        obs = self.obs[index].copy()
+        obs_se = self.obs_se[index].copy()
+        covs = {}
+        for cov_name, cov in self.covs.items():
+            covs[cov_name] = cov[index].copy()
+        study_id = self.study_id[index].copy()
+
+        return MRData(obs, obs_se, covs, study_id)
+
     def is_empty(self) -> bool:
         """Return true when object contain data.
         """
@@ -241,12 +259,35 @@ class MRData:
 
     def has_covs(self, covs: Union[List[str], str]) -> bool:
         """If the data has the provided covariates.
+
+        Args:
+            covs (Union[List[str], str]):
+                List of covariate names or one covariate name.
+
+        Returns:
+            bool: If has covariates return `True`.
         """
         covs = to_list(covs)
         if len(covs) == 0:
             return True
         else:
             return all([cov in self.covs for cov in covs])
+
+    def has_studies(self, studies: Union[List[Any], Any]) -> bool:
+        """If the data has provided study_id
+
+        Args:
+            studies Union[List[Any], Any]:
+                List of studies or one study.
+
+        Returns:
+            bool: If has studies return `True`.
+        """
+        studies = to_list(studies)
+        if len(studies) == 0:
+            return True
+        else:
+            return all([study in self.studies for study in studies])
 
     def _assert_has_covs(self, covs: Union[List[str], str]):
         """Assert has covariates otherwise raise ValueError.
@@ -256,8 +297,23 @@ class MRData:
             missing_covs = [cov for cov in covs if cov not in self.covs]
             raise ValueError(f"MRData object do not contain covariates: {missing_covs}.")
 
+    def _assert_has_studies(self, studies: Union[List[Any], Any]):
+        """Assert has studies otherwise raise ValueError.
+        """
+        if not self.has_studies(studies):
+            studies = to_list(studies)
+            missing_studies = [study for study in studies if study not in self.studies]
+            raise ValueError(f"MRData object do not contain studies: {missing_studies}.")
+
     def get_covs(self, covs: Union[List[str], str]) -> np.ndarray:
         """Get covariate matrix.
+
+        Args:
+            covs (Union[List[str], str]):
+                List of covariate names or one covariate name.
+
+        Returns:
+            np.ndarray: Covariates matrix, in the column fashion.
         """
         covs = to_list(covs)
         self._assert_has_covs(covs)
@@ -265,6 +321,20 @@ class MRData:
             return np.array([]).reshape(self.num_obs, 0)
         else:
             return np.hstack([self.covs[cov_names][:, None] for cov_names in covs])
+
+    def get_study_data(self, studies: Union[List[Any], Any]) -> 'MRData':
+        """Get study specific data.
+
+        Args:
+            studies (Union[List[Any], Any]): List of studies or  one study.
+
+        Returns
+            MRData: Data object contains the study specific data.
+        """
+        self._assert_has_studies(studies)
+        studies = to_list(studies)
+        index = np.array([study in studies for study in self.study_id])
+        return self._get_data(index)
 
     def normalize_covs(self, covs: Union[List[str], str, None] = None):
         """Normalize covariates by the largest absolute value for each covariate.
