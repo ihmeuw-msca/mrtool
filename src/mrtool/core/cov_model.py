@@ -146,7 +146,7 @@ class CovModel:
         self.spline_r_linear = spline_r_linear
 
         self.prior_spline_derval_gaussian = prior_spline_derval_gaussian
-        self.prior_spline_derval_gaussian_domain_template = np.array(prior_spline_funval_gaussian_domain)
+        self.prior_spline_derval_gaussian_domain_template = np.array(prior_spline_derval_gaussian_domain)
         self.prior_spline_derval_uniform = prior_spline_derval_uniform
         self.prior_spline_derval_uniform_domain_template = np.array(prior_spline_derval_uniform_domain)
         self.prior_spline_funval_gaussian = prior_spline_funval_gaussian
