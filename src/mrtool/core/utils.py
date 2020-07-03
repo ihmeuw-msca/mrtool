@@ -239,7 +239,7 @@ def input_uniform_prior(prior, size):
         return prior
 
 
-def avg_integral(mat, spline=None):
+def avg_integral(mat, spline=None, use_spline_intercept=False):
     """Compute average integral.
 
     Args:
@@ -249,6 +249,8 @@ def avg_integral(mat, spline=None):
         spline (xspline.XSpline | None, optional):
             Spline integrate over with, when `None` treat the function as
             linear.
+        use_spline_intercept (bool, optional):
+            If `True` use all bases from spline, otherwise remove the first bases.
 
     Returns:
         numpy.ndarray:
@@ -258,9 +260,11 @@ def avg_integral(mat, spline=None):
     if mat.size == 0:
         return mat.reshape(mat.shape[0], 0)
 
+    index = 0 if use_spline_intercept else 1
+
     if mat.shape[1] == 1:
         return mat if spline is None else spline.design_mat(
-            mat.ravel(), l_extra=True, r_extra=True)[:, 1:]
+            mat.ravel(), l_extra=True, r_extra=True)[:, index:]
     else:
         if spline is None:
             return mat.mean(axis=1)[:, None]
@@ -283,7 +287,7 @@ def avg_integral(mat, spline=None):
                     l_extra=True,
                     r_extra=True)/(dx[int_idx][:, None])
 
-            return mat[:, 1:]
+            return mat[:, index:]
 
 # random knots
 def sample_knots(num_intervals: int,

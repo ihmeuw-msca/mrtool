@@ -22,6 +22,7 @@ class CovModel:
                  use_re=False,
                  use_re_mid_point=False,
                  use_spline=False,
+                 use_spline_intercept=False,
                  spline_knots_type='frequency',
                  spline_knots=np.linspace(0.0, 1.0, 4),
                  spline_degree=3,
@@ -66,6 +67,8 @@ class CovModel:
                 If use the midpoint for the random effects.
             use_spline(bool, optional):
                 If use splines.
+            use_spline_intercept(bool, optional):
+                If `True`, use full set of the spline bases, shouldn't include extra `intercept` in this case.
             spline_knots_type (str, optional):
                 The method of how to place the knots, `'frequency'` place the
                 knots according to the data quantile and `'domain'` place the
@@ -136,6 +139,7 @@ class CovModel:
         self.use_re = use_re
         self.use_re_mid_point = use_re_mid_point
         self.use_spline = use_spline
+        self.use_spline_intercept = use_spline_intercept
 
         self.spline = None
         self.spline_knots_type = spline_knots_type
@@ -364,8 +368,10 @@ class CovModel:
         alt_cov = data.get_covs(self.alt_cov)
         ref_cov = data.get_covs(self.ref_cov)
 
-        alt_mat = utils.avg_integral(alt_cov, spline=self.spline)
-        ref_mat = utils.avg_integral(ref_cov, spline=self.spline)
+        alt_mat = utils.avg_integral(alt_cov, spline=self.spline,
+                                     use_spline_intercept=self.use_spline_intercept)
+        ref_mat = utils.avg_integral(ref_cov, spline=self.spline,
+                                     use_spline_intercept=self.use_spline_intercept)
 
         return alt_mat, ref_mat
 
@@ -397,31 +403,32 @@ class CovModel:
                                   self.prior_spline_num_constraint_points)
         tmp_val = np.array([[-np.inf], [0.0]])
 
+        index = 0 if self.use_spline_intercept else 1
         # spline derval uniform priors
         if not np.isinf(self.prior_spline_derval_uniform).all() and self.use_spline:
-            c_mat = np.vstack((c_mat, self.spline.design_dmat(derval_points, 1)[:, 1:]))
+            c_mat = np.vstack((c_mat, self.spline.design_dmat(derval_points, 1)[:, index:]))
             c_val = np.hstack((c_val, self.prior_spline_derval_uniform))
 
         # spline funval uniform priors
         if not np.isinf(self.prior_spline_funval_uniform).all() and self.use_spline:
-            c_mat = np.vstack((c_mat, self.spline.design_mat(funval_points)[:, 1:]))
+            c_mat = np.vstack((c_mat, self.spline.design_mat(funval_points)[:, index:]))
             c_val = np.hstack((c_val, self.prior_spline_funval_uniform))
 
         # spline monotonicity constraints
         if self.prior_spline_monotonicity is not None and self.use_spline:
             sign = 1.0 if self.prior_spline_monotonicity == 'decreasing' else -1.0
-            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(mono_points, 1)[:, 1:]))
+            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(mono_points, 1)[:, index:]))
             c_val = np.hstack((c_val, np.repeat(tmp_val, mono_points.size, axis=1)))
 
         # spline convexity constraints
         if self.prior_spline_convexity is not None and self.use_spline:
             sign = 1.0 if self.prior_spline_convexity == 'concave' else -1.0
-            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(cvcv_points, 2)[:, 1:]))
+            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(cvcv_points, 2)[:, index:]))
             c_val = np.hstack((c_val, np.repeat(tmp_val, cvcv_points.size, axis=1)))
 
         # spline maximum derivative constraints
         if not np.isinf(self.prior_spline_maxder_uniform).all() and self.use_spline:
-            c_mat = np.vstack((c_mat, self.spline.last_dmat()[:, 1:]))
+            c_mat = np.vstack((c_mat, self.spline.last_dmat()[:, index:]))
             c_val = np.hstack((c_val, self.prior_spline_maxder_uniform))
 
         return c_mat, c_val
@@ -442,19 +449,20 @@ class CovModel:
         funval_points = np.linspace(*self.prior_spline_funval_gaussian_domain,
                                     self.prior_spline_num_constraint_points)
 
+        index = 0 if self.use_spline_intercept else 1
         # spline derval gaussian priors
         if not np.isinf(self.prior_spline_derval_gaussian[1]).all() and self.use_spline:
-            r_mat = np.vstack((r_mat, self.spline.design_dmat(derval_points, 1)[:, 1:]))
+            r_mat = np.vstack((r_mat, self.spline.design_dmat(derval_points, 1)[:, index:]))
             r_val = np.hstack((r_val, self.prior_spline_derval_gaussian))
 
         # spline funval gaussian priors
         if not np.isinf(self.prior_spline_funval_gaussian[1]).all() and self.use_spline:
-            r_mat = np.vstack((r_mat, self.spline.design_mat(funval_points)[:, 1:]))
+            r_mat = np.vstack((r_mat, self.spline.design_mat(funval_points)[:, index:]))
             r_val = np.hstack((r_val, self.prior_spline_funval_gaussian))
 
         # spline maximum derivative constraints
         if not np.isinf(self.prior_spline_maxder_gaussian[1]).all() and self.use_spline:
-            r_mat = np.vstack((r_mat, self.spline.last_dmat()[:, 1:]))
+            r_mat = np.vstack((r_mat, self.spline.last_dmat()[:, index:]))
             r_val = np.hstack((r_val, self.prior_spline_maxder_gaussian))
 
         return r_mat, r_val
@@ -463,7 +471,7 @@ class CovModel:
     def num_x_vars(self):
         if self.use_spline:
             assert self.spline is not None, "Attach data first to create spline."
-            n = self.spline.num_spline_bases - 1
+            n = self.spline.num_spline_bases - 1 + self.use_spline_intercept
         else:
             n = 1
         return n
@@ -472,7 +480,7 @@ class CovModel:
     def num_z_vars(self):
         if self.use_re:
             if self.use_re_mid_point:
-                return 1
+                return 1 + self.use_spline_intercept
             else:
                 return self.num_x_vars
         else:
@@ -544,10 +552,12 @@ class LinearCovModel(CovModel):
         else:
             alt_mat, ref_mat = self.create_design_mat(data)
 
-        if ref_mat.size == 0:
-            return alt_mat
-        else:
-            return alt_mat - ref_mat
+        z_mat = alt_mat if ref_mat.size == 0 else alt_mat - ref_mat
+
+        if self.use_spline and self.use_spline_intercept and self.use_re_mid_point:
+            z_mat = np.insert(z_mat, 0, 1, axis=1)
+
+        return z_mat
 
 
 class LogCovModel(CovModel):
@@ -555,6 +565,9 @@ class LogCovModel(CovModel):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.use_spline_intercept:
+            raise ValueError("LogCovModel does not support use_spline_intercept."
+                             "Please set it to False, or leave it as default.")
 
     def create_x_fun(self, data):
         """Create design functions for the fixed effects.
