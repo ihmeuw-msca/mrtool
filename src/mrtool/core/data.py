@@ -206,15 +206,16 @@ class MRData:
         self.obs = empty_array()
         self.obs_se = empty_array()
         self.covs = dict()
+        self.covs['intercept'] = np.ones(0)
         self.study_id = empty_array()
         self.data_id = empty_array()
-        self.__post_init__()
 
     def load_df(self, data: pd.DataFrame,
                 col_obs: Union[str, None] = None,
                 col_obs_se: Union[str, None] = None,
                 col_covs: Union[List[str], None] = None,
-                col_study_id: Union[str, None] = None):
+                col_study_id: Union[str, None] = None,
+                col_data_id: Union[str, None] = None):
         """Load data from data frame.
         """
         self.reset()
@@ -222,6 +223,7 @@ class MRData:
         self.obs = empty_array() if col_obs is None else data[col_obs].to_numpy()
         self.obs_se = empty_array() if col_obs_se is None else data[col_obs_se].to_numpy()
         self.study_id = empty_array() if col_study_id is None else data[col_study_id].to_numpy()
+        self.data_id = empty_array() if col_data_id is None else data[col_data_id].to_numpy()
         self.covs = dict() if col_covs is None else {cov_name: data[cov_name].to_numpy()
                                                      for cov_name in col_covs}
 
