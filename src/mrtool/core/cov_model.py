@@ -139,7 +139,7 @@ class CovModel:
         self.use_re = use_re
         self.use_re_mid_point = use_re_mid_point
         self.use_spline = use_spline
-        self.use_spline_intercept = use_spline_intercept
+        self.use_spline_intercept = use_spline_intercept and self.use_spline
 
         self.spline = None
         self.spline_knots_type = spline_knots_type
@@ -554,7 +554,7 @@ class LinearCovModel(CovModel):
 
         z_mat = alt_mat if ref_mat.size == 0 else alt_mat - ref_mat
 
-        if self.use_spline and self.use_spline_intercept and self.use_re_mid_point:
+        if self.use_spline_intercept and self.use_re_mid_point:
             z_mat = np.insert(z_mat, 0, 1, axis=1)
 
         return z_mat
