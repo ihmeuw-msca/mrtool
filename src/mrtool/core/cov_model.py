@@ -101,6 +101,10 @@ class CovModel:
             prior_spline_monotonicity (str | None, optional):
                 Spline shape prior, `'increasing'` indicates spline is
                 increasing, `'decreasing'` indicates spline is decreasing.
+            prior_spline_monotonicity_domain (Tuple[float, float], optional):
+                Domain where spline monotonicity prior applies. Default to `(0.0, 1.0)`.
+            prior_spline_convexity_domain (Tuple[float, float], optional):
+                Domain where spline convexity prior applies. Default to `(0.0, 1.0)`.
             prior_spline_convexity (str | None, optional):
                 Spline shape prior, `'convex'` indicate if spline is convex and
                 `'concave'` indicate spline is concave.
