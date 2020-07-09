@@ -424,14 +424,13 @@ def col_diff_mat(n):
     return D
 
 
-
-
-
 def nonlinear_trans(score, slope=6.0, quantile=0.7):
     score_min = np.min(score)
     score_max = np.max(score)
-    weight = (score - score_min)/(score_max - score_min)
-
+    if score_max == score_min:
+        return np.ones(len(score))
+    else:
+        weight = (score - score_min)/(score_max - score_min)
 
     sorted_weight = np.sort(weight)
     x = sorted_weight[int(0.8*weight.size)]

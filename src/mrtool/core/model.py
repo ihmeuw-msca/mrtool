@@ -490,7 +490,7 @@ class MRBeRT:
         for i, sub_model in enumerate(self.sub_models):
             scores[0][i] = score_sub_models_datafit(sub_model)
             scores[1][i] = score_sub_models_variation(sub_model,
-                                                            self.ensemble_cov_model_name, n=3)
+                                                      self.ensemble_cov_model_name, n=3)
 
         weights = np.zeros(scores.shape)
         for i in range(2):
@@ -599,9 +599,11 @@ def score_sub_models_variation(mr: MRBRT,
         raise ValueError('Must optimize MRBRT first.')
 
     index = mr.get_cov_model_index(ensemble_cov_model_name)
-    spline = mr.cov_models[index].spline
+    cov_model = mr.cov_models[index]
+    spline = cov_model.spline
     x = np.linspace(spline.knots[0], spline.knots[-1], 201)
-    dmat = spline.design_dmat(x, n)[:, 1:]
+    i = 0 if cov_model.use_spline_intercept else 1
+    dmat = spline.design_dmat(x, n)[:, i:]
     d = dmat.dot(mr.beta_soln[mr.x_vars_indices[index]])
     return -np.mean(np.abs(d))
 
