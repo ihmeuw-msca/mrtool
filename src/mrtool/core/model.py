@@ -360,7 +360,7 @@ class MRBRT:
                      beta_samples: np.ndarray,
                      gamma_samples: np.ndarray,
                      random_study: bool = True,
-                     sort_by_study_id: bool = False) -> np.ndarray:
+                     sort_by_data_id: bool = False) -> np.ndarray:
         """Create draws for the given data set.
 
         Args:
@@ -392,7 +392,7 @@ class MRBRT:
             re = self.extract_re(data.study_id)
             y_samples += np.sum(z_mat*re, axis=1)
 
-        if sort_by_study_id:
+        if sort_by_data_id:
             y_samples = y_samples[:, np.argsort(data.data_id)]
 
         return y_samples.T
@@ -557,7 +557,7 @@ class MRBeRT:
                      beta_samples: List[np.ndarray],
                      gamma_samples: List[np.ndarray],
                      random_study: bool = True,
-                     sort_by_study_id: bool = False) -> np.ndarray:
+                     sort_by_data_id: bool = False) -> np.ndarray:
         """Create draws.
         For function description please check `create_draws` for `MRBRT`.
         """
@@ -576,7 +576,7 @@ class MRBeRT:
                     beta_samples=sub_beta_samples,
                     gamma_samples=sub_gamma_samples,
                     random_study=random_study,
-                    sort_by_study_id=sort_by_study_id
+                    sort_by_data_id=sort_by_data_id
                 ))
         y_samples = np.hstack(y_samples)
 
