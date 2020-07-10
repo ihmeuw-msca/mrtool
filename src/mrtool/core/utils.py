@@ -204,7 +204,7 @@ def input_gaussian_prior(prior, size):
             store the mean and second row store the standard deviation.
     """
     assert is_gaussian_prior(prior)
-    if prior is None:
+    if prior is None or prior.size == 0:
         return np.array([[0.0]*size, [np.inf]*size])
     elif prior.ndim == 1:
         return np.repeat(prior[:, None], size, axis=1)
@@ -230,7 +230,7 @@ def input_uniform_prior(prior, size):
             store the mean and second row store the standard deviation.
     """
     assert is_uniform_prior(prior)
-    if prior is None:
+    if prior is None or prior.size == 0:
         return np.array([[-np.inf]*size, [np.inf]*size])
     elif prior.ndim == 1:
         return np.repeat(prior[:, None], size, axis=1)

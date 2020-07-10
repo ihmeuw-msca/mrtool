@@ -51,6 +51,12 @@ class MRBRT:
         for cov_model in self.cov_models:
             cov_model.attach_data(self.data)
 
+        # add random effects
+        if not any([cov_model.use_re for cov_model in self.cov_models]):
+            self.cov_models[0].use_re = True
+            self.cov_models[0].prior_gamma_uniform = np.array([0.0, 0.0])
+            self.cov_models[0]._process_priors()
+
         # fixed effects size and index
         self.x_vars_sizes = [cov_model.num_x_vars for cov_model in self.cov_models]
         self.x_vars_indices = utils.sizes_to_indices(self.x_vars_sizes)
