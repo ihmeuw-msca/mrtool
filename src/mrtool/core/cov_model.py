@@ -609,12 +609,12 @@ class LogCovModel(CovModel):
         else:
             return alt_mat - ref_mat
 
-    def create_constraint_mat(self):
+    def create_constraint_mat(self, threshold=1e-6):
         """Create constraint matrix.
         Overwrite the super class, adding non-negative constraints.
         """
         c_mat, c_val = super().create_constraint_mat()
-        tmp_val = np.array([[-1.0], [np.inf]])
+        tmp_val = np.array([[-1.0 + threshold], [np.inf]])
 
         if self.use_spline:
             points = np.linspace(self.spline.knots[0],
