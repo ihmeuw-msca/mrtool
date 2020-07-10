@@ -13,7 +13,6 @@ from mrtool.core.other_sampling import sample_simple_lme_beta
 class CovFinder:
     """Class in charge of the covariate selection.
     """
-    loose_beta_gprior_std = 1.0
     zero_gamma_uprior = np.array([0.0, 0.0])
     loose_gamma_uprior = np.array([1.0, 1.0])
 
@@ -28,6 +27,8 @@ class CovFinder:
                  power_step_size: float = 0.5,
                  inlier_pct: float = 1.0,
                  alpha: float = 0.05,
+                 beta_gprior_std: float = 1.0,
+                 bias_zero: bool = False,
                  use_re: Union[Dict, None] = None):
         """Covariate Finder.
 
@@ -49,6 +50,9 @@ class CovFinder:
             power_step_size (float, optional): Step size of the swiping across the power range.
             inlier_pct (float, optional): Trimming option inlier percentage. Default to 1.
             alpha (float, optional): Significance threshold. Default to 0.05.
+            beta_gprior_std (float, optional): Loose beta Gaussian prior standard deviation. Default to 1.
+            bias_zero (bool, optional):
+                If `True`, fit when specify the Gaussian prior it will be mean zero. Default to `False`.
             use_re (Union[Dict, None], optional):
                 A dictionary of use_re for each covariate. When `None` we have an uninformative prior
                 for the random effects variance. Default to `None`.
@@ -61,6 +65,9 @@ class CovFinder:
             "covs and pre_selected_covs should be mutually exclusive."
         self.normalize_covs = normalized_covs
         self.inlier_pct = inlier_pct
+        self.beta_gprior_std = beta_gprior_std
+        assert self.beta_gprior_std > 0.0, f"beta_gprior_std={self.beta_gprior_std} has to be positive."
+        self.bias_zero = bias_zero
         self.alpha = alpha
         if self.normalize_covs:
             self.data = deepcopy(data)
@@ -120,7 +127,7 @@ class CovFinder:
                                prior_beta_gaussian=None
                                if cov not in self.beta_gprior else self.beta_gprior[cov],
                                prior_gamma_uniform=self.loose_gamma_uprior if self.use_re[cov] else \
-                                   self.zero_gamma_uprior)
+                                                   self.zero_gamma_uprior)
                 for cov in covs
             ]
 
@@ -184,7 +191,7 @@ class CovFinder:
         if len(self.pre_selected_covs) != 0:
             gaussian_model = self.fit_gaussian_model(self.pre_selected_covs)
             beta_mean, beta_std, _ = self.summary_gaussian_model(gaussian_model)
-            beta_std.fill(self.loose_beta_gprior_std)
+            beta_std.fill(self.beta_gprior_std)
             self.update_beta_gprior(self.pre_selected_covs, beta_mean, beta_std)
 
     def select_covs_by_laplace(self, laplace_std: float, verbose: bool = False):
@@ -215,8 +222,8 @@ class CovFinder:
                 if beta_soln_sig[i]:
                     self.selected_covs.append(candidate_covs[i])
                     self.update_beta_gprior([candidate_covs[i]],
-                                            np.array([beta_soln_mean[i]]),
-                                            np.array([self.loose_beta_gprior_std]))
+                                            np.array([0.0 if self.bias_zero else beta_soln_mean[i]]),
+                                            np.array([self.beta_gprior_std]))
             if verbose:
                 print('    selected covariates:', self.selected_covs)
             # update the stop
