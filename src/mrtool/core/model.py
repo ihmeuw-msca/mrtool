@@ -334,6 +334,7 @@ class MRBRT:
                     sample_size: int = 1,
                     sim_prior: bool = True,
                     sim_re: bool = True,
+                    max_iter: int = 100,
                     print_level: int = 0) -> Tuple[np.ndarray, np.ndarray]:
         """Sample solutions.
 
@@ -341,6 +342,7 @@ class MRBRT:
             sample_size (int, optional): Number of samples.
             sim_prior (bool, optional): If `True`, simulate priors.
             sim_re (bool, optional): If `True`, simulate random effects.
+            max_iter (int, optional): Maximum number of iterations. Default to 100.
             print_level (int, optional):
                 Level detailed of optimization information printed out during sampling process.
                 If 0, no information will be printed out.
@@ -357,6 +359,7 @@ class MRBRT:
                                sample_size=sample_size,
                                sim_prior=sim_prior,
                                sim_re=sim_re,
+                               max_iter=max_iter,
                                print_level=print_level)
 
         return beta_soln_samples, gamma_soln_samples
@@ -513,6 +516,7 @@ class MRBeRT:
                     sample_size: int = 1,
                     sim_prior: bool = True,
                     sim_re: bool = True,
+                    max_iter: int = 100,
                     print_level: bool = 0) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """Sample solution.
         """
@@ -526,6 +530,7 @@ class MRBeRT:
                     sub_model.sample_soln(sample_size=sample_sizes[i],
                                           sim_prior=sim_prior,
                                           sim_re=sim_re,
+                                          max_iter=max_iter,
                                           print_level=print_level)
             else:
                 sub_beta_samples = np.array([]).reshape(0, sub_model.num_x_vars)
