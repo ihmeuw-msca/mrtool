@@ -485,8 +485,9 @@ def mat_to_fun(alt_mat, ref_mat=None):
 
     return fun, jac_fun
 
-def mat_to_log_fun(alt_mat, ref_mat=None):
+def mat_to_log_fun(alt_mat, ref_mat=None, add_one=True):
     alt_mat = np.array(alt_mat)
+    shift = 1.0 if add_one else 0.0
     assert alt_mat.ndim == 2
     if ref_mat is not None:
         ref_mat = np.array(ref_mat)
@@ -498,18 +499,18 @@ def mat_to_log_fun(alt_mat, ref_mat=None):
     else:
         if ref_mat is None or ref_mat.size == 0:
             def fun(beta):
-                return np.log(1.0 + alt_mat.dot(beta))
+                return np.log(shift + alt_mat.dot(beta))
 
             def jac_fun(beta):
-                return alt_mat/(1.0 + alt_mat.dot(beta)[:, None])
+                return alt_mat/(shift + alt_mat.dot(beta)[:, None])
         else:
             def fun(beta):
-                return np.log(1.0 + alt_mat.dot(beta)) - \
-                       np.log(1.0 + ref_mat.dot(beta))
+                return np.log(shift + alt_mat.dot(beta)) - \
+                       np.log(shift + ref_mat.dot(beta))
 
             def jac_fun(beta):
-                return alt_mat/(1.0 + alt_mat.dot(beta)[:, None]) - \
-                       ref_mat/(1.0 + ref_mat.dot(beta)[:, None])
+                return alt_mat/(shift + alt_mat.dot(beta)[:, None]) - \
+                       ref_mat/(shift + ref_mat.dot(beta)[:, None])
 
     return fun, jac_fun
 

@@ -640,9 +640,9 @@ class LogCovModel(CovModel):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.use_spline_intercept:
-            raise ValueError("LogCovModel does not support use_spline_intercept."
-                             "Please set it to False, or leave it as default.")
+        # if self.use_spline_intercept:
+        #     raise ValueError("LogCovModel does not support use_spline_intercept."
+        #                      "Please set it to False, or leave it as default.")
 
     def create_x_fun(self, data):
         """Create design functions for the fixed effects.
@@ -656,7 +656,8 @@ class LogCovModel(CovModel):
                 Design functions for fixed effects.
         """
         alt_mat, ref_mat = self.create_design_mat(data)
-        return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat)
+        add_one = not (self.use_spline and self.use_spline_intercept)
+        return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat, add_one=add_one)
 
     def create_z_mat(self, data):
         """Create design matrix for the random effects.
@@ -685,13 +686,14 @@ class LogCovModel(CovModel):
         Overwrite the super class, adding non-negative constraints.
         """
         c_mat, c_val = super().create_constraint_mat()
-        tmp_val = np.array([[-1.0 + threshold], [np.inf]])
-
+        shift = 0.0 if self.use_spline_intercept else 1.0
+        index = 0 if self.use_spline_intercept else 1
+        tmp_val = np.array([[-shift + threshold], [np.inf]])
         if self.use_spline:
             points = np.linspace(self.spline.knots[0],
                                  self.spline.knots[-1],
                                  self.prior_spline_num_constraint_points)
-            c_mat = np.vstack((c_mat, self.spline.design_mat(points)[:, 1:]))
+            c_mat = np.vstack((c_mat, self.spline.design_mat(points)[:, index:]))
             c_val = np.hstack((c_val, np.repeat(tmp_val, points.size, axis=1)))
         return c_mat, c_val
 
