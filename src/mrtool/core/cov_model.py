@@ -47,6 +47,7 @@ class CovModel:
                  prior_spline_num_constraint_points=20,
                  prior_spline_maxder_gaussian=None,
                  prior_spline_maxder_uniform=None,
+                 prior_spline_normalization=None,
                  prior_beta_gaussian=None,
                  prior_beta_uniform=None,
                  prior_beta_laplace=None,
@@ -187,6 +188,7 @@ class CovModel:
         self.prior_spline_num_constraint_points = prior_spline_num_constraint_points
         self.prior_spline_maxder_gaussian = prior_spline_maxder_gaussian
         self.prior_spline_maxder_uniform = prior_spline_maxder_uniform
+        self.prior_spline_normalization = prior_spline_normalization
         self.prior_beta_gaussian = prior_beta_gaussian
         self.prior_beta_uniform = prior_beta_uniform
         self.prior_beta_laplace = prior_beta_laplace
@@ -253,6 +255,14 @@ class CovModel:
         assert utils.is_gaussian_prior(self.prior_spline_maxder_gaussian)
         assert utils.is_gaussian_prior(self.prior_beta_gaussian)
         assert utils.is_gaussian_prior(self.prior_gamma_gaussian)
+
+        assert self.prior_spline_normalization is None or len(self.prior_spline_normalization) == 2 or \
+            len(self.prior_spline_normalization) == 3
+        if self.prior_spline_normalization is not None:
+            assert (self.prior_spline_normalization[-1] >= 0.0).all()
+            assert sum(self.prior_spline_normalization[-1]) > 0.0
+            if len(self.prior_spline_normalization) == 3:
+                assert (self.prior_spline_normalization[0] <= self.prior_spline_normalization[1]).all()
 
         assert utils.is_uniform_prior(self.prior_spline_derval_uniform)
         assert utils.is_uniform_prior(self.prior_spline_der2val_uniform)
@@ -341,6 +351,9 @@ class CovModel:
             self.spline = self.create_spline(data)
             self.spline_knots = self.spline.knots
             self._process_priors()
+
+    def has_data(self):
+        return self.use_spline and (self.spline is not None)
 
     def create_spline(self, data: MRData) -> xspline.XSpline:
         """Create spline given current spline parameters.
@@ -474,6 +487,16 @@ class CovModel:
             c_mat = np.vstack((c_mat, self.spline.last_dmat()[:, index:]))
             c_val = np.hstack((c_val, self.prior_spline_maxder_uniform))
 
+        # spline normalization prior
+        if self.prior_spline_normalization is not None and self.use_spline:
+            mat = utils.avg_integral(self.prior_spline_normalization[:-1].T,
+                                     spline=self.spline,
+                                     use_spline_intercept=self.use_spline_intercept)
+            weights = self.prior_spline_normalization[-1]
+            weights = weights/weights.sum()
+            c_mat = np.vstack((c_mat, mat.T.dot(weights)))
+            c_val = np.hstack((c_val, np.ones((2, 1))))
+
         return c_mat, c_val
 
     def create_regularization_mat(self) -> Tuple[np.ndarray, np.ndarray]:
@@ -545,6 +568,7 @@ class CovModel:
                     (self.prior_spline_monotonicity is not None) +
                     (self.prior_spline_convexity is not None)
             )
+            num_c += (self.prior_spline_normalization is not None)
             if not np.isinf(self.prior_spline_maxder_uniform).all():
                 num_c += self.prior_spline_maxder_uniform.shape[1]
             if not np.isinf(self.prior_spline_derval_uniform).all():
@@ -619,9 +643,9 @@ class LogCovModel(CovModel):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.use_spline_intercept:
-            raise ValueError("LogCovModel does not support use_spline_intercept."
-                             "Please set it to False, or leave it as default.")
+        # if self.use_spline_intercept:
+        #     raise ValueError("LogCovModel does not support use_spline_intercept."
+        #                      "Please set it to False, or leave it as default.")
 
     def create_x_fun(self, data):
         """Create design functions for the fixed effects.
@@ -635,7 +659,8 @@ class LogCovModel(CovModel):
                 Design functions for fixed effects.
         """
         alt_mat, ref_mat = self.create_design_mat(data)
-        return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat)
+        add_one = not (self.use_spline and self.use_spline_intercept)
+        return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat, add_one=add_one)
 
     def create_z_mat(self, data):
         """Create design matrix for the random effects.
@@ -664,13 +689,14 @@ class LogCovModel(CovModel):
         Overwrite the super class, adding non-negative constraints.
         """
         c_mat, c_val = super().create_constraint_mat()
-        tmp_val = np.array([[-1.0 + threshold], [np.inf]])
-
+        shift = 0.0 if self.use_spline_intercept else 1.0
+        index = 0 if self.use_spline_intercept else 1
+        tmp_val = np.array([[-shift + threshold], [np.inf]])
         if self.use_spline:
             points = np.linspace(self.spline.knots[0],
                                  self.spline.knots[-1],
                                  self.prior_spline_num_constraint_points)
-            c_mat = np.vstack((c_mat, self.spline.design_mat(points)[:, 1:]))
+            c_mat = np.vstack((c_mat, self.spline.design_mat(points)[:, index:]))
             c_val = np.hstack((c_val, np.repeat(tmp_val, points.size, axis=1)))
         return c_mat, c_val
 
