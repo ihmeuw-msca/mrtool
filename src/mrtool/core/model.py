@@ -248,6 +248,7 @@ class MRBRT:
         z_mat = self.create_z_mat()
         # scale z_mat
         z_scale = np.max(np.abs(z_mat), axis=0)
+        z_scale[z_scale == 0.0] = 1.0
         z_mat /= z_scale
 
         # priors
