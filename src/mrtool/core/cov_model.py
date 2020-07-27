@@ -352,6 +352,9 @@ class CovModel:
             self.spline_knots = self.spline.knots
             self._process_priors()
 
+    def has_data(self):
+        return self.use_spline and (self.spline is not None)
+
     def create_spline(self, data: MRData) -> xspline.XSpline:
         """Create spline given current spline parameters.
         Args:

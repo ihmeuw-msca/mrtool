@@ -47,9 +47,26 @@ class MRBRT:
             self.cov_names.extend(cov_model.covs)
         self.num_covs = len(self.cov_names)
 
+        self.num_x_vars = None
+        self.num_z_vars = None
+        self.num_constraints = None
+        self.num_regularizations = None
+
+        # place holder for the limetr objective
+        self.lt = None
+        self.beta_soln = None
+        self.gamma_soln = None
+        self.u_soln = None
+        self.w_soln = None
+        self.re_soln = None
+
+    def attach_data(self, data=None):
+        """Attach data to cov_model.
+        """
+        data = self.data if data is None else data
         # attach data to cov_model
         for cov_model in self.cov_models:
-            cov_model.attach_data(self.data)
+            cov_model.attach_data(data)
 
         # add random effects
         if not any([cov_model.use_re for cov_model in self.cov_models]):
@@ -80,14 +97,6 @@ class MRBRT:
             cov_model.num_regularizations
             for cov_model in self.cov_models
         ])
-
-        # place holder for the limetr objective
-        self.lt = None
-        self.beta_soln = None
-        self.gamma_soln = None
-        self.u_soln = None
-        self.w_soln = None
-        self.re_soln = None
 
     def check_input(self):
         """Check the input type of the attributes.
@@ -223,6 +232,8 @@ class MRBRT:
             outer_tol (float): Tolerance of the outer problem.
             normalize_trimming_grad (bool): If `True`, normalize the gradient of the outer trimming problem.
         """
+        if self.num_x_vars is None:
+            self.attach_data()
         # dimensions
         n = self.data.study_sizes
         k_beta = self.num_x_vars
