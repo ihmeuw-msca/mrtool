@@ -354,7 +354,10 @@ class CovModel:
     def has_data(self):
         """Return ``True`` if there is one data object attached.
         """
-        return self.use_spline and (self.spline is not None)
+        if self.use_spline:
+            return self.spline is not None
+        else:
+            return True
 
     def create_spline(self, data: MRData) -> xspline.XSpline:
         """Create spline given current spline parameters.
