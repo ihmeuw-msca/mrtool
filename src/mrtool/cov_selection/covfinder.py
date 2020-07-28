@@ -131,7 +131,6 @@ class CovFinder:
                 for cov in covs
             ]
         model = MRBRT(self.data, cov_models=cov_models, inlier_pct=self.inlier_pct)
-        model.attach_data()
         return model
 
     def fit_gaussian_model(self, covs: List[str]) -> MRBRT:

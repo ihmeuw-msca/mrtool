@@ -198,8 +198,7 @@ class CovModel:
 
         self._check_inputs()
         self._process_inputs()
-        if not self.use_spline:
-            self._process_priors()
+        self._process_priors()
 
     def _check_inputs(self):
         """Check the attributes.
@@ -296,12 +295,12 @@ class CovModel:
         """Process priors.
         """
         # prior information
-        if self.spline is not None:
+        if self.use_spline:
             self.prior_spline_maxder_gaussian = utils.input_gaussian_prior(
-                self.prior_spline_maxder_gaussian, self.spline_knots.size - 1
+                self.prior_spline_maxder_gaussian, self.spline_knots_template.size - 1
             )
             self.prior_spline_maxder_uniform = utils.input_uniform_prior(
-                self.prior_spline_maxder_uniform, self.spline_knots.size - 1
+                self.prior_spline_maxder_uniform, self.spline_knots_template.size - 1
             )
             self.prior_spline_derval_gaussian = utils.input_gaussian_prior(
                 self.prior_spline_derval_gaussian, self.prior_spline_num_constraint_points
@@ -324,6 +323,7 @@ class CovModel:
         else:
             self.prior_spline_maxder_gaussian = None
             self.prior_spline_maxder_uniform = None
+
         self.prior_beta_gaussian = utils.input_gaussian_prior(
             self.prior_beta_gaussian, self.num_x_vars
         )
@@ -350,9 +350,10 @@ class CovModel:
         if self.use_spline:
             self.spline = self.create_spline(data)
             self.spline_knots = self.spline.knots
-            self._process_priors()
 
     def has_data(self):
+        """Return ``True`` if there is one data object attached.
+        """
         return self.use_spline and (self.spline is not None)
 
     def create_spline(self, data: MRData) -> xspline.XSpline:
@@ -543,8 +544,8 @@ class CovModel:
     @property
     def num_x_vars(self):
         if self.use_spline:
-            assert self.spline is not None, "Attach data first to create spline."
-            n = self.spline.num_spline_bases - 1 + self.use_spline_intercept
+            num_interior_knots = len(self.spline_knots_template) - (self.spline_l_linear + self.spline_r_linear)
+            n = num_interior_knots - 1 + self.spline_degree + (self.use_spline_intercept - 1)
         else:
             n = 1
         return n

@@ -47,27 +47,6 @@ class MRBRT:
             self.cov_names.extend(cov_model.covs)
         self.num_covs = len(self.cov_names)
 
-        self.num_x_vars = None
-        self.num_z_vars = None
-        self.num_constraints = None
-        self.num_regularizations = None
-
-        # place holder for the limetr objective
-        self.lt = None
-        self.beta_soln = None
-        self.gamma_soln = None
-        self.u_soln = None
-        self.w_soln = None
-        self.re_soln = None
-
-    def attach_data(self, data=None):
-        """Attach data to cov_model.
-        """
-        data = self.data if data is None else data
-        # attach data to cov_model
-        for cov_model in self.cov_models:
-            cov_model.attach_data(data)
-
         # add random effects
         if not any([cov_model.use_re for cov_model in self.cov_models]):
             self.cov_models[0].use_re = True
@@ -97,6 +76,22 @@ class MRBRT:
             cov_model.num_regularizations
             for cov_model in self.cov_models
         ])
+
+        # place holder for the limetr objective
+        self.lt = None
+        self.beta_soln = None
+        self.gamma_soln = None
+        self.u_soln = None
+        self.w_soln = None
+        self.re_soln = None
+
+    def attach_data(self, data=None):
+        """Attach data to cov_model.
+        """
+        data = self.data if data is None else data
+        # attach data to cov_model
+        for cov_model in self.cov_models:
+            cov_model.attach_data(data)
 
     def check_input(self):
         """Check the input type of the attributes.
@@ -232,8 +227,9 @@ class MRBRT:
             outer_tol (float): Tolerance of the outer problem.
             normalize_trimming_grad (bool): If `True`, normalize the gradient of the outer trimming problem.
         """
-        if self.num_x_vars is None:
+        if not all([cov_model.has_data() for cov_model in self.cov_models]):
             self.attach_data()
+
         # dimensions
         n = self.data.study_sizes
         k_beta = self.num_x_vars
@@ -454,7 +450,6 @@ class MRBeRT:
         for knots in self.ensemble_knots:
             ensemble_cov_model = deepcopy(cov_model_tmp)
             ensemble_cov_model.spline_knots_template = knots.copy()
-            ensemble_cov_model.attach_data(data)
             self.sub_models.append(MRBRT(data,
                                          cov_models=[*self.cov_models, ensemble_cov_model],
                                          inlier_pct=self.inlier_pct))
