@@ -18,6 +18,7 @@ Advanced features include,
 
 Installation
 ------------
+This package uses `data class <https://docs.python.org/3/library/dataclasses.html>`_, therefore require ``python>=3.7``.
 
 Required packages include,
 

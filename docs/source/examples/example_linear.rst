@@ -69,9 +69,9 @@ And use the optimization routine to find result.
 
 .. code-block:: python
 
-   from mrtool import MRModel
+   from mrtool import MRBRT
 
-   model = MRModel(
+   model = MRBRT(
        data,
        [cov_intercept, cov_x]
    )
