@@ -615,6 +615,23 @@ class MRBeRT:
 
         return y_samples
 
+    def summary(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Create summary data frame.
+        """
+        summary_list = [sub_model.summary() for sub_model in self.sub_models]
+        fe = pd.concat([summary_list[i][0] for i in range(self.num_sub_models)])
+        fe.loc[self.num_sub_models] = fe.values.T.dot(self.weights)
+        fe.reset_index(inplace=True, drop=True)
+        fe.insert(0, 'model_id', np.hstack((np.arange(self.num_sub_models), 'average')))
+        fe['weights'] = np.hstack((self.weights, np.nan))
+
+        re_var = pd.concat([summary_list[i][1] for i in range(self.num_sub_models)])
+        re_var.loc[self.num_sub_models] = re_var.values.T.dot(self.weights)
+        re_var.reset_index(inplace=True, drop=True)
+        re_var.insert(0, 'model_id', np.hstack((np.arange(self.num_sub_models), 'average')))
+        re_var['weights'] = np.hstack((self.weights, np.nan))
+
+        return fe, re_var
 
 def score_sub_models_datafit(mr: MRBRT):
     """score the result of mrbert"""
