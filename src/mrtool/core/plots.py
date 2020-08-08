@@ -6,9 +6,9 @@ from mrtool import MRData
 import dill as pickle
 
 
-def plot_risk_function(mrbrt, pair, beta_samples, gamma_samples, 
-                       continuous_variables=[], plot_note=None, plots_dir=None, 
-                       write_file=False):
+def plot_risk_function(mrbrt, pair, beta_samples, gamma_samples, alt_cov_names=None, 
+    ref_cov_names=None, continuous_variables=[], plot_note=None, plots_dir=None, 
+    write_file=False):
     """Plot predicted relative risk.
     Args:
         mrbrt (mrtool.MRBRT):
@@ -19,6 +19,12 @@ def plot_risk_function(mrbrt, pair, beta_samples, gamma_samples,
             Beta samples generated using `sample_soln` function in MRBRT
         gamma_samples (np.ndarray):
             Gamma samples generated using `sample_soln` function in MRBRT
+        alt_cov_names (List[str], optional):
+            Name of the alternative exposures, if `None` use `['b_0', 'b_1']`.
+            Default to `None`.
+        ref_cov_names (List[str], optional):
+            Name of the reference exposures, if `None` use `['a_0', 'a_1']`.
+            Default to `None`.
         continuous_variables (list):
             List of continuous covariate names.
         plot_note (str):
@@ -38,11 +44,14 @@ def plot_risk_function(mrbrt, pair, beta_samples, gamma_samples,
     col_covs = sub.cov_names
     pred_df = pd.DataFrame(dict(zip(col_covs, np.zeros(len(col_covs)))), 
         index=np.arange(len(dose_grid)))
+
+    alt_cov_names = ['b_0', 'b_1'] if alt_cov_names is None else alt_cov_names
+    ref_cov_names = ['a_0', 'a_1'] if ref_cov_names is None else ref_cov_names
     pred_df['intercept'] = 1
-    pred_df['b_0'] = dose_grid
-    pred_df['b_1'] = dose_grid
-    pred_df['a_0'] = knots[0]
-    pred_df['a_1'] = knots[0]
+    pred_df[alt_cov_names[0]] = dose_grid
+    pred_df[alt_cov_names[1]] = dose_grid
+    pred_df[ref_cov_names[0]] = knots[0]
+    pred_df[ref_cov_names[1]] = knots[0]
     
     # if it's continuous variables, take median 
     for var in continuous_variables:
@@ -90,13 +99,20 @@ def plot_risk_function(mrbrt, pair, beta_samples, gamma_samples,
     plt.clf()
 
 
-def plot_derivative_fit(mrbrt, pair, plot_note=None, plots_dir=None, write_file=False):
+def plot_derivative_fit(mrbrt, pair, alt_cov_names=None, ref_cov_names=None,
+    plot_note=None, plots_dir=None, write_file=False):
     """Plot fitted derivative.
     Args:
         mrbrt (mrtool.MRBRT):
             MRBRT object.
         pair (str):
             risk_outcome pair. eg. 'redmeat_colorectal'
+        alt_cov_names (List[str], optional):
+            Name of the alternative exposures, if `None` use `['b_0', 'b_1']`.
+            Default to `None`.
+        ref_cov_names (List[str], optional):
+            Name of the reference exposures, if `None` use `['a_0', 'a_1']`.
+            Default to `None`.
         plot_note (str, optional):
             The notes intended to be written on the title.
         plots_dir (str):
@@ -105,7 +121,7 @@ def plot_derivative_fit(mrbrt, pair, plot_note=None, plots_dir=None, write_file=
             Specify `True` if the plot is expected to be saved on disk.
             If True, `plots_dir` should be specified too.
     """
-    dose_variable = 'b_1'
+    dose_variable = alt_cov_names[1]
     data_df = mrbrt.data.to_df()
     # construct dataframe 
     min_cov = 0
@@ -117,8 +133,8 @@ def plot_derivative_fit(mrbrt, pair, plot_note=None, plots_dir=None, write_file=
     pred_df = pd.DataFrame(dict(zip(col_covs, np.zeros(len(col_covs)))), 
         index=np.arange(len(dose_grid)))
     pred_df['intercept'] = 1
-    pred_df['b_0'] = dose_grid
-    pred_df['b_1'] = dose_grid
+    pred_df[alt_cov_names[0]] = dose_grid
+    pred_df[alt_cov_names[1]] = dose_grid
     
     # spline of submodel
     spline_list = [sub_model.get_cov_model(mrbrt.ensemble_cov_model_name).spline \
@@ -134,11 +150,11 @@ def plot_derivative_fit(mrbrt, pair, plot_note=None, plots_dir=None, write_file=
             mrbrt.ensemble_cov_model_name)]])
  
     # get RR from model
-    d_log_rr = [get_rr_data(pred_df['b_1'], spline_obj, beta_soln) \
+    d_log_rr = [get_rr_data(pred_df[alt_cov_names[1]], spline_obj, beta_soln) \
                 for spline_obj, beta_soln in zip(spline_list, beta_soln_list)]
     
-    alt_covs = mrbrt.data.get_covs(['b_0', 'b_1']).T
-    ref_covs = mrbrt.data.get_covs(['a_0', 'a_1']).T
+    alt_covs = mrbrt.data.get_covs(alt_cov_names).T
+    ref_covs = mrbrt.data.get_covs(ref_cov_names).T
     
     alt_mid = alt_covs.mean(axis=0)
     ref_mid = ref_covs.mean(axis=0)
