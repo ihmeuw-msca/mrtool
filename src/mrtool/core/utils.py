@@ -584,3 +584,18 @@ def expand_array(array: np.ndarray,
     else:
         assert array.shape == shape, f"{name}, inconsistent shape."
     return array
+
+
+def ravel_dict(x: dict) -> dict:
+    """Ravel dictionary.
+    """
+    assert all([isinstance(k, str) for k in x.keys()])
+    assert all([isinstance(v, np.ndarray) for v in x.values()])
+    new_x = {}
+    for k, v in x.items():
+        if v.size == 1:
+            new_x[k] = v
+        else:
+            for i in range(v.size):
+                new_x[f'{k}_{i}'] = v[i]
+    return new_x
