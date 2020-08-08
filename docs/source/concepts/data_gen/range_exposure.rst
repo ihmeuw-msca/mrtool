@@ -5,11 +5,11 @@ Range Exposure
 ==============
 
 Very often, data is being collected over cohorts or different
-groups of people, and therefore one data point could be an average.
+groups of people, and therefore one data point can be interpreted as an average.
 
-For example, if we are interested in the relationship between smoking and relative risk
-of getting lung cancer, one data point is measured between smoking group vs non-smoking group and
-within the smoking group you have different exposures.
+For example, if we are interested in the relation between smoking and relative risk
+of getting lung cancer, one data point is measured by the relative risk between the smoking and the non-smoking group.
+Within the smoking group, subjects have different exposures to smoking.
 So what the data point measures is the average relative risk for the corresponding range of exposures.
 
 If we denote :math:`x` as the exposure and :math:`f(x)` as the function between the outcome and exposure,
@@ -19,14 +19,14 @@ one measurement :math:`y` over a range of exposures :math:`x \in [a, b]` can be 
 
    y = \frac{1}{b - a}\int_a^b f(x)\,\mathrm{d}x.
 
-An extreme case of this is when the function :math:`f` when want to measure is linear,
-:math:`f(x) = \beta x`, and our expression for measurement :math:`y` can be simplified as,
+A special case is when the function :math:`f` is linear,
+:math:`f(x) = \beta x`, and the expression can be simplified as,
 
 .. math::
 
-   y = \frac{1}{b - a}\int_a^b f(x)\,\mathrm{d}x = \frac{1}{2}(a + b),
+   y = \frac{1}{b - a}\int_a^b f(x)\,\mathrm{d}x = \frac{1}{2}(a + b) \beta.
 
-in which case, we could understand this by using the midpoint of the exposure as the covariate.
+It is equivalent to use the midpoint of the exposures as the covariate.
 
 
 Sample Code

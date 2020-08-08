@@ -22,11 +22,24 @@ class CovModel:
                  use_re=False,
                  use_re_mid_point=False,
                  use_spline=False,
+                 use_spline_intercept=False,
                  spline_knots_type='frequency',
                  spline_knots=np.linspace(0.0, 1.0, 4),
                  spline_degree=3,
                  spline_l_linear=False,
                  spline_r_linear=False,
+                 prior_spline_derval_gaussian=None,
+                 prior_spline_derval_gaussian_domain=(0.0, 1.0),
+                 prior_spline_derval_uniform=None,
+                 prior_spline_derval_uniform_domain=(0.0, 1.0),
+                 prior_spline_der2val_gaussian=None,
+                 prior_spline_der2val_gaussian_domain=(0.0, 1.0),
+                 prior_spline_der2val_uniform=None,
+                 prior_spline_der2val_uniform_domain=(0.0, 1.0),
+                 prior_spline_funval_gaussian=None,
+                 prior_spline_funval_gaussian_domain=(0.0, 1.0),
+                 prior_spline_funval_uniform=None,
+                 prior_spline_funval_uniform_domain=(0.0, 1.0),
                  prior_spline_monotonicity=None,
                  prior_spline_monotonicity_domain=(0.0, 1.0),
                  prior_spline_convexity=None,
@@ -34,6 +47,7 @@ class CovModel:
                  prior_spline_num_constraint_points=20,
                  prior_spline_maxder_gaussian=None,
                  prior_spline_maxder_uniform=None,
+                 prior_spline_normalization=None,
                  prior_beta_gaussian=None,
                  prior_beta_uniform=None,
                  prior_beta_laplace=None,
@@ -58,6 +72,8 @@ class CovModel:
                 If use the midpoint for the random effects.
             use_spline(bool, optional):
                 If use splines.
+            use_spline_intercept(bool, optional):
+                If `True`, use full set of the spline bases, shouldn't include extra `intercept` in this case.
             spline_knots_type (str, optional):
                 The method of how to place the knots, `'frequency'` place the
                 knots according to the data quantile and `'domain'` place the
@@ -71,9 +87,37 @@ class CovModel:
                 If use left linear tail.
             spline_r_linear (bool, optional):
                 If use right linear tail.
+            prior_spline_derval_gaussian (np.ndarray, optional):
+                Gaussian prior for the derivative value of the spline.
+            prior_spline_derval_gaussian_domain (Tuple[float, float], optional):
+                Domain for the Gaussian prior for the derivative value of the spline.
+            prior_spline_derval_uniform (np.ndarray, optional):
+                Uniform prior for the derivative value of the spline.
+            prior_spline_derval_uniform_domain (Tuple[float, float], optional):
+                Domain for the uniform prior for the derivative value of the spline.
+            prior_spline_der2val_gaussian (np.ndarray, optional):
+                Gaussian prior for the second order derivative value of the spline.
+            prior_spline_der2val_gaussian_domain (Tuple[float, float], optional):
+                Domain for the Gaussian prior for the second order derivative value of the spline.
+            prior_spline_der2val_uniform (np.ndarray, optional):
+                Uniform prior for the second order derivative value of the spline.
+            prior_spline_der2val_uniform_domain (Tuple[float, float], optional):
+                Domain for the uniform prior for the second order derivative value of the spline.
+            prior_spline_funval_gaussian (np.ndarray, optional):
+                Gaussian prior for the function value of the spline.
+            prior_spline_funval_gaussian_domain (Tuple[float, float], optional):
+                Domain for the Gaussian prior for the function value of the spline.
+            prior_spline_funval_uniform (np.ndarray, optional):
+                Uniform prior for the function value of the spline.
+            prior_spline_funval_uniform_domain (Tuple[float, float], optional):
+                Domain for the uniform prior for the function value of the spline.
             prior_spline_monotonicity (str | None, optional):
                 Spline shape prior, `'increasing'` indicates spline is
                 increasing, `'decreasing'` indicates spline is decreasing.
+            prior_spline_monotonicity_domain (Tuple[float, float], optional):
+                Domain where spline monotonicity prior applies. Default to `(0.0, 1.0)`.
+            prior_spline_convexity_domain (Tuple[float, float], optional):
+                Domain where spline convexity prior applies. Default to `(0.0, 1.0)`.
             prior_spline_convexity (str | None, optional):
                 Spline shape prior, `'convex'` indicate if spline is convex and
                 `'concave'` indicate spline is concave.
@@ -112,6 +156,7 @@ class CovModel:
         self.use_re = use_re
         self.use_re_mid_point = use_re_mid_point
         self.use_spline = use_spline
+        self.use_spline_intercept = use_spline_intercept and self.use_spline
 
         self.spline = None
         self.spline_knots_type = spline_knots_type
@@ -120,6 +165,19 @@ class CovModel:
         self.spline_degree = spline_degree
         self.spline_l_linear = spline_l_linear
         self.spline_r_linear = spline_r_linear
+
+        self.prior_spline_derval_gaussian = prior_spline_derval_gaussian
+        self.prior_spline_derval_gaussian_domain_template = np.array(prior_spline_derval_gaussian_domain)
+        self.prior_spline_derval_uniform = prior_spline_derval_uniform
+        self.prior_spline_derval_uniform_domain_template = np.array(prior_spline_derval_uniform_domain)
+        self.prior_spline_der2val_gaussian = prior_spline_der2val_gaussian
+        self.prior_spline_der2val_gaussian_domain_template = np.array(prior_spline_der2val_gaussian_domain)
+        self.prior_spline_der2val_uniform = prior_spline_der2val_uniform
+        self.prior_spline_der2val_uniform_domain_template = np.array(prior_spline_der2val_uniform_domain)
+        self.prior_spline_funval_gaussian = prior_spline_funval_gaussian
+        self.prior_spline_funval_gaussian_domain_template = np.array(prior_spline_funval_gaussian_domain)
+        self.prior_spline_funval_uniform = prior_spline_funval_uniform
+        self.prior_spline_funval_uniform_domain_template = np.array(prior_spline_funval_uniform_domain)
 
         self.prior_spline_monotonicity = prior_spline_monotonicity
         self.prior_spline_monotonicity_domain = None
@@ -130,6 +188,7 @@ class CovModel:
         self.prior_spline_num_constraint_points = prior_spline_num_constraint_points
         self.prior_spline_maxder_gaussian = prior_spline_maxder_gaussian
         self.prior_spline_maxder_uniform = prior_spline_maxder_uniform
+        self.prior_spline_normalization = prior_spline_normalization
         self.prior_beta_gaussian = prior_beta_gaussian
         self.prior_beta_uniform = prior_beta_uniform
         self.prior_beta_laplace = prior_beta_laplace
@@ -139,8 +198,7 @@ class CovModel:
 
         self._check_inputs()
         self._process_inputs()
-        if not self.use_spline:
-            self._process_priors()
+        self._process_priors()
 
     def _check_inputs(self):
         """Check the attributes.
@@ -167,8 +225,21 @@ class CovModel:
         assert isinstance(self.spline_r_linear, bool)
         assert len(self.prior_spline_monotonicity_domain_template) == 2
         assert len(self.prior_spline_convexity_domain_template) == 2
-        assert self.prior_spline_monotonicity_domain_template[0] <= self.prior_spline_monotonicity_domain_template[1]
-        assert self.prior_spline_convexity_domain_template[0] <= self.prior_spline_convexity_domain_template[1]
+        assert len(self.prior_spline_derval_uniform_domain_template) == 2
+        assert len(self.prior_spline_der2val_uniform_domain_template) == 2
+        assert len(self.prior_spline_funval_uniform_domain_template) == 2
+        assert len(self.prior_spline_derval_gaussian_domain_template) == 2
+        assert len(self.prior_spline_der2val_gaussian_domain_template) == 2
+        assert len(self.prior_spline_funval_gaussian_domain_template) == 2
+
+        assert (np.diff(self.prior_spline_monotonicity_domain_template) >= 0.0).all()
+        assert (np.diff(self.prior_spline_convexity_domain_template) >= 0.0).all()
+        assert (np.diff(self.prior_spline_derval_gaussian_domain_template) >= 0.0).all()
+        assert (np.diff(self.prior_spline_derval_uniform_domain_template) >= 0.0).all()
+        assert (np.diff(self.prior_spline_der2val_gaussian_domain_template) >= 0.0).all()
+        assert (np.diff(self.prior_spline_der2val_uniform_domain_template) >= 0.0).all()
+        assert (np.diff(self.prior_spline_funval_gaussian_domain_template) >= 0.0).all()
+        assert (np.diff(self.prior_spline_funval_uniform_domain_template) >= 0.0).all()
 
         # priors
         assert (self.prior_spline_monotonicity in ['increasing', 'decreasing'] or
@@ -177,9 +248,24 @@ class CovModel:
                 self.prior_spline_convexity is None)
         assert isinstance(self.prior_spline_num_constraint_points, int)
         assert self.prior_spline_num_constraint_points > 0
+        assert utils.is_gaussian_prior(self.prior_spline_derval_gaussian)
+        assert utils.is_gaussian_prior(self.prior_spline_der2val_gaussian)
+        assert utils.is_gaussian_prior(self.prior_spline_funval_gaussian)
         assert utils.is_gaussian_prior(self.prior_spline_maxder_gaussian)
         assert utils.is_gaussian_prior(self.prior_beta_gaussian)
         assert utils.is_gaussian_prior(self.prior_gamma_gaussian)
+
+        assert self.prior_spline_normalization is None or len(self.prior_spline_normalization) == 2 or \
+            len(self.prior_spline_normalization) == 3
+        if self.prior_spline_normalization is not None:
+            assert (self.prior_spline_normalization[-1] >= 0.0).all()
+            assert sum(self.prior_spline_normalization[-1]) > 0.0
+            if len(self.prior_spline_normalization) == 3:
+                assert (self.prior_spline_normalization[0] <= self.prior_spline_normalization[1]).all()
+
+        assert utils.is_uniform_prior(self.prior_spline_derval_uniform)
+        assert utils.is_uniform_prior(self.prior_spline_der2val_uniform)
+        assert utils.is_uniform_prior(self.prior_spline_funval_uniform)
         assert utils.is_uniform_prior(self.prior_spline_maxder_uniform)
         assert utils.is_uniform_prior(self.prior_beta_uniform)
         assert utils.is_uniform_prior(self.prior_gamma_uniform)
@@ -209,16 +295,35 @@ class CovModel:
         """Process priors.
         """
         # prior information
-        if self.spline is not None:
+        if self.use_spline:
             self.prior_spline_maxder_gaussian = utils.input_gaussian_prior(
-                self.prior_spline_maxder_gaussian, self.spline_knots.size - 1
+                self.prior_spline_maxder_gaussian, self.spline_knots_template.size - 1
             )
             self.prior_spline_maxder_uniform = utils.input_uniform_prior(
-                self.prior_spline_maxder_uniform, self.spline_knots.size - 1
+                self.prior_spline_maxder_uniform, self.spline_knots_template.size - 1
+            )
+            self.prior_spline_derval_gaussian = utils.input_gaussian_prior(
+                self.prior_spline_derval_gaussian, self.prior_spline_num_constraint_points
+            )
+            self.prior_spline_derval_uniform = utils.input_uniform_prior(
+                self.prior_spline_derval_uniform, self.prior_spline_num_constraint_points
+            )
+            self.prior_spline_der2val_gaussian = utils.input_gaussian_prior(
+                self.prior_spline_der2val_gaussian, self.prior_spline_num_constraint_points
+            )
+            self.prior_spline_der2val_uniform = utils.input_uniform_prior(
+                self.prior_spline_der2val_uniform, self.prior_spline_num_constraint_points
+            )
+            self.prior_spline_funval_gaussian = utils.input_gaussian_prior(
+                self.prior_spline_funval_gaussian, self.prior_spline_num_constraint_points
+            )
+            self.prior_spline_funval_uniform = utils.input_uniform_prior(
+                self.prior_spline_funval_uniform, self.prior_spline_num_constraint_points
             )
         else:
             self.prior_spline_maxder_gaussian = None
             self.prior_spline_maxder_uniform = None
+
         self.prior_beta_gaussian = utils.input_gaussian_prior(
             self.prior_beta_gaussian, self.num_x_vars
         )
@@ -245,7 +350,14 @@ class CovModel:
         if self.use_spline:
             self.spline = self.create_spline(data)
             self.spline_knots = self.spline.knots
-            self._process_priors()
+
+    def has_data(self):
+        """Return ``True`` if there is one data object attached.
+        """
+        if self.use_spline:
+            return self.spline is not None
+        else:
+            return True
 
     def create_spline(self, data: MRData) -> xspline.XSpline:
         """Create spline given current spline parameters.
@@ -265,6 +377,7 @@ class CovModel:
             cov = np.hstack((cov, alt_cov.mean(axis=1)))
         if ref_cov.size != 0:
             cov = np.hstack((cov, ref_cov.mean(axis=1)))
+        cov = np.unique(cov)
 
         if self.spline_knots_type == 'frequency':
             spline_knots = np.quantile(cov, self.spline_knots_template)
@@ -275,6 +388,19 @@ class CovModel:
                                                 self.prior_spline_monotonicity_domain_template*(max(cov) - min(cov))
         self.prior_spline_convexity_domain = min(cov) + \
                                              self.prior_spline_convexity_domain_template*(max(cov) - min(cov))
+
+        self.prior_spline_derval_gaussian_domain = min(cov) + \
+            self.prior_spline_derval_gaussian_domain_template*(max(cov) - min(cov))
+        self.prior_spline_derval_uniform_domain = min(cov) + \
+            self.prior_spline_derval_uniform_domain_template*(max(cov) - min(cov))
+        self.prior_spline_der2val_gaussian_domain = min(cov) + \
+            self.prior_spline_der2val_gaussian_domain_template*(max(cov) - min(cov))
+        self.prior_spline_der2val_uniform_domain = min(cov) + \
+            self.prior_spline_der2val_uniform_domain_template*(max(cov) - min(cov))
+        self.prior_spline_funval_gaussian_domain = min(cov) + \
+            self.prior_spline_funval_gaussian_domain_template*(max(cov) - min(cov))
+        self.prior_spline_funval_uniform_domain = min(cov) + \
+            self.prior_spline_funval_uniform_domain_template*(max(cov) - min(cov))
 
         spline = xspline.XSpline(spline_knots,
                                  self.spline_degree,
@@ -295,8 +421,10 @@ class CovModel:
         alt_cov = data.get_covs(self.alt_cov)
         ref_cov = data.get_covs(self.ref_cov)
 
-        alt_mat = utils.avg_integral(alt_cov, spline=self.spline)
-        ref_mat = utils.avg_integral(ref_cov, spline=self.spline)
+        alt_mat = utils.avg_integral(alt_cov, spline=self.spline,
+                                     use_spline_intercept=self.use_spline_intercept)
+        ref_mat = utils.avg_integral(ref_cov, spline=self.spline,
+                                     use_spline_intercept=self.use_spline_intercept)
 
         return alt_mat, ref_mat
 
@@ -318,28 +446,60 @@ class CovModel:
         if not self.use_spline:
             return c_mat, c_val
 
+        derval_points = np.linspace(*self.prior_spline_derval_uniform_domain,
+                                    self.prior_spline_num_constraint_points)
+        der2val_points = np.linspace(*self.prior_spline_der2val_uniform_domain,
+                                    self.prior_spline_num_constraint_points)
+        funval_points = np.linspace(*self.prior_spline_funval_uniform_domain,
+                                    self.prior_spline_num_constraint_points)
         mono_points = np.linspace(*self.prior_spline_monotonicity_domain,
                                   self.prior_spline_num_constraint_points)
         cvcv_points = np.linspace(*self.prior_spline_convexity_domain,
                                   self.prior_spline_num_constraint_points)
         tmp_val = np.array([[-np.inf], [0.0]])
 
+        index = 0 if self.use_spline_intercept else 1
+        # spline derval uniform priors
+        if not np.isinf(self.prior_spline_derval_uniform).all() and self.use_spline:
+            c_mat = np.vstack((c_mat, self.spline.design_dmat(derval_points, 1)[:, index:]))
+            c_val = np.hstack((c_val, self.prior_spline_derval_uniform))
+
+        # spline der2val uniform priors
+        if not np.isinf(self.prior_spline_der2val_uniform).all() and self.use_spline:
+            c_mat = np.vstack((c_mat, self.spline.design_dmat(der2val_points, 2)[:, index:]))
+            c_val = np.hstack((c_val, self.prior_spline_der2val_uniform))
+
+        # spline funval uniform priors
+        if not np.isinf(self.prior_spline_funval_uniform).all() and self.use_spline:
+            c_mat = np.vstack((c_mat, self.spline.design_mat(funval_points)[:, index:]))
+            c_val = np.hstack((c_val, self.prior_spline_funval_uniform))
+
         # spline monotonicity constraints
         if self.prior_spline_monotonicity is not None and self.use_spline:
             sign = 1.0 if self.prior_spline_monotonicity == 'decreasing' else -1.0
-            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(mono_points, 1)[:, 1:]))
+            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(mono_points, 1)[:, index:]))
             c_val = np.hstack((c_val, np.repeat(tmp_val, mono_points.size, axis=1)))
 
         # spline convexity constraints
         if self.prior_spline_convexity is not None and self.use_spline:
             sign = 1.0 if self.prior_spline_convexity == 'concave' else -1.0
-            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(cvcv_points, 2)[:, 1:]))
+            c_mat = np.vstack((c_mat, sign*self.spline.design_dmat(cvcv_points, 2)[:, index:]))
             c_val = np.hstack((c_val, np.repeat(tmp_val, cvcv_points.size, axis=1)))
 
         # spline maximum derivative constraints
-        if not np.isinf(self.prior_spline_maxder_uniform).all():
-            c_mat = np.vstack((c_mat, self.spline.last_dmat()[:, 1:]))
+        if not np.isinf(self.prior_spline_maxder_uniform).all() and self.use_spline:
+            c_mat = np.vstack((c_mat, self.spline.last_dmat()[:, index:]))
             c_val = np.hstack((c_val, self.prior_spline_maxder_uniform))
+
+        # spline normalization prior
+        if self.prior_spline_normalization is not None and self.use_spline:
+            mat = utils.avg_integral(self.prior_spline_normalization[:-1].T,
+                                     spline=self.spline,
+                                     use_spline_intercept=self.use_spline_intercept)
+            weights = self.prior_spline_normalization[-1]
+            weights = weights/weights.sum()
+            c_mat = np.vstack((c_mat, mat.T.dot(weights)))
+            c_val = np.hstack((c_val, np.ones((2, 1))))
 
         return c_mat, c_val
 
@@ -354,9 +514,32 @@ class CovModel:
         if not self.use_spline:
             return r_mat, r_val
 
+        derval_points = np.linspace(*self.prior_spline_derval_gaussian_domain,
+                                    self.prior_spline_num_constraint_points)
+        der2val_points = np.linspace(*self.prior_spline_der2val_uniform_domain,
+                                    self.prior_spline_num_constraint_points)
+        funval_points = np.linspace(*self.prior_spline_funval_gaussian_domain,
+                                    self.prior_spline_num_constraint_points)
+
+        index = 0 if self.use_spline_intercept else 1
+        # spline derval gaussian priors
+        if not np.isinf(self.prior_spline_derval_gaussian[1]).all() and self.use_spline:
+            r_mat = np.vstack((r_mat, self.spline.design_dmat(derval_points, 1)[:, index:]))
+            r_val = np.hstack((r_val, self.prior_spline_derval_gaussian))
+
+        # spline der2val gaussian priors
+        if not np.isinf(self.prior_spline_der2val_gaussian[1]).all() and self.use_spline:
+            r_mat = np.vstack((r_mat, self.spline.design_dmat(der2val_points, 2)[:, index:]))
+            r_val = np.hstack((r_val, self.prior_spline_der2val_gaussian))
+
+        # spline funval gaussian priors
+        if not np.isinf(self.prior_spline_funval_gaussian[1]).all() and self.use_spline:
+            r_mat = np.vstack((r_mat, self.spline.design_mat(funval_points)[:, index:]))
+            r_val = np.hstack((r_val, self.prior_spline_funval_gaussian))
+
         # spline maximum derivative constraints
         if not np.isinf(self.prior_spline_maxder_gaussian[1]).all() and self.use_spline:
-            r_mat = np.vstack((r_mat, self.spline.last_dmat()[:, 1:]))
+            r_mat = np.vstack((r_mat, self.spline.last_dmat()[:, index:]))
             r_val = np.hstack((r_val, self.prior_spline_maxder_gaussian))
 
         return r_mat, r_val
@@ -364,8 +547,8 @@ class CovModel:
     @property
     def num_x_vars(self):
         if self.use_spline:
-            assert self.spline is not None, "Attach data first to create spline."
-            n = self.spline.num_spline_bases - 1
+            num_interior_knots = len(self.spline_knots_template) - (self.spline_l_linear + self.spline_r_linear)
+            n = num_interior_knots - 1 + self.spline_degree + (self.use_spline_intercept - 1)
         else:
             n = 1
         return n
@@ -374,7 +557,7 @@ class CovModel:
     def num_z_vars(self):
         if self.use_re:
             if self.use_re_mid_point:
-                return 1
+                return 1 + self.use_spline_intercept
             else:
                 return self.num_x_vars
         else:
@@ -389,8 +572,15 @@ class CovModel:
                     (self.prior_spline_monotonicity is not None) +
                     (self.prior_spline_convexity is not None)
             )
+            num_c += (self.prior_spline_normalization is not None)
             if not np.isinf(self.prior_spline_maxder_uniform).all():
                 num_c += self.prior_spline_maxder_uniform.shape[1]
+            if not np.isinf(self.prior_spline_derval_uniform).all():
+                num_c += self.prior_spline_num_constraint_points
+            if not np.isinf(self.prior_spline_der2val_uniform).all():
+                num_c += self.prior_spline_num_constraint_points
+            if not np.isinf(self.prior_spline_funval_uniform).all():
+                num_c += self.prior_spline_num_constraint_points
 
             return num_c
 
@@ -402,6 +592,12 @@ class CovModel:
             num_r = 0
             if not np.isinf(self.prior_spline_maxder_gaussian[1]).all():
                 num_r += self.prior_spline_maxder_gaussian.shape[1]
+            if not np.isinf(self.prior_spline_derval_gaussian[1]).all():
+                num_r += self.prior_spline_num_constraint_points
+            if not np.isinf(self.prior_spline_der2val_gaussian[1]).all():
+                num_r += self.prior_spline_num_constraint_points
+            if not np.isinf(self.prior_spline_funval_gaussian[1]).all():
+                num_r += self.prior_spline_num_constraint_points
 
             return num_r
 
@@ -438,10 +634,12 @@ class LinearCovModel(CovModel):
         else:
             alt_mat, ref_mat = self.create_design_mat(data)
 
-        if ref_mat.size == 0:
-            return alt_mat
-        else:
-            return alt_mat - ref_mat
+        z_mat = alt_mat if ref_mat.size == 0 else alt_mat - ref_mat
+
+        if self.use_spline_intercept and self.use_re_mid_point:
+            z_mat = np.insert(z_mat, 0, 1, axis=1)
+
+        return z_mat
 
 
 class LogCovModel(CovModel):
@@ -449,6 +647,9 @@ class LogCovModel(CovModel):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # if self.use_spline_intercept:
+        #     raise ValueError("LogCovModel does not support use_spline_intercept."
+        #                      "Please set it to False, or leave it as default.")
 
     def create_x_fun(self, data):
         """Create design functions for the fixed effects.
@@ -462,7 +663,8 @@ class LogCovModel(CovModel):
                 Design functions for fixed effects.
         """
         alt_mat, ref_mat = self.create_design_mat(data)
-        return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat)
+        add_one = not (self.use_spline and self.use_spline_intercept)
+        return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat, add_one=add_one)
 
     def create_z_mat(self, data):
         """Create design matrix for the random effects.
@@ -486,18 +688,19 @@ class LogCovModel(CovModel):
         else:
             return alt_mat - ref_mat
 
-    def create_constraint_mat(self):
+    def create_constraint_mat(self, threshold=1e-6):
         """Create constraint matrix.
         Overwrite the super class, adding non-negative constraints.
         """
         c_mat, c_val = super().create_constraint_mat()
-        tmp_val = np.array([[-1.0], [np.inf]])
-
+        shift = 0.0 if self.use_spline_intercept else 1.0
+        index = 0 if self.use_spline_intercept else 1
+        tmp_val = np.array([[-shift + threshold], [np.inf]])
         if self.use_spline:
             points = np.linspace(self.spline.knots[0],
                                  self.spline.knots[-1],
                                  self.prior_spline_num_constraint_points)
-            c_mat = np.vstack((c_mat, self.spline.design_mat(points)[:, 1:]))
+            c_mat = np.vstack((c_mat, self.spline.design_mat(points)[:, index:]))
             c_val = np.hstack((c_val, np.repeat(tmp_val, points.size, axis=1)))
         return c_mat, c_val
 

@@ -4,7 +4,7 @@
     ~~~~~
     `utils` module of the `mrtool` package.
 """
-from typing import Union, List, Any
+from typing import Union, List, Any, Tuple
 import numpy as np
 import pandas as pd
 try:
@@ -204,7 +204,7 @@ def input_gaussian_prior(prior, size):
             store the mean and second row store the standard deviation.
     """
     assert is_gaussian_prior(prior)
-    if prior is None:
+    if prior is None or prior.size == 0:
         return np.array([[0.0]*size, [np.inf]*size])
     elif prior.ndim == 1:
         return np.repeat(prior[:, None], size, axis=1)
@@ -230,7 +230,7 @@ def input_uniform_prior(prior, size):
             store the mean and second row store the standard deviation.
     """
     assert is_uniform_prior(prior)
-    if prior is None:
+    if prior is None or prior.size == 0:
         return np.array([[-np.inf]*size, [np.inf]*size])
     elif prior.ndim == 1:
         return np.repeat(prior[:, None], size, axis=1)
@@ -239,7 +239,7 @@ def input_uniform_prior(prior, size):
         return prior
 
 
-def avg_integral(mat, spline=None):
+def avg_integral(mat, spline=None, use_spline_intercept=False):
     """Compute average integral.
 
     Args:
@@ -249,6 +249,8 @@ def avg_integral(mat, spline=None):
         spline (xspline.XSpline | None, optional):
             Spline integrate over with, when `None` treat the function as
             linear.
+        use_spline_intercept (bool, optional):
+            If `True` use all bases from spline, otherwise remove the first bases.
 
     Returns:
         numpy.ndarray:
@@ -258,9 +260,11 @@ def avg_integral(mat, spline=None):
     if mat.size == 0:
         return mat.reshape(mat.shape[0], 0)
 
+    index = 0 if use_spline_intercept else 1
+
     if mat.shape[1] == 1:
         return mat if spline is None else spline.design_mat(
-            mat.ravel(), l_extra=True, r_extra=True)[:, 1:]
+            mat.ravel(), l_extra=True, r_extra=True)[:, index:]
     else:
         if spline is None:
             return mat.mean(axis=1)[:, None]
@@ -283,7 +287,7 @@ def avg_integral(mat, spline=None):
                     l_extra=True,
                     r_extra=True)/(dx[int_idx][:, None])
 
-            return mat[:, 1:]
+            return mat[:, index:]
 
 # random knots
 def sample_knots(num_intervals: int,
@@ -420,14 +424,13 @@ def col_diff_mat(n):
     return D
 
 
-
-
-
 def nonlinear_trans(score, slope=6.0, quantile=0.7):
     score_min = np.min(score)
     score_max = np.max(score)
-    weight = (score - score_min)/(score_max - score_min)
-
+    if score_max == score_min:
+        return np.ones(len(score))
+    else:
+        weight = (score - score_min)/(score_max - score_min)
 
     sorted_weight = np.sort(weight)
     x = sorted_weight[int(0.8*weight.size)]
@@ -482,8 +485,9 @@ def mat_to_fun(alt_mat, ref_mat=None):
 
     return fun, jac_fun
 
-def mat_to_log_fun(alt_mat, ref_mat=None):
+def mat_to_log_fun(alt_mat, ref_mat=None, add_one=True):
     alt_mat = np.array(alt_mat)
+    shift = 1.0 if add_one else 0.0
     assert alt_mat.ndim == 2
     if ref_mat is not None:
         ref_mat = np.array(ref_mat)
@@ -495,18 +499,18 @@ def mat_to_log_fun(alt_mat, ref_mat=None):
     else:
         if ref_mat is None or ref_mat.size == 0:
             def fun(beta):
-                return np.log(1.0 + alt_mat.dot(beta))
+                return np.log(shift + alt_mat.dot(beta))
 
             def jac_fun(beta):
-                return alt_mat/(1.0 + alt_mat.dot(beta)[:, None])
+                return alt_mat/(shift + alt_mat.dot(beta)[:, None])
         else:
             def fun(beta):
-                return np.log(1.0 + alt_mat.dot(beta)) - \
-                       np.log(1.0 + ref_mat.dot(beta))
+                return np.log(shift + alt_mat.dot(beta)) - \
+                       np.log(shift + ref_mat.dot(beta))
 
             def jac_fun(beta):
-                return alt_mat/(1.0 + alt_mat.dot(beta)[:, None]) - \
-                       ref_mat/(1.0 + ref_mat.dot(beta)[:, None])
+                return alt_mat/(shift + alt_mat.dot(beta)[:, None]) - \
+                       ref_mat/(shift + ref_mat.dot(beta)[:, None])
 
     return fun, jac_fun
 
@@ -550,3 +554,33 @@ def is_numeric_array(array: np.ndarray) -> bool:
     except AttributeError:
         # in case it's not a numpy array it will probably have no dtype.
         return np.asarray(array).dtype.kind in numerical_dtype_kinds
+
+
+def expand_array(array: np.ndarray,
+                 shape: Tuple[int],
+                 value: Any,
+                 name: str) -> np.ndarray:
+    """Expand array when it is empty.
+
+    Args:
+        array (np.ndarray):
+            Target array. If array is empty, fill in the ``value``. And
+            When it is not empty assert the ``shape`` agrees and return the original array.
+        shape (Tuple[int]): The expected shape of the array.
+        value (Any): The expected value in final array.
+        name (str): Variable name of the array (for error message).
+
+    Returns:
+        np.ndarray: Expanded array.
+    """
+    array = np.array(array)
+    if len(array) == 0:
+        if hasattr(value, '__iter__') and not isinstance(value, str):
+            value = np.array(value)
+            assert value.shape == shape, f"{name}, alternative value inconsistent shape."
+            array = value
+        else:
+            array = np.full(shape, value)
+    else:
+        assert array.shape == shape, f"{name}, inconsistent shape."
+    return array

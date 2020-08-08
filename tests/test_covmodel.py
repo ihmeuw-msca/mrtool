@@ -216,3 +216,24 @@ def test_covmodel_spline_prior(use_spline,
 
     assert covmodel.num_constraints == num_constraints
     assert covmodel.num_regularizations == num_regularizers
+
+
+def test_use_spline_intercept(mrdata):
+    linear_cov_model = LinearCovModel('cov1',
+                                      use_spline=True,
+                                      use_spline_intercept=True,
+                                      use_re=True,
+                                      use_re_mid_point=True,
+                                      prior_spline_monotonicity='increasing')
+    linear_cov_model.attach_data(mrdata)
+
+    assert linear_cov_model.num_x_vars == linear_cov_model.spline.num_spline_bases
+    assert linear_cov_model.num_z_vars == 2
+    alt_mat, ref_mat = linear_cov_model.create_design_mat(mrdata)
+    c_mat, c_val = linear_cov_model.create_constraint_mat()
+    assert alt_mat.shape == (mrdata.num_obs, linear_cov_model.num_x_vars)
+    assert c_mat.shape == (linear_cov_model.prior_spline_num_constraint_points, linear_cov_model.num_x_vars)
+
+    # with pytest.raises(ValueError):
+    #     LogCovModel('cov1', use_spline=True, use_spline_intercept=True, use_re=True,
+    #                 use_re_mid_point=True)

@@ -2,6 +2,7 @@
     other_sampling
     ~~~~~~~~~~~~~~
 """
+from warnings import warn
 from typing import Union
 from dataclasses import dataclass
 import numpy as np
@@ -79,7 +80,7 @@ def extract_simple_lme_specs(model: MRBRT) -> SimpleLMESpecs:
             Data object contains information of the simple linear mixed effects model.
     """
     if not is_simple_linear_mixed_effects_model(model):
-        raise ValueError("Model has to be simple mixed effects model.")
+        warn("Model is not a simple mixed effects model. Uncertainty might not be accurate.")
 
     x_fun, x_jac_fun = model.create_x_fun()
     x_mat = x_jac_fun(model.beta_soln)

@@ -47,9 +47,11 @@ class MRBRT:
             self.cov_names.extend(cov_model.covs)
         self.num_covs = len(self.cov_names)
 
-        # attach data to cov_model
-        for cov_model in self.cov_models:
-            cov_model.attach_data(self.data)
+        # add random effects
+        if not any([cov_model.use_re for cov_model in self.cov_models]):
+            self.cov_models[0].use_re = True
+            self.cov_models[0].prior_gamma_uniform = np.array([0.0, 0.0])
+            self.cov_models[0]._process_priors()
 
         # fixed effects size and index
         self.x_vars_sizes = [cov_model.num_x_vars for cov_model in self.cov_models]
@@ -82,6 +84,14 @@ class MRBRT:
         self.u_soln = None
         self.w_soln = None
         self.re_soln = None
+
+    def attach_data(self, data=None):
+        """Attach data to cov_model.
+        """
+        data = self.data if data is None else data
+        # attach data to cov_model
+        for cov_model in self.cov_models:
+            cov_model.attach_data(data)
 
     def check_input(self):
         """Check the input type of the attributes.
@@ -215,8 +225,11 @@ class MRBRT:
             outer_max_iter (int): Maximum outer number of iterations.
             outer_step_size (float): Step size of the outer problem.
             outer_tol (float): Tolerance of the outer problem.
-            normalize_trimming_grad (bool): If `True`, normalize the gradient of the outer trimmign problem.
+            normalize_trimming_grad (bool): If `True`, normalize the gradient of the outer trimming problem.
         """
+        if not all([cov_model.has_data() for cov_model in self.cov_models]):
+            self.attach_data()
+
         # dimensions
         n = self.data.study_sizes
         k_beta = self.num_x_vars
@@ -231,6 +244,7 @@ class MRBRT:
         z_mat = self.create_z_mat()
         # scale z_mat
         z_scale = np.max(np.abs(z_mat), axis=0)
+        z_scale[z_scale == 0.0] = 1.0
         z_mat /= z_scale
 
         # priors
@@ -240,8 +254,11 @@ class MRBRT:
         h_fun, h_fun_jac = utils.mat_to_fun(h_mat)
 
         uprior = self.create_uprior()
+        uprior[:, self.num_x_vars:self.num_vars] *= z_scale**2
         gprior = self.create_gprior()
+        gprior[:, self.num_x_vars:self.num_vars] *= z_scale**2
         lprior = self.create_lprior()
+        lprior[:, self.num_x_vars:self.num_vars] *= z_scale**2
 
         if np.isneginf(uprior[0]).all() and np.isposinf(uprior[1]).all():
             uprior = None
@@ -259,11 +276,23 @@ class MRBRT:
                          inlier_percentage=self.inlier_pct)
 
         self.lt.fitModel(**fit_options)
-        self.beta_soln = self.lt.beta.copy()
         self.lt.Z *= z_scale
-        self.gamma_soln = self.lt.gamma.copy()/z_scale**2
+        if hasattr(self.lt, 'gprior'):
+            self.lt.gprior[:, self.lt.idx_gamma] /= z_scale**2
+        if hasattr(self.lt, 'uprior'):
+            self.lt.uprior[:, self.lt.idx_gamma] /= z_scale**2
+        if hasattr(self.lt, 'lprior'):
+            self.lt.lprior[:, self.lt.idx_gamma] /= z_scale**2
+        self.lt.gamma /= z_scale**2
+
+        self.beta_soln = self.lt.beta.copy()
+        self.gamma_soln = self.lt.gamma.copy()
         self.w_soln = self.lt.w.copy()
         self.u_soln = self.lt.estimateRE()
+        self.fe_soln = {
+            cov_name: self.beta_soln[self.x_vars_indices[self.get_cov_model_index(cov_name)]]
+            for cov_name in self.cov_model_names
+        }
         self.re_soln = {
             study: self.u_soln[i]
             for i, study in enumerate(self.data.studies)
@@ -279,7 +308,8 @@ class MRBRT:
         return re
 
     def predict(self, data: MRData,
-                predict_for_study=False) -> np.ndarray:
+                predict_for_study: bool = False,
+                sort_by_data_id: bool = False) -> np.ndarray:
         """Create new prediction with existing solution.
 
         Args:
@@ -288,6 +318,9 @@ class MRBRT:
                 If `True`, use the random effects information to prediction for specific
                 study. If the `study_id` in `data` do not contain in the fitting data, it
                 will assume the corresponding random effects equal to 0.
+            sort_by_data_id (bool, optional):
+                If `True`, will sort the final prediction as the order of the original
+                data frame that used to create the `data`. Default to False.
 
         Returns:
             np.ndarray: Predicted outcome array.
@@ -300,12 +333,16 @@ class MRBRT:
             re = self.extract_re(data.study_id)
             prediction += np.sum(z_mat*re, axis=1)
 
+        if sort_by_data_id:
+            prediction = prediction[np.argsort(data.data_id)]
+
         return prediction
 
     def sample_soln(self,
                     sample_size: int = 1,
                     sim_prior: bool = True,
                     sim_re: bool = True,
+                    max_iter: int = 100,
                     print_level: int = 0) -> Tuple[np.ndarray, np.ndarray]:
         """Sample solutions.
 
@@ -313,6 +350,7 @@ class MRBRT:
             sample_size (int, optional): Number of samples.
             sim_prior (bool, optional): If `True`, simulate priors.
             sim_re (bool, optional): If `True`, simulate random effects.
+            max_iter (int, optional): Maximum number of iterations. Default to 100.
             print_level (int, optional):
                 Level detailed of optimization information printed out during sampling process.
                 If 0, no information will be printed out.
@@ -329,6 +367,7 @@ class MRBRT:
                                sample_size=sample_size,
                                sim_prior=sim_prior,
                                sim_re=sim_re,
+                               max_iter=max_iter,
                                print_level=print_level)
 
         return beta_soln_samples, gamma_soln_samples
@@ -337,7 +376,8 @@ class MRBRT:
                      data: MRData,
                      beta_samples: np.ndarray,
                      gamma_samples: np.ndarray,
-                     random_study: bool = True) -> np.ndarray:
+                     random_study: bool = True,
+                     sort_by_data_id: bool = False) -> np.ndarray:
         """Create draws for the given data set.
 
         Args:
@@ -346,6 +386,9 @@ class MRBRT:
             gamma_samples (np.ndarray): Samples of gamma.
             random_study (bool, optional):
                 If `True` the draws will include uncertainty from study heterogeneity.
+            sort_by_data_id (bool, optional):
+                If `True`, will sort the final prediction as the order of the original
+                data frame that used to create the `data`. Default to False.
 
         Returns:
             np.ndarray: Returns outcome sample matrix.
@@ -365,6 +408,9 @@ class MRBRT:
         else:
             re = self.extract_re(data.study_id)
             y_samples += np.sum(z_mat*re, axis=1)
+
+        if sort_by_data_id:
+            y_samples = y_samples[:, np.argsort(data.data_id)]
 
         return y_samples.T
 
@@ -404,7 +450,6 @@ class MRBeRT:
         for knots in self.ensemble_knots:
             ensemble_cov_model = deepcopy(cov_model_tmp)
             ensemble_cov_model.spline_knots_template = knots.copy()
-            ensemble_cov_model.attach_data(data)
             self.sub_models.append(MRBRT(data,
                                          cov_models=[*self.cov_models, ensemble_cov_model],
                                          inlier_pct=self.inlier_pct))
@@ -461,7 +506,7 @@ class MRBeRT:
         for i, sub_model in enumerate(self.sub_models):
             scores[0][i] = score_sub_models_datafit(sub_model)
             scores[1][i] = score_sub_models_variation(sub_model,
-                                                            self.ensemble_cov_model_name, n=3)
+                                                      self.ensemble_cov_model_name, n=3)
 
         weights = np.zeros(scores.shape)
         for i in range(2):
@@ -478,6 +523,7 @@ class MRBeRT:
                     sample_size: int = 1,
                     sim_prior: bool = True,
                     sim_re: bool = True,
+                    max_iter: int = 100,
                     print_level: bool = 0) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """Sample solution.
         """
@@ -491,6 +537,7 @@ class MRBeRT:
                     sub_model.sample_soln(sample_size=sample_sizes[i],
                                           sim_prior=sim_prior,
                                           sim_re=sim_re,
+                                          max_iter=max_iter,
                                           print_level=print_level)
             else:
                 sub_beta_samples = np.array([]).reshape(0, sub_model.num_x_vars)
@@ -501,7 +548,8 @@ class MRBeRT:
         return beta_samples, gamma_samples
 
     def predict(self, data: MRData,
-                predict_for_study=False,
+                predict_for_study: bool = False,
+                sort_by_data_id: bool = False,
                 return_avg: bool = True) -> np.ndarray:
         """Create new prediction with existing solution.
 
@@ -511,7 +559,9 @@ class MRBeRT:
                 and when it is `False` the function will return a list of predictions from all groups.
         """
         prediction = np.vstack([
-            sub_model.predict(data, predict_for_study=predict_for_study)
+            sub_model.predict(data,
+                              predict_for_study=predict_for_study,
+                              sort_by_data_id=sort_by_data_id)
             for sub_model in self.sub_models
         ])
 
@@ -524,7 +574,8 @@ class MRBeRT:
                      data: MRData,
                      beta_samples: List[np.ndarray],
                      gamma_samples: List[np.ndarray],
-                     random_study: bool = True) -> np.ndarray:
+                     random_study: bool = True,
+                     sort_by_data_id: bool = False) -> np.ndarray:
         """Create draws.
         For function description please check `create_draws` for `MRBRT`.
         """
@@ -542,7 +593,8 @@ class MRBeRT:
                     data,
                     beta_samples=sub_beta_samples,
                     gamma_samples=sub_gamma_samples,
-                    random_study=random_study
+                    random_study=random_study,
+                    sort_by_data_id=sort_by_data_id
                 ))
         y_samples = np.hstack(y_samples)
 
@@ -565,8 +617,65 @@ def score_sub_models_variation(mr: MRBRT,
         raise ValueError('Must optimize MRBRT first.')
 
     index = mr.get_cov_model_index(ensemble_cov_model_name)
-    spline = mr.cov_models[index].spline
+    cov_model = mr.cov_models[index]
+    spline = cov_model.spline
     x = np.linspace(spline.knots[0], spline.knots[-1], 201)
-    dmat = spline.design_dmat(x, n)[:, 1:]
+    i = 0 if cov_model.use_spline_intercept else 1
+    dmat = spline.design_dmat(x, n)[:, i:]
     d = dmat.dot(mr.beta_soln[mr.x_vars_indices[index]])
     return -np.mean(np.abs(d))
+
+
+def create_knots_samples(data: MRData,
+                         alt_cov_names: List[str] = None,
+                         ref_cov_names: List[str] = None,
+                         l_zero: bool = True,
+                         num_splines: int = 50,
+                         num_knots: int = 5,
+                         width_pct: float = 0.2,
+                         return_settings: bool = False) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
+    """Create knot samples for relative risk application.
+
+    Args:
+        data (MRData): Data object.
+        alt_cov_names (List[str], optional):
+            Name of the alternative exposures, if `None` use `['b_0', 'b_1']`.
+            Default to `None`.
+        ref_cov_names (List[str], optional):
+            Name of the reference exposures, if `None` use `['a_0', 'a_1']`.
+            Default to `None`.
+        l_zero (bool, optional): If `True`, assume the exposure min is 0. Default to `True`.
+        num_splines (int, optional): Number of splines. Default to 50.
+        num_knots (int, optional): Number of the spline knots. Default to 5.
+        width_pct (float, optional): Minimum percentage distance between knots. Default to 0.2.
+        return_settings (bool, optional): Returns the knots setting if `True`. Default to `False`.
+
+    Returns:
+        np.ndarray: Knots samples.
+    """
+    # extract the dose information
+    alt_covs = data.get_covs(['b_0', 'b_1'] if alt_cov_names is None else alt_cov_names).T
+    ref_covs = data.get_covs(['a_0', 'a_1'] if ref_cov_names is None else ref_cov_names).T
+    all_covs = np.vstack((alt_covs, ref_covs))
+
+    dose_min = 0 if l_zero else np.min(all_covs)
+    dose_max = np.max(all_covs)
+
+    start_midpoints = ref_covs.mean(axis=0)
+    # end_midpoints = alt_covs.mean(axis=0)
+    dose = np.hstack([start_midpoints, alt_covs[0]])
+    start = (np.percentile(dose, 10) - dose_min) / (dose_max - dose_min)
+    end = (np.percentile(dose, 90) - dose_min) / (dose_max - dose_min)
+    knot_bounds = np.array([[start, end]] * (num_knots - 2))
+    min_size = (end - start) * width_pct
+    interval_sizes = np.array([[min_size, 1.]] * (num_knots - 1))
+    knots_samples = utils.sample_knots(
+        num_knots - 1,
+        knot_bounds=knot_bounds,
+        interval_sizes=interval_sizes,
+        num_samples=num_splines
+    )
+    if return_settings:
+        return knots_samples, knot_bounds, interval_sizes
+    else:
+        return knots_samples
