@@ -8,6 +8,7 @@
 from typing import List, Tuple, Union
 from copy import deepcopy
 import numpy as np
+import pandas as pd
 from .data import MRData
 from .cov_model import CovModel
 from . import utils
@@ -297,6 +298,12 @@ class MRBRT:
             study: self.u_soln[i]
             for i, study in enumerate(self.data.studies)
         }
+        self.re_var_soln = {
+            cov_name: self.gamma_soln[self.z_vars_indices[self.get_cov_model_index(cov_name)]]
+            for cov_name in self.cov_model_names
+            if self.cov_models[self.get_cov_model_index(cov_name)].use_re
+        }
+
 
     def extract_re(self, study_id: np.ndarray) -> np.ndarray:
         """Extract the random effect for a given dataset.
@@ -413,6 +420,14 @@ class MRBRT:
             y_samples = y_samples[:, np.argsort(data.data_id)]
 
         return y_samples.T
+
+    def summary(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Return the summary data frame.
+        """
+        fe = pd.DataFrame(utils.ravel_dict(self.fe_soln), index=[0])
+        re_var = pd.DataFrame(utils.ravel_dict(self.re_var_soln), index=[0])
+
+        return fe, re_var
 
 
 class MRBeRT:
