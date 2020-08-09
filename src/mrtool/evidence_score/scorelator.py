@@ -19,7 +19,8 @@ class Scorelator:
                  ln_rr_draws: np.ndarray,
                  exposures: np.ndarray,
                  exposure_domain: Union[List[float], None] = None,
-                 ref_exposure: Union[float, None] = None):
+                 ref_exposure: Union[float, None] = None,
+                 score_type: str = 'area'):
         """Constructor of Scorelator.
 
         Args:
@@ -37,13 +38,15 @@ class Scorelator:
                 All draws in `ln_rr_draws` will have value 0 at `ref_exposure`.
                 If `None`, `ref_exposure` will be set to the minimum value of `exposures`.
                 Default to None.
+            score_type (str, optional):
+                If ``'area'``, use area between curves to determine the score, if ``'point'``,
+                use the ratio between line segments at point exposure to determine the score.
         """
         self.ln_rr_draws = np.array(ln_rr_draws)
         self.exposures = np.array(exposures)
         self.exposure_domain = [np.min(self.exposures),
                                 np.max(self.exposures)] if exposure_domain is None else exposure_domain
         self.ref_exposure = np.min(self.exposures) if ref_exposure is None else ref_exposure
-        self._check_inputs()
 
         self.num_draws = self.ln_rr_draws.shape[0]
         self.num_exposures = self.exposures.size
@@ -52,6 +55,9 @@ class Scorelator:
         self.ln_rr_draws = self.normalize_ln_rr_draws()
         self.rr_draws = np.exp(self.ln_rr_draws)
         self.rr_type = 'harmful' if self.rr_draws[:, -1].mean() >= 1.0 else 'protective'
+
+        self.score_type = score_type
+        self._check_inputs()
 
     def _check_inputs(self):
         """Check the inputs type and value.
@@ -70,6 +76,9 @@ class Scorelator:
 
         if self.ref_exposure < np.min(self.exposures) or self.ref_exposure > np.max(self.exposures):
             raise ValueError("reference exposure should be within the range of exposures.")
+
+        if not self.score_type in ['area', 'point']:
+            raise ValueError("score_type has to been chosen from 'area' or 'point'.")
 
     def normalize_ln_rr_draws(self):
         """Normalize log relative risk draws.
@@ -102,15 +111,23 @@ class Scorelator:
 
         valid_index = (self.exposures >= self.exposure_domain[0]) & (self.exposures <= self.exposure_domain[1])
 
-        ab_area = seq_area_between_curves(rr_lower, rr_upper)
+        if self.score_type == 'area':
+            ab_area = seq_area_between_curves(rr_lower, rr_upper)
+        else:
+            ab_area = rr_upper - rr_lower
         if self.rr_type == 'protective':
-            abc_area = seq_area_between_curves(rr_lower, np.ones(self.num_exposures))
+            if self.score_type == 'area':
+                abc_area = seq_area_between_curves(rr_lower, np.ones(self.num_exposures))
+            else:
+                abc_area = 1.0 - rr_lower
         elif self.rr_type == 'harmful':
-            abc_area = seq_area_between_curves(np.ones(self.num_exposures), rr_upper)
+            if self.score_type == 'area':
+                abc_area = seq_area_between_curves(np.ones(self.num_exposures), rr_upper)
+            else:
+                abc_area = rr_upper - 1.0
         else:
             raise ValueError('Unknown relative risk type.')
-
-        score = np.round((ab_area/abc_area)[valid_index[1:]].min(), 2)
+        score = np.round((ab_area/abc_area)[valid_index].min(), 2)
 
         # plot diagnostic
         if path_to_diagnostic is not None:
@@ -134,7 +151,7 @@ class Scorelator:
                                             ax[0], mark_area=True)
 
             # plot the score as function of exposure
-            ax[1].plot(self.exposures[1:], ab_area/abc_area,
+            ax[1].plot(self.exposures, ab_area/abc_area,
                        color='dodgerblue',
                        label=f'A+B / A+B+C: {score}')
             ax[1].legend()
@@ -230,17 +247,18 @@ def seq_area_between_curves(lower: np.ndarray,
             to the whole curve.
     """
     if ind_var is None:
-        return np.array([area_between_curves(
+        area = np.array([area_between_curves(
             lower[:(i+1)],
             upper[:(i+1)],
             normalize_domain=normalize_domain)
             for i in range(1, lower.size)
         ])
     else:
-        return np.array([area_between_curves(
+        area = np.array([area_between_curves(
             lower[:(i + 1)],
             upper[:(i + 1)],
             ind_var[:(i + 1)],
             normalize_domain=normalize_domain)
             for i in range(1, lower.size)
         ])
+    return np.hstack((area[0], area))
