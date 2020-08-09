@@ -112,22 +112,22 @@ class Scorelator:
         valid_index = (self.exposures >= self.exposure_domain[0]) & (self.exposures <= self.exposure_domain[1])
 
         if self.score_type == 'area':
-            ab_area = seq_area_between_curves(rr_lower, rr_upper)
+            ab = seq_area_between_curves(rr_lower, rr_upper)
         else:
-            ab_area = rr_upper - rr_lower
+            ab = rr_upper - rr_lower
         if self.rr_type == 'protective':
             if self.score_type == 'area':
-                abc_area = seq_area_between_curves(rr_lower, np.ones(self.num_exposures))
+                abc = seq_area_between_curves(rr_lower, np.ones(self.num_exposures))
             else:
-                abc_area = 1.0 - rr_lower
+                abc = 1.0 - rr_lower
         elif self.rr_type == 'harmful':
             if self.score_type == 'area':
-                abc_area = seq_area_between_curves(np.ones(self.num_exposures), rr_upper)
+                abc = seq_area_between_curves(np.ones(self.num_exposures), rr_upper)
             else:
-                abc_area = rr_upper - 1.0
+                abc = rr_upper - 1.0
         else:
             raise ValueError('Unknown relative risk type.')
-        score = np.round((ab_area/abc_area)[valid_index].min(), 2)
+        score = np.round((ab/abc)[valid_index].min(), 2)
 
         # plot diagnostic
         if path_to_diagnostic is not None:
@@ -151,7 +151,7 @@ class Scorelator:
                                             ax[0], mark_area=True)
 
             # plot the score as function of exposure
-            ax[1].plot(self.exposures, ab_area/abc_area,
+            ax[1].plot(self.exposures, ab/abc,
                        color='dodgerblue',
                        label=f'A+B / A+B+C: {score}')
             ax[1].legend()
