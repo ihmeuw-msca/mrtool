@@ -52,7 +52,8 @@ class Scorelator:
         self.num_exposures = self.exposures.size
 
         # normalize the ln_rr_draws
-        self.ln_rr_draws = self.normalize_ln_rr_draws()
+        if self.ln_rr_draws.shape[1] > 1:
+            self.ln_rr_draws = self.normalize_ln_rr_draws()
         self.rr_draws = np.exp(self.ln_rr_draws)
         self.rr_type = 'harmful' if self.rr_draws[:, -1].mean() >= 1.0 else 'protective'
 
@@ -133,11 +134,17 @@ class Scorelator:
         if path_to_diagnostic is not None:
             fig, ax = plt.subplots(1, 2, figsize=(22, 8.5))
             # plot rr uncertainty
-            ax[0].fill_between(self.exposures, rr_lower, rr_upper, color='#69b3a2', alpha=0.3)
-            ax[0].plot(self.exposures, rr_mean, color='#69b3a2')
+            if self.exposures.size == 1:
+                ax[0].boxplot(self.rr_draws,
+                              meanline=True,
+                              whis=(lower_draw_quantile*100, upper_draw_quantile*100),
+                              positions=self.exposures)
+            else:
+                ax[0].fill_between(self.exposures, rr_lower, rr_upper, color='#69b3a2', alpha=0.3)
+                ax[0].plot(self.exposures, rr_mean, color='#69b3a2')
+                ax[0].set_xlim(np.min(self.exposures), np.max(self.exposures))
+                ax[0].set_ylim(np.min(rr_lower) - rr_mean.ptp()*0.1, np.max(rr_upper) + rr_mean.ptp()*0.1)
             ax[0].axhline(1, color='#003333', alpha=0.5)
-            ax[0].set_xlim(np.min(self.exposures), np.max(self.exposures))
-            ax[0].set_ylim(np.min(rr_lower) - rr_mean.ptp()*0.1, np.max(rr_upper) + rr_mean.ptp()*0.1)
             # compute coordinate of annotation of A, B and C
             if self.rr_type == 'protective':
                 self.annotate_between_curve('A', self.exposures, rr_lower, rr_mean, ax[0])
@@ -151,11 +158,16 @@ class Scorelator:
                                             ax[0], mark_area=True)
 
             # plot the score as function of exposure
-            ax[1].plot(self.exposures, ab/abc,
-                       color='dodgerblue',
-                       label=f'A+B / A+B+C: {score}')
+            if self.exposures.size == 1:
+                ax[1].scatter(self.exposures, ab/abc,
+                              color='dodgerblue',
+                              label=f'A+B / A+B+C: {score}')
+            else:
+                ax[1].plot(self.exposures, ab/abc,
+                           color='dodgerblue',
+                           label=f'A+B / A+B+C: {score}')
+                ax[1].set_xlim(np.min(self.exposures), np.max(self.exposures))
             ax[1].legend()
-            ax[1].set_xlim(np.min(self.exposures), np.max(self.exposures))
             ax[1].legend(loc=1, fontsize='x-large')
 
             # plot the exposure domain
