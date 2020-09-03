@@ -96,7 +96,7 @@ def plot_risk_function(mrbrt, pair, beta_samples, gamma_samples, alt_cov_names=N
         print(f"Risk function plot saved at {outfile}")
     else:
         plt.show()
-    plt.clf()
+    plt.close()
 
 
 def plot_derivative_fit(mrbrt, pair, alt_cov_names=None, ref_cov_names=None,
@@ -203,7 +203,7 @@ def plot_derivative_fit(mrbrt, pair, alt_cov_names=None, ref_cov_names=None,
         print(f"Derivative fit plot saved at {outfile}")
     else:
         plt.show()
-    plt.clf()
+    plt.close()
 
 
 def get_rr_data(x, spline, beta):
