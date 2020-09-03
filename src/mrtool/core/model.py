@@ -8,6 +8,7 @@
 from typing import List, Tuple, Union
 from copy import deepcopy
 import numpy as np
+import pandas as pd
 from .data import MRData
 from .cov_model import CovModel
 from . import utils
@@ -245,7 +246,7 @@ class MRBRT:
         # scale z_mat
         z_scale = np.max(np.abs(z_mat), axis=0)
         z_scale[z_scale == 0.0] = 1.0
-        z_mat /= z_scale
+        z_mat = z_mat / z_scale
 
         # priors
         c_mat, c_vec = self.create_c_mat()
@@ -297,6 +298,12 @@ class MRBRT:
             study: self.u_soln[i]
             for i, study in enumerate(self.data.studies)
         }
+        self.re_var_soln = {
+            cov_name: self.gamma_soln[self.z_vars_indices[self.get_cov_model_index(cov_name)]]
+            for cov_name in self.cov_model_names
+            if self.cov_models[self.get_cov_model_index(cov_name)].use_re
+        }
+
 
     def extract_re(self, study_id: np.ndarray) -> np.ndarray:
         """Extract the random effect for a given dataset.
@@ -413,6 +420,14 @@ class MRBRT:
             y_samples = y_samples[:, np.argsort(data.data_id)]
 
         return y_samples.T
+
+    def summary(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Return the summary data frame.
+        """
+        fe = pd.DataFrame(utils.ravel_dict(self.fe_soln), index=[0])
+        re_var = pd.DataFrame(utils.ravel_dict(self.re_var_soln), index=[0])
+
+        return fe, re_var
 
 
 class MRBeRT:
@@ -600,6 +615,23 @@ class MRBeRT:
 
         return y_samples
 
+    def summary(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Create summary data frame.
+        """
+        summary_list = [sub_model.summary() for sub_model in self.sub_models]
+        fe = pd.concat([summary_list[i][0] for i in range(self.num_sub_models)])
+        fe.loc[self.num_sub_models] = fe.values.T.dot(self.weights)
+        fe.reset_index(inplace=True, drop=True)
+        fe.insert(0, 'model_id', np.hstack((np.arange(self.num_sub_models), 'average')))
+        fe['weights'] = np.hstack((self.weights, np.nan))
+
+        re_var = pd.concat([summary_list[i][1] for i in range(self.num_sub_models)])
+        re_var.loc[self.num_sub_models] = re_var.values.T.dot(self.weights)
+        re_var.reset_index(inplace=True, drop=True)
+        re_var.insert(0, 'model_id', np.hstack((np.arange(self.num_sub_models), 'average')))
+        re_var['weights'] = np.hstack((self.weights, np.nan))
+
+        return fe, re_var
 
 def score_sub_models_datafit(mr: MRBRT):
     """score the result of mrbert"""
