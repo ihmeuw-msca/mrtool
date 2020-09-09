@@ -348,7 +348,7 @@ class CovModel:
         """Attach data.
         """
         if self.use_spline:
-            self.spline = self.create_spline(data)
+            self.spline = self.create_spline(data, spline_knots=self.spline_knots)
             self.spline_knots = self.spline.knots
 
     def has_data(self):
@@ -359,11 +359,13 @@ class CovModel:
         else:
             return True
 
-    def create_spline(self, data: MRData) -> xspline.XSpline:
+    def create_spline(self, data: MRData, spline_knots: np.ndarray = None) -> xspline.XSpline:
         """Create spline given current spline parameters.
         Args:
             data (mrtool.MRData):
                 The data frame used for storing the data
+            spline_knots (np.ndarray, optional):
+                Spline knots, if ``None`` determined by frequency or domain.
         Returns:
             xspline.XSpline: The spline object.
         """
@@ -379,28 +381,29 @@ class CovModel:
             cov = np.hstack((cov, ref_cov.mean(axis=1)))
         cov = np.unique(cov)
 
-        if self.spline_knots_type == 'frequency':
-            spline_knots = np.quantile(cov, self.spline_knots_template)
-        else:
-            spline_knots = min(cov) + self.spline_knots_template*(max(cov) - min(cov))
+        if spline_knots is None:
+            if self.spline_knots_type == 'frequency':
+                spline_knots = np.quantile(cov, self.spline_knots_template)
+            else:
+                spline_knots = spline_knots[0] + self.spline_knots_template*(spline_knots[-1] - spline_knots[0])
 
-        self.prior_spline_monotonicity_domain = min(cov) + \
-                                                self.prior_spline_monotonicity_domain_template*(max(cov) - min(cov))
-        self.prior_spline_convexity_domain = min(cov) + \
-                                             self.prior_spline_convexity_domain_template*(max(cov) - min(cov))
+        self.prior_spline_monotonicity_domain = spline_knots[0] + \
+                                                self.prior_spline_monotonicity_domain_template*(spline_knots[-1] - spline_knots[0])
+        self.prior_spline_convexity_domain = spline_knots[0] + \
+                                             self.prior_spline_convexity_domain_template*(spline_knots[-1] - spline_knots[0])
 
-        self.prior_spline_derval_gaussian_domain = min(cov) + \
-            self.prior_spline_derval_gaussian_domain_template*(max(cov) - min(cov))
-        self.prior_spline_derval_uniform_domain = min(cov) + \
-            self.prior_spline_derval_uniform_domain_template*(max(cov) - min(cov))
-        self.prior_spline_der2val_gaussian_domain = min(cov) + \
-            self.prior_spline_der2val_gaussian_domain_template*(max(cov) - min(cov))
-        self.prior_spline_der2val_uniform_domain = min(cov) + \
-            self.prior_spline_der2val_uniform_domain_template*(max(cov) - min(cov))
-        self.prior_spline_funval_gaussian_domain = min(cov) + \
-            self.prior_spline_funval_gaussian_domain_template*(max(cov) - min(cov))
-        self.prior_spline_funval_uniform_domain = min(cov) + \
-            self.prior_spline_funval_uniform_domain_template*(max(cov) - min(cov))
+        self.prior_spline_derval_gaussian_domain = spline_knots[0] + \
+            self.prior_spline_derval_gaussian_domain_template*(spline_knots[-1] - spline_knots[0])
+        self.prior_spline_derval_uniform_domain = spline_knots[0] + \
+            self.prior_spline_derval_uniform_domain_template*(spline_knots[-1] - spline_knots[0])
+        self.prior_spline_der2val_gaussian_domain = spline_knots[0] + \
+            self.prior_spline_der2val_gaussian_domain_template*(spline_knots[-1] - spline_knots[0])
+        self.prior_spline_der2val_uniform_domain = spline_knots[0] + \
+            self.prior_spline_der2val_uniform_domain_template*(spline_knots[-1] - spline_knots[0])
+        self.prior_spline_funval_gaussian_domain = spline_knots[0] + \
+            self.prior_spline_funval_gaussian_domain_template*(spline_knots[-1] - spline_knots[0])
+        self.prior_spline_funval_uniform_domain = spline_knots[0] + \
+            self.prior_spline_funval_uniform_domain_template*(spline_knots[-1] - spline_knots[0])
 
         spline = xspline.XSpline(spline_knots,
                                  self.spline_degree,
