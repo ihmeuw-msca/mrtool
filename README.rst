@@ -5,7 +5,7 @@ MRTool
 .. image:: https://readthedocs.org/projects/mrtool/badge/?version=latest
 
 **MRTool** (Meta-Regression Tool) package is designed to solve general meta-regression problem.
-The most common features include,
+The most interesting features include,
 
 * linear and log prediction function,
 * spline extension for covariates,
