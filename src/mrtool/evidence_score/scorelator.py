@@ -2,12 +2,15 @@
     scorelator
     ~~~~~~~~~~
 """
-from typing import List, Union
+import os
+from typing import List, Tuple, Union
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from scipy.integrate import trapz
+from mrtool import MRData, MRBRT, MRBeRT
+from mrtool.core.other_sampling import sample_simple_lme_beta
 
 
 class Scorelator:
@@ -274,3 +277,177 @@ def seq_area_between_curves(lower: np.ndarray,
             for i in range(1, lower.size)
         ])
     return np.hstack((area[0], area))
+
+
+class ContinuousScorelator:
+    def __init__(self,
+                 signal_model: Union[MRBRT, MRBeRT],
+                 final_model: Union[MRBRT],
+                 alt_cov_names: List[str],
+                 ref_cov_names: List[str],
+                 exposure_bounds: Tuple[float] = (0.15, 0.85),
+                 draw_bounds: Tuple[float] = (0.05, 0.95),
+                 num_samples: int = 1000,
+                 num_points: int = 100,
+                 name: str = 'unknown'):
+        self.signal_model = signal_model
+        self.final_model = final_model
+        self.alt_cov_names = alt_cov_names
+        self.ref_cov_names = ref_cov_names
+        self.exposure_bounds = exposure_bounds
+        self.draw_bounds = draw_bounds
+        self.num_samples = num_samples
+        self.num_points = num_points
+        self.name = name
+
+        exposures = self.signal_model.data.get_covs(self.alt_cov_names + self.ref_cov_names)
+        self.exposure_lend = exposures.min()
+        self.exposure_uend = exposures.max()
+        self.alt_exposures = self.signal_model.data.get_covs(self.alt_cov_names).mean(axis=1)
+        self.ref_exposures = self.signal_model.data.get_covs(self.ref_cov_names).mean(axis=1)
+        self.draws = self.get_draws(num_samples=self.num_samples, num_points=self.num_points)
+        self.pred_exposures = self.get_pred_exposures()
+
+        # compute the range of exposures
+        self.exposure_lb = np.quantile(self.ref_exposures, self.exposure_bounds[0])
+        self.exposure_ub = np.quantile(self.alt_exposures, self.exposure_bounds[1])
+        self.effective_index = (self.pred_exposures >= self.exposure_lb) & (self.pred_exposures <= self.exposure_lb)
+
+        # compute the range of the draws
+        self.draw_lb = np.quantile(self.draws, self.draw_bounds[0], axis=0)
+        self.draw_ub = np.quantile(self.draws, self.draw_bounds[1], axis=0)
+
+    def get_signal(self,
+                   alt_cov: List[np.ndarray],
+                   ref_cov: List[np.ndarray]) -> np.ndarray:
+        covs = {}
+        for i, cov_name in enumerate(self.alt_cov_names):
+            covs[cov_name] = alt_cov[i]
+        for i, cov_name in enumerate(self.ref_cov_names):
+            covs[cov_name] = ref_cov[i]
+        data = MRData(covs=covs)
+        return self.signal_model.predict(data)
+
+    def get_pred_exposures(self, num_points: int = 100):
+        return np.linspace(self.exposure_lend, self.exposure_uend, num_points)
+
+    def get_pred_data(self, num_points: int = 100) -> MRData:
+        exposures = self.get_pred_exposures(num_points=num_points)
+        ref_cov = np.repeat(self.exposure_lend, num_points)
+        zero_cov = np.zeros(num_points)
+        signal = self.get_signal(
+            alt_cov=[exposures for _ in self.alt_cov_names],
+            ref_cov=[ref_cov for _ in self.ref_cov_names]
+        )
+        other_covs = {
+            cov_name: zero_cov
+            for cov_name in self.final_model.data.covs
+            if not cov_name in (self.alt_cov_names + self.ref_cov_names)
+        }
+        return MRData(covs={'signal': signal, **other_covs})
+
+    def get_beta_samples(self, num_samples: int) -> np.ndarray:
+        return sample_simple_lme_beta(num_samples, self.final_model)
+
+    def get_gamma_samples(self, num_samples: int) -> np.ndarray:
+        return np.repeat(self.final_model.gamma_soln.reshape(1, 1),
+                         num_samples, axis=0)
+
+    def get_samples(self, num_samples: int) -> Tuple[np.ndarray, np.ndarray]:
+        return self.get_beta_samples(num_samples), self.get_gamma_samples(num_samples)
+
+    def get_draws(self,
+                  num_samples: int = 1000,
+                  num_points: int = 100) -> np.ndarray:
+        data = self.get_pred_data(num_points=num_points)
+        beta_samples, gamma_samples = self.get_samples(num_samples=num_samples)
+        return self.final_model.create_draws(data,
+                                             beta_samples=beta_samples,
+                                             gamma_samples=gamma_samples,
+                                             random_study=True).T
+
+    def is_harmful(self) -> bool:
+        median = np.median(self.draws, axis=0)
+        return np.sum(median[self.effective_index] >= 0) > 0.5*np.sum(self.effective_index)
+
+    def get_score(self) -> float:
+        if self.is_harmful():
+            score = self.draw_lb[self.effective_index].mean()
+        else:
+            score = -self.draw_ub[self.effective_index].mean()
+        return score
+
+    def plot_data(self, ax=None):
+        ax = plt.subplot() if ax is None else ax
+        data = self.signal_model.data
+        alt_exposure = data.get_covs(self.alt_cov_names)
+        ref_exposure = data.get_covs(self.ref_cov_names)
+
+        alt_mean = alt_exposure.mean(axis=1)
+        ref_mean = ref_exposure.mean(axis=1)
+        ref_cov = np.repeat(self.exposure_lb, data.num_obs)
+        zero_cov = np.zeros(data.num_obs)
+        signal = self.get_signal(
+            alt_cov=[ref_mean for _ in self.alt_cov_names],
+            ref_cov=[ref_cov for _ in self.ref_cov_names]
+        )
+        other_covs = {
+            cov_name: zero_cov
+            for cov_name in self.final_model.data.covs
+            if not cov_name in (self.alt_cov_names + self.ref_cov_names)
+        }
+        prediction = self.final_model.predict(MRData(covs={'signal': signal, **other_covs}))
+
+        trim_index = self.signal_model.w_soln <= 0.1
+        ax.scatter(alt_mean, prediction + data.obs,
+                   c='gray', s=5.0/data.obs_se, alpha=0.5)
+        ax.scatter(alt_mean[trim_index], prediction[trim_index] + data.obs[trim_index],
+                   c='red', marker='x', s=5.0/data.obs_se[trim_index])
+
+    def plot_model(self,
+                   ax=None,
+                   title: str = None,
+                   title_score: bool = True,
+                   xlabel: str = 'exposure',
+                   ylabel: str = 'ln relative risk',
+                   xlim: tuple = None,
+                   ylim: tuple = None,
+                   xscale: str = None,
+                   yscale: str = None,
+                   folder: Union[str, Path] = None):
+
+        ax = plt.subplot() if ax is None else ax
+        draws_median = np.median(self.draws, axis=0)
+
+        ax.plot(self.pred_exposures, draws_median, color='#69b3a2', linewidth=1)
+        ax.fill_between(self.pred_exposures, self.draw_lb, self.draw_ub, color='#69b3a2', alpha=0.3)
+        ax.axvline(self.exposure_lb, linestyle='--', color='k', linewidth=1)
+        ax.axvline(self.exposure_ub, linestyle='--', color='k', linewidth=1)
+        ax.axhline(0.0, linestyle='--', color='k', linewidth=1)
+
+        title = self.name if title is None else title
+        if title_score:
+            score = self.get_score()
+            title = f"{title}: score = {score: .3f}"
+
+        ax.set_title(title, loc='left')
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        if xlim is not None:
+            ax.set_xlim(*xlim)
+        if ylim is not None:
+            ax.set_ylim(*ylim)
+        if xscale is not None:
+            ax.set_xscale(xscale)
+        if yscale is not None:
+            ax.set_yscale(yscale)
+
+        self.plot_data(ax=ax)
+
+        if folder is not None:
+            folder = Path(folder)
+            if not folder.exists():
+                os.mkdir(folder)
+            plt.savefig(folder/f"{self.name}.pdf", bbox_inches='tight')
+
+        return ax
