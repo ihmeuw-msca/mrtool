@@ -106,7 +106,7 @@ class Scorelator:
         Returns:
             float: Evidence score.
         """
-        rr_mean = self.rr_draws.mean(axis=0)
+        rr_mean = np.median(self.rr_draws, axis=0)
         rr_lower = np.quantile(self.rr_draws, lower_draw_quantile, axis=0)
         rr_upper = np.quantile(self.rr_draws, upper_draw_quantile, axis=0)
 

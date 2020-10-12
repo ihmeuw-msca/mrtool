@@ -160,7 +160,7 @@ class CovModel:
 
         self.spline = None
         self.spline_knots_type = spline_knots_type
-        self.spline_knots_template = spline_knots
+        self.spline_knots_template = np.asarray(spline_knots)
         self.spline_knots = None
         self.spline_degree = spline_degree
         self.spline_l_linear = spline_l_linear
@@ -189,12 +189,12 @@ class CovModel:
         self.prior_spline_maxder_gaussian = prior_spline_maxder_gaussian
         self.prior_spline_maxder_uniform = prior_spline_maxder_uniform
         self.prior_spline_normalization = prior_spline_normalization
-        self.prior_beta_gaussian = prior_beta_gaussian
-        self.prior_beta_uniform = prior_beta_uniform
-        self.prior_beta_laplace = prior_beta_laplace
-        self.prior_gamma_gaussian = prior_gamma_gaussian
-        self.prior_gamma_uniform = prior_gamma_uniform
-        self.prior_gamma_laplace = prior_gamma_laplace
+        self.prior_beta_gaussian = prior_beta_gaussian if prior_beta_gaussian is None else np.asarray(prior_beta_gaussian)
+        self.prior_beta_uniform = prior_beta_uniform if prior_beta_uniform is None else np.asarray(prior_beta_uniform)
+        self.prior_beta_laplace = prior_beta_laplace if prior_beta_laplace is None else np.asarray(prior_beta_laplace)
+        self.prior_gamma_gaussian = prior_gamma_gaussian if prior_gamma_gaussian is None else np.asarray(prior_gamma_gaussian)
+        self.prior_gamma_uniform = prior_gamma_uniform if prior_gamma_uniform is None else np.asarray(prior_gamma_uniform)
+        self.prior_gamma_laplace = prior_gamma_laplace if prior_gamma_laplace is None else np.asarray(prior_gamma_laplace)
 
         self._check_inputs()
         self._process_inputs()
@@ -385,7 +385,7 @@ class CovModel:
             if self.spline_knots_type == 'frequency':
                 spline_knots = np.quantile(cov, self.spline_knots_template)
             else:
-                spline_knots = spline_knots[0] + self.spline_knots_template*(spline_knots[-1] - spline_knots[0])
+                spline_knots = cov.min() + self.spline_knots_template*(cov.max() - cov.min())
 
         self.prior_spline_monotonicity_domain = spline_knots[0] + \
                                                 self.prior_spline_monotonicity_domain_template*(spline_knots[-1] - spline_knots[0])
