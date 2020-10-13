@@ -306,6 +306,8 @@ class ContinuousScorelator:
         self.alt_exposures = self.signal_model.data.get_covs(self.alt_cov_names).mean(axis=1)
         self.ref_exposures = self.signal_model.data.get_covs(self.ref_cov_names).mean(axis=1)
         self.draws = self.get_draws(num_samples=self.num_samples, num_points=self.num_points)
+        self.wider_draws = self.get_draws(num_samples=self.num_samples, num_points=self.num_points,
+                                          use_gamma_ub=True)
         self.pred_exposures = self.get_pred_exposures()
 
         # compute the range of exposures
@@ -316,6 +318,8 @@ class ContinuousScorelator:
         # compute the range of the draws
         self.draw_lb = np.quantile(self.draws, self.draw_bounds[0], axis=0)
         self.draw_ub = np.quantile(self.draws, self.draw_bounds[1], axis=0)
+        self.wider_draw_lb = np.quantile(self.wider_draws, self.draw_bounds[0], axis=0)
+        self.wider_draw_ub = np.quantile(self.wider_draws, self.draw_bounds[1], axis=0)
 
     def get_signal(self,
                    alt_cov: List[np.ndarray],
@@ -356,11 +360,19 @@ class ContinuousScorelator:
     def get_samples(self, num_samples: int) -> Tuple[np.ndarray, np.ndarray]:
         return self.get_beta_samples(num_samples), self.get_gamma_samples(num_samples)
 
+    def get_gamma_sd(self) -> float:
+        lt = self.final_model.lt
+        gamma_fisher = lt.get_gamma_fisher(lt.gamma)
+        return 1.0/np.sqrt(gamma_fisher[0, 0])
+
     def get_draws(self,
                   num_samples: int = 1000,
-                  num_points: int = 100) -> np.ndarray:
+                  num_points: int = 100,
+                  use_gamma_ub: bool = False) -> np.ndarray:
         data = self.get_pred_data(num_points=num_points)
         beta_samples, gamma_samples = self.get_samples(num_samples=num_samples)
+        if use_gamma_ub:
+            gamma_samples += self.get_gamma_sd()
         return self.final_model.create_draws(data,
                                              beta_samples=beta_samples,
                                              gamma_samples=gamma_samples,
@@ -370,11 +382,13 @@ class ContinuousScorelator:
         median = np.median(self.draws, axis=0)
         return np.sum(median[self.effective_index] >= 0) > 0.5*np.sum(self.effective_index)
 
-    def get_score(self) -> float:
+    def get_score(self, use_gamma_ub: bool = False) -> float:
         if self.is_harmful():
-            score = self.draw_lb[self.effective_index].mean()
+            draw = self.wider_draw_lb if use_gamma_ub else self.draw_lb
+            score = draw[self.effective_index].mean()
         else:
-            score = -self.draw_ub[self.effective_index].mean()
+            draw = self.wider_draw_ub if use_gamma_ub else self.draw_ub
+            score = -draw[self.effective_index].mean()
         return score
 
     def plot_data(self, ax=None):
@@ -407,7 +421,6 @@ class ContinuousScorelator:
     def plot_model(self,
                    ax=None,
                    title: str = None,
-                   title_score: bool = True,
                    xlabel: str = 'exposure',
                    ylabel: str = 'ln relative risk',
                    xlim: tuple = None,
@@ -420,15 +433,16 @@ class ContinuousScorelator:
         draws_median = np.median(self.draws, axis=0)
 
         ax.plot(self.pred_exposures, draws_median, color='#69b3a2', linewidth=1)
-        ax.fill_between(self.pred_exposures, self.draw_lb, self.draw_ub, color='#69b3a2', alpha=0.3)
+        ax.fill_between(self.pred_exposures, self.draw_lb, self.draw_ub, color='#69b3a2', alpha=0.2)
+        ax.fill_between(self.pred_exposures, self.wider_draw_lb, self.wider_draw_ub, color='#69b3a2', alpha=0.2)
         ax.axvline(self.exposure_lb, linestyle='--', color='k', linewidth=1)
         ax.axvline(self.exposure_ub, linestyle='--', color='k', linewidth=1)
         ax.axhline(0.0, linestyle='--', color='k', linewidth=1)
 
         title = self.name if title is None else title
-        if title_score:
-            score = self.get_score()
-            title = f"{title}: score = {score: .3f}"
+        score = self.get_score()
+        low_score = self.get_score(use_gamma_ub=True)
+        title = f"{title}: score = ({low_score: .3f}, {score: .3f})"
 
         ax.set_title(title, loc='left')
         ax.set_xlabel(xlabel)
