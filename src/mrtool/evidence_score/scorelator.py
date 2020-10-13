@@ -411,8 +411,11 @@ class ContinuousScorelator:
             if not cov_name in (self.alt_cov_names + self.ref_cov_names)
         }
         prediction = self.final_model.predict(MRData(covs={'signal': signal, **other_covs}))
-
-        trim_index = self.signal_model.w_soln <= 0.1
+        if isinstance(self.signal_model, MRBRT):
+            w = self.signal_model.w_soln
+        else:
+            w = np.vstack([model.w_soln for model in self.signal_model.sub_models]).T.dot(self.signal_model.weights)
+        trim_index = w <= 0.1
         ax.scatter(alt_mean, prediction + data.obs,
                    c='gray', s=5.0/data.obs_se, alpha=0.5)
         ax.scatter(alt_mean[trim_index], prediction[trim_index] + data.obs[trim_index],
