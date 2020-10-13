@@ -311,7 +311,7 @@ class ContinuousScorelator:
         # compute the range of exposures
         self.exposure_lb = np.quantile(self.ref_exposures, self.exposure_bounds[0])
         self.exposure_ub = np.quantile(self.alt_exposures, self.exposure_bounds[1])
-        self.effective_index = (self.pred_exposures >= self.exposure_lb) & (self.pred_exposures <= self.exposure_lb)
+        self.effective_index = (self.pred_exposures >= self.exposure_lb) & (self.pred_exposures <= self.exposure_ub)
 
         # compute the range of the draws
         self.draw_lb = np.quantile(self.draws, self.draw_bounds[0], axis=0)
@@ -342,7 +342,7 @@ class ContinuousScorelator:
         other_covs = {
             cov_name: zero_cov
             for cov_name in self.final_model.data.covs
-            if not cov_name in (self.alt_cov_names + self.ref_cov_names)
+            if cov_name != 'signal'
         }
         return MRData(covs={'signal': signal, **other_covs})
 
