@@ -372,7 +372,7 @@ class ContinuousScorelator:
         data = self.get_pred_data(num_points=num_points)
         beta_samples, gamma_samples = self.get_samples(num_samples=num_samples)
         if use_gamma_ub:
-            gamma_samples += self.get_gamma_sd()
+            gamma_samples += 2.0*self.get_gamma_sd()
         return self.final_model.create_draws(data,
                                              beta_samples=beta_samples,
                                              gamma_samples=gamma_samples,
