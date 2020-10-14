@@ -290,6 +290,7 @@ class ContinuousScorelator:
                  draw_bounds: Tuple[float] = (0.05, 0.95),
                  num_samples: int = 1000,
                  num_points: int = 100,
+                 shift_draws_by_min: bool = False,
                  name: str = 'unknown'):
         self.signal_model = signal_model
         self.final_model = final_model
@@ -299,6 +300,7 @@ class ContinuousScorelator:
         self.draw_bounds = draw_bounds
         self.num_samples = num_samples
         self.num_points = num_points
+        self.shift_draws_by_min = shift_draws_by_min
         self.name = name
 
         exposures = self.signal_model.data.get_covs(self.alt_cov_names + self.ref_cov_names)
@@ -310,6 +312,12 @@ class ContinuousScorelator:
         self.wider_draws = self.get_draws(num_samples=self.num_samples, num_points=self.num_points,
                                           use_gamma_ub=True)
         self.pred_exposures = self.get_pred_exposures()
+        self.pred = self.get_pred()
+
+        if self.shift_draws_by_min:
+            index = np.argmin(self.pred)
+            self.draws -= self.draws[:, index, None]
+            self.wider_draws -= self.wider_draws[:, index, None]
 
         # compute the range of exposures
         self.exposure_lb = np.quantile(self.ref_exposures, self.exposure_bounds[0])
@@ -383,6 +391,22 @@ class ContinuousScorelator:
         median = np.median(self.draws, axis=0)
         return np.sum(median[self.effective_index] >= 0) > 0.5*np.sum(self.effective_index)
 
+    def get_pred(self) -> np.ndarray:
+        ref_cov = np.repeat(self.exposure_lend, self.num_points)
+        zero_cov = np.zeros(self.num_points)
+        signal = self.get_signal(
+            alt_cov=[self.pred_exposures for _ in self.alt_cov_names],
+            ref_cov=[ref_cov for _ in self.ref_cov_names]
+        )
+        other_covs = {
+            cov_name: zero_cov
+            for cov_name in self.final_model.data.covs
+            if cov_name != 'signal'
+        }
+        import pdb; pdb.set_trace()
+        return self.final_model.predict(MRData(covs={'signal': signal, **other_covs}))
+
+
     def get_score(self, use_gamma_ub: bool = False) -> float:
         if self.is_harmful():
             draw = self.wider_draw_lb if use_gamma_ub else self.draw_lb
@@ -400,7 +424,7 @@ class ContinuousScorelator:
 
         alt_mean = alt_exposure.mean(axis=1)
         ref_mean = ref_exposure.mean(axis=1)
-        ref_cov = np.repeat(self.exposure_lb, data.num_obs)
+        ref_cov = np.repeat(self.exposure_lend, data.num_obs)
         zero_cov = np.zeros(data.num_obs)
         signal = self.get_signal(
             alt_cov=[ref_mean for _ in self.alt_cov_names],
@@ -409,9 +433,11 @@ class ContinuousScorelator:
         other_covs = {
             cov_name: zero_cov
             for cov_name in self.final_model.data.covs
-            if not cov_name in (self.alt_cov_names + self.ref_cov_names)
+            if cov_name != 'signal'
         }
         prediction = self.final_model.predict(MRData(covs={'signal': signal, **other_covs}))
+        if self.shift_draws_by_min:
+            prediction -= np.min(self.pred)
         if isinstance(self.signal_model, MRBRT):
             w = self.signal_model.w_soln
         else:
