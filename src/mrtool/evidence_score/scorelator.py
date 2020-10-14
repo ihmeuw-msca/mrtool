@@ -403,7 +403,6 @@ class ContinuousScorelator:
             for cov_name in self.final_model.data.covs
             if cov_name != 'signal'
         }
-        import pdb; pdb.set_trace()
         return self.final_model.predict(MRData(covs={'signal': signal, **other_covs}))
 
 
