@@ -516,7 +516,12 @@ class DichotomousScorelator:
                    ax=None,
                    title: str = None,
                    xlabel: str = 'ln relative risk',
-                   ylabel: str = 'ln relative risk se'):
+                   ylabel: str = 'ln relative risk se',
+                   xlim: tuple = None,
+                   ylim: tuple = None,
+                   xscale: str = None,
+                   yscale: str = None,
+                   folder: Union[str, Path] = None):
         ax = plt.subplot() if ax is None else ax
         data = self.model.data
         trim_index = self.model.w_soln <= 0.1
@@ -547,5 +552,19 @@ class DichotomousScorelator:
         ax.set_ylabel(ylabel)
         ax.set_title(f"{title}: score = ({low_score: .3f}, {score: .3f})", loc='left')
 
+        if xlim is not None:
+            ax.set_xlim(*xlim)
+        if ylim is not None:
+            ax.set_ylim(*ylim)
+        if xscale is not None:
+            ax.set_xscale(xscale)
+        if yscale is not None:
+            ax.set_yscale(yscale)
+
+        if folder is not None:
+            folder = Path(folder)
+            if not folder.exists():
+                os.mkdir(folder)
+            plt.savefig(folder/f"{self.name}.pdf", bbox_inches='tight')
 
         return ax
