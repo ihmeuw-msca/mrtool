@@ -416,7 +416,9 @@ class ContinuousScorelator:
         return score
 
     def plot_data(self, ax=None):
-        ax = plt.subplot() if ax is None else ax
+        if ax is None:
+            fig = plt.figure()
+            ax = fig.add_subplot()
         data = self.signal_model.data
         alt_exposure = data.get_covs(self.alt_cov_names)
         ref_exposure = data.get_covs(self.ref_cov_names)
@@ -458,7 +460,9 @@ class ContinuousScorelator:
                    yscale: str = None,
                    folder: Union[str, Path] = None):
 
-        ax = plt.subplot() if ax is None else ax
+        if ax is None:
+            fig = plt.figure()
+            ax = fig.add_subplot()
         draws_median = np.median(self.draws, axis=0)
 
         ax.plot(self.pred_exposures, draws_median, color='#69b3a2', linewidth=1)
@@ -547,7 +551,9 @@ class DichotomousScorelator:
                    xscale: str = None,
                    yscale: str = None,
                    folder: Union[str, Path] = None):
-        ax = plt.subplot() if ax is None else ax
+        if ax is None:
+            fig = plt.figure()
+            ax = fig.add_subplot()
         data = self.model.data
         trim_index = self.model.w_soln <= 0.1
         max_obs_se = np.max(data.obs_se)*1.1
