@@ -5,11 +5,12 @@ install:
 - pip install .
 script:
 - pytest tests
-# deploy:
-#   provider: pypi
-#   username: __token__
-#   password:
-#   on:
-#     branch: master
-#     repo: ihmeuw-msca/MRTool
-#     tags: true
+deploy:
+  provider: pypi
+  username: __token__
+  password:
+    secure: cyBAel8mc8S77EzcOu8uRfGXocj6xx7c3kkDrSx1qb4vF3g2xk093T5HDOS6o+9deOfsjZgAt6Co7MDyhvVL2F99B+qbruMNzJPgbodg+EXTKdvBnI2wv1a+ZukM7FXLp3qhwsByErMYzIPu3ShdT0XOzoLhR08e9//lJeLaM8wmqbRSjXlYynle55Z+hTnmVpF+Jyhx1oZsTSWIbzm/MOvriVsAEQt/geHI3hw0NiEW4QUH2amd1zc2rdkPbNThxHaB8m73LLBJCw7cRTBrXxNScaisTQIcJVGyOpOsZqwtj9m9UXu0xBkCrdPtp8LNvItXrvpXZos/BY1dISmit6HceYqfEiscV7NfWb9TjEZf6KAR4/ShmHia9iDi/10N/367aTpvjouvLSYqEUp1KWF8ztZG6Ru2rQ8tQTI/bTTMx5R7jcp6aq2yWpTG1gxvBphuHby+LazAnlsQajt1fSSoWWwPZ3GFE7X4IUp8IFZnq3fvnel/wkWY2obSzDOKskFImSASMh1iYnZO8ysDnxXWPVl1XJCqHhHyqLFyn68lC8OW6PQwHX8nOB1gnMULoGJtQ3yIeCWyiiRUUYjn9c0JD58CLOITJF9OGY6xw0rzrKKkR+g6u2S81zeQ0IbOSnqPJecwVP+nAyholhh3FWElMiwH7VK6YDXHluzvsNk=
+  on:
+    branch: master
+    repo: ihmeuw-msca/MRTool
+    tags: true
