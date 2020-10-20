@@ -534,11 +534,14 @@ class DichotomousScorelator:
         self.wider_draw_lb = self.beta + norm.ppf(self.draw_bounds[0], scale=np.sqrt(gamma_ub + self.beta_var))
         self.wider_draw_ub = self.beta + norm.ppf(self.draw_bounds[1], scale=np.sqrt(gamma_ub + self.beta_var))
 
+    def is_harmful(self) -> bool:
+        return self.beta > 0.0
+
     def get_score(self, use_gamma_ub: bool = False) -> float:
         if use_gamma_ub:
-            score = self.wider_draw_lb
+            score = self.wider_draw_lb if self.is_harmful() else -self.wider_draw_ub
         else:
-            score = self.draw_lb
+            score = self.draw_lb if self.is_harmful() else -self.draw_ub
         return score
 
     def plot_model(self,
