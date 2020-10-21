@@ -291,6 +291,7 @@ class ContinuousScorelator:
                  num_samples: int = 1000,
                  num_points: int = 100,
                  shift_draws_by_min: bool = False,
+                 j_shaped: bool = False,
                  name: str = 'unknown'):
         self.signal_model = signal_model
         self.final_model = final_model
@@ -301,6 +302,7 @@ class ContinuousScorelator:
         self.num_samples = num_samples
         self.num_points = num_points
         self.shift_draws_by_min = shift_draws_by_min
+        self.j_shaped = j_shaped
         self.name = name
 
         exposures = self.signal_model.data.get_covs(self.alt_cov_names + self.ref_cov_names)
@@ -345,9 +347,12 @@ class ContinuousScorelator:
         return np.linspace(self.exposure_lend, self.exposure_uend, num_points)
 
     def get_pred_data(self, num_points: int = 100) -> MRData:
-        exposures = self.get_pred_exposures(num_points=num_points)
-        ref_cov = np.repeat(self.exposure_lend, num_points)
-        zero_cov = np.zeros(num_points)
+        if num_points == -1:
+            exposures = self.alt_exposures - self.ref_exposures
+        else:
+            exposures = self.get_pred_exposures(num_points=num_points)
+        ref_cov = np.repeat(self.exposure_lend, exposures.size)
+        zero_cov = np.zeros(exposures.size)
         signal = self.get_signal(
             alt_cov=[exposures for _ in self.alt_cov_names],
             ref_cov=[ref_cov for _ in self.ref_cov_names]
@@ -355,9 +360,13 @@ class ContinuousScorelator:
         other_covs = {
             cov_name: zero_cov
             for cov_name in self.final_model.data.covs
-            if cov_name != 'signal'
+            if cov_name not in ('signal', 'linear')
         }
-        return MRData(covs={'signal': signal, **other_covs})
+        if not self.j_shaped:
+            covs = {'signal': signal, **other_covs}
+        else:
+            covs = {'signal': signal, 'linear': exposures - ref_cov, **other_covs}
+        return MRData(covs=covs)
 
     def get_beta_samples(self, num_samples: int) -> np.ndarray:
         return sample_simple_lme_beta(num_samples, self.final_model)
@@ -391,19 +400,9 @@ class ContinuousScorelator:
         median = np.median(self.draws, axis=0)
         return np.sum(median[self.effective_index] >= 0) > 0.5*np.sum(self.effective_index)
 
-    def get_pred(self) -> np.ndarray:
-        ref_cov = np.repeat(self.exposure_lend, self.num_points)
-        zero_cov = np.zeros(self.num_points)
-        signal = self.get_signal(
-            alt_cov=[self.pred_exposures for _ in self.alt_cov_names],
-            ref_cov=[ref_cov for _ in self.ref_cov_names]
-        )
-        other_covs = {
-            cov_name: zero_cov
-            for cov_name in self.final_model.data.covs
-            if cov_name != 'signal'
-        }
-        return self.final_model.predict(MRData(covs={'signal': signal, **other_covs}))
+    def get_pred(self, num_points: int = 100) -> np.ndarray:
+        data = self.get_pred_data(num_points=num_points)
+        return self.final_model.predict(data)
 
 
     def get_score(self, use_gamma_ub: bool = False) -> float:
@@ -420,23 +419,7 @@ class ContinuousScorelator:
             fig = plt.figure()
             ax = fig.add_subplot()
         data = self.signal_model.data
-        alt_exposure = data.get_covs(self.alt_cov_names)
-        ref_exposure = data.get_covs(self.ref_cov_names)
-
-        alt_mean = alt_exposure.mean(axis=1)
-        ref_mean = ref_exposure.mean(axis=1)
-        ref_cov = np.repeat(self.exposure_lend, data.num_obs)
-        zero_cov = np.zeros(data.num_obs)
-        signal = self.get_signal(
-            alt_cov=[ref_mean for _ in self.alt_cov_names],
-            ref_cov=[ref_cov for _ in self.ref_cov_names]
-        )
-        other_covs = {
-            cov_name: zero_cov
-            for cov_name in self.final_model.data.covs
-            if cov_name != 'signal'
-        }
-        prediction = self.final_model.predict(MRData(covs={'signal': signal, **other_covs}))
+        prediction = self.get_pred(num_points=-1)
         if self.shift_draws_by_min:
             prediction -= np.min(self.pred)
         if isinstance(self.signal_model, MRBRT):
@@ -444,9 +427,9 @@ class ContinuousScorelator:
         else:
             w = np.vstack([model.w_soln for model in self.signal_model.sub_models]).T.dot(self.signal_model.weights)
         trim_index = w <= 0.1
-        ax.scatter(alt_mean, prediction + data.obs,
+        ax.scatter(self.alt_exposures, prediction + data.obs,
                    c='gray', s=5.0/data.obs_se, alpha=0.5)
-        ax.scatter(alt_mean[trim_index], prediction[trim_index] + data.obs[trim_index],
+        ax.scatter(self.alt_exposures[trim_index], prediction[trim_index] + data.obs[trim_index],
                    c='red', marker='x', s=5.0/data.obs_se[trim_index])
 
     def plot_model(self,
@@ -564,8 +547,13 @@ class DichotomousScorelator:
         ax.fill_betweenx([0.0, max_obs_se],
                          [self.beta, self.beta - max_obs_se],
                          [self.beta, self.beta + max_obs_se], color='#B0E0E6', alpha=0.4)
-        ax.scatter(data.obs, data.obs_se, color='gray', alpha=0.4)
-        ax.scatter(data.obs[trim_index],
+        obs = data.obs.copy()
+        for i, cov_name in enumerate(self.model.cov_names):
+            if cov_name == 'intercept':
+                continue
+            obs -= data.covs[cov_name]*self.model.beta_soln[i]
+        ax.scatter(obs, data.obs_se, color='gray', alpha=0.4)
+        ax.scatter(obs[trim_index],
                    data.obs_se[trim_index], color='red', marker='x', alpha=0.4)
         ax.plot([self.beta, self.beta - max_obs_se], [0.0, max_obs_se],
                 linewidth=1, color='#87CEFA')
