@@ -286,22 +286,24 @@ class ContinuousScorelator:
                  final_model: Union[MRBRT],
                  alt_cov_names: List[str],
                  ref_cov_names: List[str],
-                 exposure_bounds: Tuple[float] = (0.15, 0.85),
-                 draw_bounds: Tuple[float] = (0.05, 0.95),
+                 exposure_quantiles: Tuple[float] = (0.15, 0.85),
+                 exposure_bounds: Tuple[float] = None,
+                 draw_quantiles: Tuple[float] = (0.05, 0.95),
                  num_samples: int = 1000,
                  num_points: int = 100,
-                 shift_draws_by_min: bool = False,
+                 ref_exposure: Union[str, float] = None,
                  j_shaped: bool = False,
                  name: str = 'unknown'):
         self.signal_model = signal_model
         self.final_model = final_model
         self.alt_cov_names = alt_cov_names
         self.ref_cov_names = ref_cov_names
+        self.exposure_quantiles = exposure_quantiles
         self.exposure_bounds = exposure_bounds
-        self.draw_bounds = draw_bounds
+        self.draw_quantiles = draw_quantiles
         self.num_samples = num_samples
         self.num_points = num_points
-        self.shift_draws_by_min = shift_draws_by_min
+        self.ref_exposure = ref_exposure
         self.j_shaped = j_shaped
         self.name = name
 
@@ -316,21 +318,27 @@ class ContinuousScorelator:
         self.pred_exposures = self.get_pred_exposures()
         self.pred = self.get_pred()
 
-        if self.shift_draws_by_min:
-            index = np.argmin(self.pred)
-            self.draws -= self.draws[:, index, None]
-            self.wider_draws -= self.wider_draws[:, index, None]
+        if self.ref_exposure is not None:
+            if self.ref_exposure == 'min':
+                self.pred_ref_index = np.argmin(self.pred)
+            else:
+                self.pred_ref_index = np.argmin(np.abs(self.pred_exposures - self.ref_exposure))
+            self.draws -= self.draws[:, self.pred_ref_index, None]
+            self.wider_draws -= self.wider_draws[:, self.pred_ref_index, None]
 
         # compute the range of exposures
-        self.exposure_lb = np.quantile(self.ref_exposures, self.exposure_bounds[0])
-        self.exposure_ub = np.quantile(self.alt_exposures, self.exposure_bounds[1])
+        self.exposure_lb = np.quantile(self.ref_exposures, self.exposure_quantiles[0])
+        self.exposure_ub = np.quantile(self.alt_exposures, self.exposure_quantiles[1])
+        if self.exposure_bounds is not None:
+            self.exposure_lb = self.exposure_bounds[0]
+            self.exposure_ub = self.exposure_bounds[1]
         self.effective_index = (self.pred_exposures >= self.exposure_lb) & (self.pred_exposures <= self.exposure_ub)
 
         # compute the range of the draws
-        self.draw_lb = np.quantile(self.draws, self.draw_bounds[0], axis=0)
-        self.draw_ub = np.quantile(self.draws, self.draw_bounds[1], axis=0)
-        self.wider_draw_lb = np.quantile(self.wider_draws, self.draw_bounds[0], axis=0)
-        self.wider_draw_ub = np.quantile(self.wider_draws, self.draw_bounds[1], axis=0)
+        self.draw_lb = np.quantile(self.draws, self.draw_quantiles[0], axis=0)
+        self.draw_ub = np.quantile(self.draws, self.draw_quantiles[1], axis=0)
+        self.wider_draw_lb = np.quantile(self.wider_draws, self.draw_quantiles[0], axis=0)
+        self.wider_draw_ub = np.quantile(self.wider_draws, self.draw_quantiles[1], axis=0)
 
     def get_signal(self,
                    alt_cov: List[np.ndarray],
@@ -420,8 +428,8 @@ class ContinuousScorelator:
             ax = fig.add_subplot()
         data = self.signal_model.data
         prediction = self.get_pred(num_points=-1)
-        if self.shift_draws_by_min:
-            prediction -= np.min(self.pred)
+        if self.ref_exposure is not None:
+            prediction -= self.pred[self.pred_ref_index]
         if isinstance(self.signal_model, MRBRT):
             w = self.signal_model.w_soln
         else:
