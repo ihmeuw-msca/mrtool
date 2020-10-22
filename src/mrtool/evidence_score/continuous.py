@@ -86,13 +86,13 @@ class ContinuousScorelator:
 
     def get_pred_data(self, num_points: int = 100) -> MRData:
         if num_points == -1:
-            exposures = self.alt_exposures - self.ref_exposures
+            alt_cov = self.ref_exposures
         else:
-            exposures = self.get_pred_exposures(num_points=num_points)
-        ref_cov = np.repeat(self.exposure_lend, exposures.size)
-        zero_cov = np.zeros(exposures.size)
+            alt_cov = self.get_pred_exposures(num_points=num_points)
+        ref_cov = np.repeat(self.exposure_lend, alt_cov.size)
+        zero_cov = np.zeros(alt_cov.size)
         signal = self.get_signal(
-            alt_cov=[exposures for _ in self.alt_cov_names],
+            alt_cov=[alt_cov for _ in self.alt_cov_names],
             ref_cov=[ref_cov for _ in self.ref_cov_names]
         )
         other_covs = {
@@ -103,7 +103,7 @@ class ContinuousScorelator:
         if not self.j_shaped:
             covs = {'signal': signal, **other_covs}
         else:
-            covs = {'signal': signal, 'linear': exposures - ref_cov, **other_covs}
+            covs = {'signal': signal, 'linear': alt_cov - ref_cov, **other_covs}
         return MRData(covs=covs)
 
     def get_beta_samples(self, num_samples: int) -> np.ndarray:
