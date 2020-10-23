@@ -11,6 +11,7 @@ from scipy.integrate import trapz
 from .continuous import ContinuousScorelator
 from .dichotomous import DichotomousScorelator
 from .mixed import MixedScorelator
+from .loglinear import LoglinearScorelator
 
 
 class Scorelator:
