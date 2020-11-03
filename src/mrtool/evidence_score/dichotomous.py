@@ -84,9 +84,9 @@ class DichotomousScorelator:
         ax.scatter(obs, data.obs_se, color='gray', alpha=0.4)
         ax.scatter(obs[trim_index],
                    data.obs_se[trim_index], color='red', marker='x', alpha=0.4)
-        ax.plot([self.beta, self.beta - max_obs_se], [0.0, max_obs_se],
+        ax.plot([self.beta, self.beta - 1.96*max_obs_se], [0.0, max_obs_se],
                 linewidth=1, color='#87CEFA')
-        ax.plot([self.beta, self.beta + max_obs_se], [0.0, max_obs_se],
+        ax.plot([self.beta, self.beta + 1.96*max_obs_se], [0.0, max_obs_se],
                 linewidth=1, color='#87CEFA')
 
         ax.axvline(0.0, color='r', linewidth=1, linestyle='--')

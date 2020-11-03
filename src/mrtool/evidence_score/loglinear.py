@@ -19,6 +19,7 @@ class LoglinearScorelator:
                  exposure_quantiles: Tuple[float] = (0.15, 0.85),
                  exposure_bounds: Tuple[float] = None,
                  draw_quantiles: Tuple[float] = (0.05, 0.95),
+                 pred_exposure_bounds: Tuple[float] = None,
                  num_samples: int = 1000,
                  num_points: int = 100,
                  name: str = 'unknown'):
@@ -27,6 +28,7 @@ class LoglinearScorelator:
         self.ref_cov_names = [] if ref_cov_names is None else ref_cov_names
         self.exposure_quantiles = exposure_quantiles
         self.exposure_bounds = exposure_bounds
+        self.pred_exposure_bounds = pred_exposure_bounds
         self.draw_quantiles = draw_quantiles
         self.num_samples = num_samples
         self.num_points = num_points
@@ -34,8 +36,12 @@ class LoglinearScorelator:
 
         # create exposure information
         exposures = self.model.data.get_covs(self.alt_cov_names + self.ref_cov_names)
-        self.exposure_lend = np.min(exposures)
-        self.exposure_uend = np.max(exposures)
+        if self.pred_exposure_bounds:
+            self.exposure_lend = self.pred_exposure_bounds[0]
+            self.exposure_uend = self.pred_exposure_bounds[1]
+        else:
+            self.exposure_lend = np.min(exposures)
+            self.exposure_uend = np.max(exposures)
         alt_exposures = self.model.data.get_covs(self.alt_cov_names).mean(axis=1)
         if self.ref_cov_names:
             ref_exposures = self.model.data.get_covs(self.ref_cov_names).mean(axis=1)
