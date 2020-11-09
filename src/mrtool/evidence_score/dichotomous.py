@@ -74,8 +74,8 @@ class DichotomousScorelator:
         max_obs_se = np.max(data.obs_se)*1.1
         ax.set_ylim(max_obs_se, 0.0)
         ax.fill_betweenx([0.0, max_obs_se],
-                         [self.beta, self.beta - max_obs_se],
-                         [self.beta, self.beta + max_obs_se], color='#B0E0E6', alpha=0.4)
+                         [self.beta, self.beta - 1.96*max_obs_se],
+                         [self.beta, self.beta + 1.96*max_obs_se], color='#B0E0E6', alpha=0.4)
         obs = data.obs.copy()
         for i, cov_name in enumerate(self.model.cov_names):
             if cov_name == 'intercept':
