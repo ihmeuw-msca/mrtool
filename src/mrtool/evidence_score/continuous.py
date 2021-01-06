@@ -178,6 +178,7 @@ class ContinuousScorelator:
                    ylim: tuple = None,
                    xscale: str = None,
                    yscale: str = None,
+                   plot_wider_draws: bool = True,
                    folder: Union[str, Path] = None):
 
         if ax is None:
@@ -187,7 +188,8 @@ class ContinuousScorelator:
 
         ax.plot(self.pred_exposures, draws_median, color='#69b3a2', linewidth=1)
         ax.fill_between(self.pred_exposures, self.draw_lb, self.draw_ub, color='#69b3a2', alpha=0.2)
-        ax.fill_between(self.pred_exposures, self.wider_draw_lb, self.wider_draw_ub, color='#69b3a2', alpha=0.2)
+        if plot_wider_draws:
+            ax.fill_between(self.pred_exposures, self.wider_draw_lb, self.wider_draw_ub, color='#69b3a2', alpha=0.2)
         ax.axvline(self.exposure_lb, linestyle='--', color='k', linewidth=1)
         ax.axvline(self.exposure_ub, linestyle='--', color='k', linewidth=1)
         ax.axhline(0.0, linestyle='--', color='k', linewidth=1)
