@@ -10,6 +10,7 @@ import numpy as np
 from mrtool import MRData, LinearCovModel, MRBRT
 from mrtool.core.other_sampling import sample_simple_lme_beta
 
+
 class CovFinder:
     """Class in charge of the covariate selection.
     """
@@ -27,6 +28,7 @@ class CovFinder:
                  power_step_size: float = 0.5,
                  inlier_pct: float = 1.0,
                  alpha: float = 0.05,
+                 beta_gprior: Dict[str, np.ndarray] = None,
                  beta_gprior_std: float = 1.0,
                  bias_zero: bool = False,
                  use_re: Union[Dict, None] = None):
@@ -73,7 +75,7 @@ class CovFinder:
             self.data = deepcopy(data)
             self.data.normalize_covs(self.covs)
         self.selected_covs = self.pre_selected_covs.copy()
-        self.beta_gprior = dict()
+        self.beta_gprior = {} if beta_gprior is None else beta_gprior
         self.all_covs = self.pre_selected_covs + self.covs
         self.stop = False
         self.use_re = {} if use_re is None else use_re
@@ -117,8 +119,8 @@ class CovFinder:
                                if cov not in self.selected_covs else None,
                                prior_beta_gaussian=None
                                if cov not in self.selected_covs else self.beta_gprior[cov],
-                               prior_gamma_uniform=self.loose_gamma_uprior if self.use_re[cov] else \
-                                   self.zero_gamma_uprior)
+                               prior_gamma_uniform=self.loose_gamma_uprior if self.use_re[cov] else
+                               self.zero_gamma_uprior)
                 for cov in covs
             ]
         else:
@@ -126,8 +128,8 @@ class CovFinder:
                 LinearCovModel(cov, use_re=True,
                                prior_beta_gaussian=None
                                if cov not in self.beta_gprior else self.beta_gprior[cov],
-                               prior_gamma_uniform=self.loose_gamma_uprior if self.use_re[cov] else \
-                                                   self.zero_gamma_uprior)
+                               prior_gamma_uniform=self.loose_gamma_uprior if self.use_re[cov] else
+                               self.zero_gamma_uprior)
                 for cov in covs
             ]
         model = MRBRT(self.data, cov_models=cov_models, inlier_pct=self.inlier_pct)
