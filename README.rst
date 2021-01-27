@@ -6,8 +6,13 @@ MRTool
     :target: https://opensource.org/licenses/BSD-2-Clause
 .. image:: https://readthedocs.org/projects/mrtool/badge/?version=latest
     :target: https://mrtool.readthedocs.io/en/latest/
-.. image:: https://travis-ci.com/ihmeuw-msca/MRTool.svg?branch=master
-    :target: https://travis-ci.com/github/ihmeuw-msca/MRTool
+
+.. image:: https://github.com/ramittal/MRTool/workflows/build/badge.svg?branch=master
+    :target: https://github.com/ramittal/MRTool/actions?query=workflow%3Abuild
+
+.. image:: https://github.com/ihmeuw-msca/MRTool/workflows/build/badge.svg?branch=master
+    :target: https://github.com/ihmeuw-msca/MRTool/actions?query=workflow%3Abuild
+
 .. image:: https://badge.fury.io/py/mrtool.svg
     :target: https://badge.fury.io/py/mrtool
 .. image:: https://coveralls.io/repos/github/ihmeuw-msca/MRTool/badge.svg?branch=master
