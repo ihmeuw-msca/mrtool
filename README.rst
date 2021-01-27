@@ -4,15 +4,15 @@ MRTool
 
 .. image:: https://img.shields.io/badge/License-BSD%202--Clause-orange.svg
     :target: https://opensource.org/licenses/BSD-2-Clause
-    :alt: BSD Licenses
+    :alt: License
 
 .. image:: https://readthedocs.org/projects/mrtool/badge/?version=latest
     :target: https://mrtool.readthedocs.io/en/latest/
-    :alt: ReadTheDocs
+    :alt: Documentation
 
 .. image:: https://github.com/ramittal/MRTool/workflows/build/badge.svg?branch=master
     :target: https://github.com/ramittal/MRTool/actions?query=workflow%3Abuild
-    :alt: Build
+    :alt: BuildStatus
 
 .. image:: https://badge.fury.io/py/MRTool.svg
     :target: https://badge.fury.io/py/mrtool
@@ -20,7 +20,7 @@ MRTool
 
 .. image:: https://coveralls.io/repos/github/ramittal/MRTool/badge.svg?branch=master
     :target: https://coveralls.io/github/ramittal/MRTool?branch=master
-    :alt: Coveralls
+    :alt: Coverage
 
 .. image:: https://www.codefactor.io/repository/github/ramittal/mrtool/badge/master
     :target: https://www.codefactor.io/repository/github/ramittal/mrtool/overview/master
