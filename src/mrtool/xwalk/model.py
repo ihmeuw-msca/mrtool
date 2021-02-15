@@ -12,120 +12,9 @@ import pandas as pd
 import limetr
 from limetr import LimeTr
 from xspline import XSpline
-from . import data
-from . import utils
-
-
-class CovModel:
-    """Covariate model.
-    """
-
-    def __init__(self, cov_name,
-                 spline=None,
-                 spline_monotonicity=None,
-                 spline_convexity=None,
-                 soln_name=None,
-                 prior_beta_uniform=None,
-                 prior_beta_gaussian=None):
-        """Constructor of the CovModel.
-
-        Args:
-            cov_name(str):
-                Corresponding covariate name.
-            spline (XSpline | None, optional):
-                If using spline, passing in spline object.
-            spline_monotonicity (str | None, optional):
-                Spline shape prior, indicate if spline is increasing or
-                decreasing.
-            spline_convexity (str | None, optional):
-                Spline shape prior, indicate if spline is convex or concave.
-            soln_name (str):
-                Name of the corresponding covariates multiplier.
-            prior_beta_uniform (dict | None, optional):
-                Uniform prior for beta, default to None. Otherwise should pass in
-                a dictionary with key as the dorm name and value as the uniform prior.
-            prior_beta_gaussian (dict | None, optional):
-                Same as the ``prior_beta_uniform``
-        """
-        # check the input
-        assert isinstance(cov_name, str)
-        assert isinstance(spline, XSpline) or spline is None
-        if spline_monotonicity is not None:
-            assert spline_monotonicity in ['increasing', 'decreasing']
-        if spline_convexity is not None:
-            assert spline_convexity in ['convex', 'concave']
-        assert isinstance(soln_name, str) or soln_name is None
-
-        self.cov_name = cov_name
-        self.spline = spline
-        self.spline_monotonicity = spline_monotonicity
-        self.spline_convexity = spline_convexity
-        self.use_spline = spline is not None
-        self.use_constraints = self.use_spline and (
-            self.spline_monotonicity is not None or
-            self.spline_convexity is not None
-        )
-        self.soln_name = cov_name if soln_name is None else soln_name
-        self.prior_beta_uniform = {} if prior_beta_uniform is None else prior_beta_uniform
-        self.prior_beta_gaussian = {} if prior_beta_gaussian is None else prior_beta_gaussian
-
-        if self.use_spline:
-            self.num_vars = spline.num_spline_bases - 1
-        else:
-            self.num_vars = 1
-
-    def create_design_mat(self, xdata):
-        """Create design matrix.
-
-        Args:
-            xdata (crosswalk.xdata):
-                Data structure has all the information.
-
-        Returns:
-            numpy.ndarray:
-                Return the design matrix from linear cov or spline.
-        """
-        assert self.cov_name in xdata.covs.columns,\
-            "Unkown covariates, not appear in the data."
-        cov = xdata.covs[self.cov_name].values
-        if self.use_spline:
-            mat = self.spline.design_mat(cov)[:, 1:]
-        else:
-            mat = cov[:, None]
-        return mat
-
-    def create_constraint_mat(self, num_points=20):
-        """Create constraints matrix.
-
-        Args:
-            num_points (int, optional):
-                Number of approximation points to cover the interval for spline.
-
-        Returns:
-            numpy.ndarray:
-                Return constraints matrix if have any.
-        """
-        mat = np.array([]).reshape(0, self.num_vars)
-        if not self.use_constraints:
-            return mat
-        points = np.linspace(self.spline.knots[0],
-                             self.spline.knots[-1],
-                             num_points)
-
-        if self.spline_monotonicity is not None:
-            sign = 1.0 if self.spline_monotonicity == 'decreasing' else -1.0
-            mat = np.vstack((mat,
-                             sign*self.spline.design_dmat(points, 1)[:, 1:]))
-
-        if self.spline_convexity is not None:
-            sign = 1.0 if self.spline_convexity == 'concave' else -1.0
-            mat = np.vstack((mat,
-                             sign*self.spline.design_dmat(points, 2)[:, 1:]))
-
-        return mat
-
-    def __repr__(self) -> str:
-        return f"CovModel({self.cov_name})"
+from mrtool.xwalk.data import XData
+from mrtool.xwalk.utils import default_input
+from mrtool.core.cov_model import LinearCovModel
 
 
 class CWModel:
@@ -142,7 +31,7 @@ class CWModel:
                  prior_gamma_gaussian=None):
         """Constructor of CWModel.
         Args:
-            xdata (data.xdata):
+            xdata (XData):
                 Data for cross walk.
             obs_type (str, optional):
                 Type of observation can only be chosen from `'diff_log'` and
@@ -163,7 +52,7 @@ class CWModel:
         self.xdata = xdata
         self.obs_type = obs_type
         self.cov_models = utils.default_input(cov_models,
-                                              [CovModel('intercept')])
+                                              [LinearCovModel('intercept')])
         self.gold_dorm = utils.default_input(gold_dorm, xdata.max_ref_dorm)
         self.order_prior = order_prior
         self.use_random_intercept = use_random_intercept
@@ -196,7 +85,7 @@ class CWModel:
         self.vars = [dorm for dorm in self.xdata.unique_dorms]
 
         # dimensions
-        self.num_vars_per_dorm = sum([model.num_vars for model in self.cov_models])
+        self.num_vars_per_dorm = sum([model.num_x_vars for model in self.cov_models])
         self.num_vars = self.num_vars_per_dorm*self.xdata.num_dorms
 
         # indices for easy access the variables
@@ -234,16 +123,14 @@ class CWModel:
         # beta bounds
         uprior = np.repeat(np.array([[-np.inf], [np.inf]]), self.num_vars, axis=1)
         for i, cov_model in enumerate(self.cov_models):
-            for dorm, prior in cov_model.prior_beta_uniform.items():
-                uprior[:, self.var_idx[dorm][i]] = prior
+            uprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_uniform
         uprior[:, self.var_idx[self.gold_dorm]] = 0.0
         self.prior_beta_uniform = uprior
 
         # beta Gaussian prior
         gprior = np.repeat(np.array([[0.0], [np.inf]]), self.num_vars, axis=1)
         for i, cov_model in enumerate(self.cov_models):
-            for dorm, prior in cov_model.prior_beta_gaussian.items():
-                gprior[:, self.var_idx[dorm][i]] = prior
+            gprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_gaussian
         gprior[:, self.var_idx[self.gold_dorm]] = np.array([[0.0], [np.inf]])
         self.prior_beta_gaussian = gprior
 
@@ -261,7 +148,7 @@ class CWModel:
         assert self.obs_type in ['diff_log', 'diff_logit'], \
             "Unsupport observation type"
         assert isinstance(self.cov_models, list)
-        assert all([isinstance(model, CovModel) for model in self.cov_models])
+        assert all([isinstance(model, LinearCovModel) for model in self.cov_models])
 
         assert self.gold_dorm in self.xdata.unique_dorms
 
@@ -334,12 +221,11 @@ class CWModel:
             numpy.ndarray:
                 Returns covarites matrix.
         """
-        xdata = utils.default_input(xdata,
-                                    default=self.xdata)
-        assert isinstance(xdata, data.xdata)
+        xdata = utils.default_input(xdata, default=self.xdata)
+        assert isinstance(xdata, XData)
 
-        return np.hstack([model.create_design_mat(xdata)
-                          for model in self.cov_models])
+        return np.hstack([cov_model.create_design_mat(xdata)[0]
+                          for cov_model in self.cov_models])
 
     def create_design_mat(self,
                           xdata=None,
