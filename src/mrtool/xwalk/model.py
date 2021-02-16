@@ -144,6 +144,7 @@ class CWModel:
 
         # place holder for the solutions
         self.beta = None
+        self.beta_vcov = None
         self.beta_sd = None
         self.gamma = None
         self.fixed_vars = None
@@ -492,3 +493,25 @@ class CWModel:
             size=sample_size
         )
         return beta_samples
+
+    def create_draws(self,
+                     xdata: XData,
+                     beta_samples: np.ndarray,
+                     random_study: bool = True,
+                     sort_by_data_id: bool = False) -> np.ndarray:
+        sample_size = beta_samples.shape[0]
+        # copy dorm structure
+        xdata.copy_dorm_structure(self.xdata)
+        # create design matrix
+        relation_mat = self.create_relation_mat(xdata)
+        cov_mat = self.create_cov_mat(xdata)
+        design_mat = self.create_design_mat(xdata, relation_mat, cov_mat)
+        # create draws
+        draws = beta_samples.dot(design_mat.T)
+        # adding uncertainty from random effects
+        if random_study and self.use_random_intercept:
+            u_samples = np.random.randn(sample_size, 1)*np.sqrt(self.gamma[0])
+            draws += u_samples
+        if sort_by_data_id:
+            y_samples = y_samples[:, np.argsort(xdata.data_id)]
+        return y_samples.T
