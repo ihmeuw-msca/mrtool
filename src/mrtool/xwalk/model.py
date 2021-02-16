@@ -383,10 +383,10 @@ class CWModel:
             for dorm in self.xdata.unique_dorms
             if dorm != self.gold_dorm
         ])
+        self.beta_vcov = np.zeros((self.lt.k_beta, self.lt.k_beta))
+        self.beta_vcov[np.ix_(unconstrained_id, unconstrained_id)] = np.linalg.inv(hessian)
         self.beta_sd = np.zeros(self.lt.k_beta)
-        self.beta_sd[unconstrained_id] = np.sqrt(np.diag(
-            np.linalg.inv(hessian)
-        ))
+        self.beta_sd[unconstrained_id] = np.sqrt(np.diag(self.beta_vcov))
 
     def get_beta_hessian(self) -> np.ndarray:
         # compute the posterior distribution of beta
@@ -480,3 +480,15 @@ class CWModel:
         if sort_by_data_id:
             prediction = prediction[np.argsort(xdata.data_id)]
         return prediction
+
+    def sample_soln(self,
+                    sample_size: int = 1) -> np.ndarray:
+        if self.lt is None:
+            raise ValueError("Please fit the model first.")
+
+        beta_samples = np.random.multivariate_normal(
+            mean=self.beta,
+            cov=self.beta_vcov,
+            size=sample_size
+        )
+        return beta_samples
