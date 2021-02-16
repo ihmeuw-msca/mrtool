@@ -453,3 +453,30 @@ class CWModel:
             filename += '.csv'
         df = self.create_result_df()
         df.to_csv(folder + '/' + filename, index=False)
+
+    def predict(self,
+                xdata: XData,
+                predict_for_study: bool = False,
+                sort_by_data_id: bool = False) -> np.ndarray:
+        assert xdata.has_covs(self.cov_names), \
+            "Prediction data does not have the covariates used for fitting."
+        # copy dorm structure
+        xdata.copy_dorm_structure(self.xdata)
+        # create design matrix
+        relation_mat = self.create_relation_mat(xdata)
+        cov_mat = self.create_cov_mat(xdata)
+        design_mat = self.create_design_mat(xdata, relation_mat, cov_mat)
+        # create prediction
+        prediction = design_mat.dot(self.beta)
+        # predict for study
+        if predict_for_study and self.use_random_intercept:
+            u = np.array([
+                self.random_vars[sid]
+                if sid in self.xdata.studies else 0.0
+                for sid in xdata.study_id
+            ])
+            prediction += u
+        # sort by data id
+        if sort_by_data_id:
+            prediction = prediction[np.argsort(xdata.data_id)]
+        return prediction
