@@ -295,11 +295,11 @@ class CWModel:
             return None
         return mat
 
-    def fit(self,
-            max_iter=100,
-            inlier_pct=1.0,
-            outer_max_iter=100,
-            outer_step_size=1.0):
+    def fit_model(self,
+                  max_iter=100,
+                  inlier_pct=1.0,
+                  outer_max_iter=100,
+                  outer_step_size=1.0):
         """Optimize the model parameters.
         This is a interface to limetr.
         Args:
