@@ -13,7 +13,7 @@ import limetr
 from limetr import LimeTr
 from xspline import XSpline
 from mrtool.xwalk.data import XData
-from mrtool.xwalk.utils import default_input
+from mrtool.xwalk.utils import default_input, sizes_to_indices
 from mrtool.core.cov_model import LinearCovModel
 
 
@@ -51,9 +51,9 @@ class CWModel:
         """
         self.xdata = xdata
         self.obs_type = obs_type
-        self.cov_models = utils.default_input(cov_models,
-                                              [LinearCovModel('intercept')])
-        self.gold_dorm = utils.default_input(gold_dorm, xdata.max_ref_dorm)
+        self.cov_models = default_input(cov_models,
+                                        [LinearCovModel('intercept')])
+        self.gold_dorm = default_input(gold_dorm, xdata.max_ref_dorm)
         self.order_prior = order_prior
         self.use_random_intercept = use_random_intercept
         if self.xdata.num_studies == 0 and self.use_random_intercept:
@@ -90,7 +90,7 @@ class CWModel:
 
         # indices for easy access the variables
         var_sizes = np.array([self.num_vars_per_dorm]*self.xdata.num_dorms)
-        var_idx = utils.sizes_to_indices(var_sizes)
+        var_idx = sizes_to_indices(var_sizes)
         self.var_idx = {
             var: var_idx[i]
             for i, var in enumerate(self.vars)
@@ -123,14 +123,16 @@ class CWModel:
         # beta bounds
         uprior = np.repeat(np.array([[-np.inf], [np.inf]]), self.num_vars, axis=1)
         for i, cov_model in enumerate(self.cov_models):
-            uprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_uniform
+            for dorm in self.xdata.dorms:
+                uprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_uniform
         uprior[:, self.var_idx[self.gold_dorm]] = 0.0
         self.prior_beta_uniform = uprior
 
         # beta Gaussian prior
         gprior = np.repeat(np.array([[0.0], [np.inf]]), self.num_vars, axis=1)
         for i, cov_model in enumerate(self.cov_models):
-            gprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_gaussian
+            for dorm in self.xdata.dorms:
+                gprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_gaussian
         gprior[:, self.var_idx[self.gold_dorm]] = np.array([[0.0], [np.inf]])
         self.prior_beta_gaussian = gprior
 
@@ -144,7 +146,7 @@ class CWModel:
     def check(self):
         """Check input type, dimension and values.
         """
-        assert isinstance(self.xdata, data.xdata)
+        assert isinstance(self.xdata, XData)
         assert self.obs_type in ['diff_log', 'diff_logit'], \
             "Unsupport observation type"
         assert isinstance(self.cov_models, list)
@@ -184,9 +186,8 @@ class CWModel:
                 Returns relation matrix with 1 encode alternative definition
                 and -1 encode reference definition.
         """
-        xdata = utils.default_input(xdata,
-                                    default=self.xdata)
-        assert isinstance(xdata, data.xdata)
+        xdata = default_input(xdata, default=self.xdata)
+        assert isinstance(xdata, XData)
 
         relation_mat = np.zeros((xdata.num_obs, xdata.num_dorms))
         for i, dorms in enumerate(xdata.alt_dorms):
@@ -221,7 +222,7 @@ class CWModel:
             numpy.ndarray:
                 Returns covarites matrix.
         """
-        xdata = utils.default_input(xdata, default=self.xdata)
+        xdata = default_input(xdata, default=self.xdata)
         assert isinstance(xdata, XData)
 
         return np.hstack([cov_model.create_design_mat(xdata)[0]
@@ -245,17 +246,12 @@ class CWModel:
             numpy.ndarray:
                 Returns linear design matrix.
         """
-        xdata = utils.default_input(xdata,
-                                    default=self.xdata)
-        relation_mat = utils.default_input(relation_mat,
-                                           default=self.relation_mat)
-        cov_mat = utils.default_input(cov_mat,
-                                      default=self.cov_mat)
+        xdata = default_input(xdata, default=self.xdata)
+        relation_mat = default_input(relation_mat, default=self.relation_mat)
+        cov_mat = default_input(cov_mat, default=self.cov_mat)
 
-        mat = (
-            relation_mat.ravel()[:, None] *
-            np.repeat(cov_mat, xdata.num_dorms, axis=0)
-        ).reshape(xdata.num_obs, self.num_vars)
+        mat = (relation_mat.ravel()[:, None] *
+               np.repeat(cov_mat, xdata.num_dorms, axis=0)).reshape(xdata.num_obs, self.num_vars)
 
         return mat
 
@@ -283,15 +279,14 @@ class CWModel:
             for p in self.order_prior:
                 sub_mat = np.zeros((design_mat.shape[0], self.num_vars))
                 sub_mat[:, self.var_idx[p[0]]] = design_mat
-                sub_mat[:, self.var_idx[p[1]]] = -design_mat
+                sub_mat[:, self.var_idx[p[1]]] = -1*design_mat
                 dorm_constraint_mat.append(sub_mat)
             dorm_constraint_mat = np.vstack(dorm_constraint_mat)
             mat = np.vstack((mat, dorm_constraint_mat))
 
         if mat.size == 0:
             return None
-        else:
-            return mat
+        return mat
 
     def fit(self,
             max_iter=100,
@@ -409,9 +404,9 @@ class CWModel:
         cov_names = []
         for model in self.cov_models:
             if model.spline is None:
-                cov_names.append(model.cov_name)
+                cov_names.append(model.alt_cov)
             else:
-                cov_names.extend([f'{model.cov_name}_spline_{i}' for i in range(model.num_vars)])
+                cov_names.extend([f'{model.alt_cov}_spline_{i}' for i in range(model.num_x_vars)])
         return cov_names
 
     def create_result_df(self) -> pd.DataFrame:
