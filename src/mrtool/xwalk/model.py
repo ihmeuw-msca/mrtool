@@ -136,6 +136,12 @@ class CWModel:
         gprior[:, self.var_idx[self.gold_dorm]] = np.array([[0.0], [np.inf]])
         self.prior_beta_gaussian = gprior
 
+        # current covaraites names
+        self.cov_names = []
+        for cov_model in self.cov_models:
+            self.cov_names.extend(cov_model.covs)
+        self.num_covs = len(self.cov_names)
+
         # place holder for the solutions
         self.beta = None
         self.beta_sd = None
