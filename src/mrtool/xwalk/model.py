@@ -376,7 +376,7 @@ class CWModel:
             u = self.lt.estimateRE()
             self.random_vars = {
                 sid: u[i]
-                for i, sid in enumerate(self.xdata.unique_study_id)
+                for i, sid in enumerate(self.xdata.studies)
             }
         else:
             self.random_vars = dict()
@@ -390,8 +390,7 @@ class CWModel:
         ])
         self.beta_vcov = np.zeros((self.lt.k_beta, self.lt.k_beta))
         self.beta_vcov[np.ix_(unconstrained_id, unconstrained_id)] = np.linalg.inv(hessian)
-        self.beta_sd = np.zeros(self.lt.k_beta)
-        self.beta_sd[unconstrained_id] = np.sqrt(np.diag(self.beta_vcov))
+        self.beta_sd = np.sqrt(np.diag(self.beta_vcov))
 
     def get_beta_hessian(self) -> np.ndarray:
         # compute the posterior distribution of beta
