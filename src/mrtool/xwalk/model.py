@@ -105,6 +105,10 @@ class CWModel:
         self._assert_rank_efficient()
         self.constraint_mat = self.create_constraint_mat()
 
+        # attach data
+        for cov_model in self.cov_models:
+            cov_model.attach_data(self.xdata)
+
         # gamma bounds
         self.prior_gamma_uniform = np.array(
             [0.0, np.inf]) if prior_gamma_uniform is None else np.array(prior_gamma_uniform)
@@ -123,16 +127,16 @@ class CWModel:
         # beta bounds
         uprior = np.repeat(np.array([[-np.inf], [np.inf]]), self.num_vars, axis=1)
         for i, cov_model in enumerate(self.cov_models):
-            for dorm in self.xdata.dorms:
-                uprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_uniform
+            for dorm in self.xdata.unique_dorms:
+                uprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_uniform.ravel()
         uprior[:, self.var_idx[self.gold_dorm]] = 0.0
         self.prior_beta_uniform = uprior
 
         # beta Gaussian prior
         gprior = np.repeat(np.array([[0.0], [np.inf]]), self.num_vars, axis=1)
         for i, cov_model in enumerate(self.cov_models):
-            for dorm in self.xdata.dorms:
-                gprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_gaussian
+            for dorm in self.xdata.unique_dorms:
+                gprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_gaussian.ravel()
         gprior[:, self.var_idx[self.gold_dorm]] = np.array([[0.0], [np.inf]])
         self.prior_beta_gaussian = gprior
 
