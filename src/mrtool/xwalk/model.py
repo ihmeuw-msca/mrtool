@@ -105,6 +105,10 @@ class CWModel:
         self._assert_rank_efficient()
         self.constraint_mat = self.create_constraint_mat()
 
+        # attach data
+        for cov_model in self.cov_models:
+            cov_model.attach_data(self.xdata)
+
         # gamma bounds
         self.prior_gamma_uniform = np.array(
             [0.0, np.inf]) if prior_gamma_uniform is None else np.array(prior_gamma_uniform)
@@ -123,21 +127,28 @@ class CWModel:
         # beta bounds
         uprior = np.repeat(np.array([[-np.inf], [np.inf]]), self.num_vars, axis=1)
         for i, cov_model in enumerate(self.cov_models):
-            for dorm in self.xdata.dorms:
-                uprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_uniform
+            for dorm in self.xdata.unique_dorms:
+                uprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_uniform.ravel()
         uprior[:, self.var_idx[self.gold_dorm]] = 0.0
         self.prior_beta_uniform = uprior
 
         # beta Gaussian prior
         gprior = np.repeat(np.array([[0.0], [np.inf]]), self.num_vars, axis=1)
         for i, cov_model in enumerate(self.cov_models):
-            for dorm in self.xdata.dorms:
-                gprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_gaussian
+            for dorm in self.xdata.unique_dorms:
+                gprior[:, self.var_idx[dorm][i]] = cov_model.prior_beta_gaussian.ravel()
         gprior[:, self.var_idx[self.gold_dorm]] = np.array([[0.0], [np.inf]])
         self.prior_beta_gaussian = gprior
 
+        # current covaraites names
+        self.cov_names = []
+        for cov_model in self.cov_models:
+            self.cov_names.extend(cov_model.covs)
+        self.num_covs = len(self.cov_names)
+
         # place holder for the solutions
         self.beta = None
+        self.beta_vcov = None
         self.beta_sd = None
         self.gamma = None
         self.fixed_vars = None
@@ -288,11 +299,11 @@ class CWModel:
             return None
         return mat
 
-    def fit(self,
-            max_iter=100,
-            inlier_pct=1.0,
-            outer_max_iter=100,
-            outer_step_size=1.0):
+    def fit_model(self,
+                  max_iter=100,
+                  inlier_pct=1.0,
+                  outer_max_iter=100,
+                  outer_step_size=1.0):
         """Optimize the model parameters.
         This is a interface to limetr.
         Args:
@@ -365,7 +376,7 @@ class CWModel:
             u = self.lt.estimateRE()
             self.random_vars = {
                 sid: u[i]
-                for i, sid in enumerate(self.xdata.unique_study_id)
+                for i, sid in enumerate(self.xdata.studies)
             }
         else:
             self.random_vars = dict()
@@ -377,10 +388,9 @@ class CWModel:
             for dorm in self.xdata.unique_dorms
             if dorm != self.gold_dorm
         ])
-        self.beta_sd = np.zeros(self.lt.k_beta)
-        self.beta_sd[unconstrained_id] = np.sqrt(np.diag(
-            np.linalg.inv(hessian)
-        ))
+        self.beta_vcov = np.zeros((self.lt.k_beta, self.lt.k_beta))
+        self.beta_vcov[np.ix_(unconstrained_id, unconstrained_id)] = np.linalg.inv(hessian)
+        self.beta_sd = np.sqrt(np.diag(self.beta_vcov))
 
     def get_beta_hessian(self) -> np.ndarray:
         # compute the posterior distribution of beta
@@ -447,3 +457,64 @@ class CWModel:
             filename += '.csv'
         df = self.create_result_df()
         df.to_csv(folder + '/' + filename, index=False)
+
+    def predict(self,
+                xdata: XData,
+                predict_for_study: bool = False,
+                sort_by_data_id: bool = False) -> np.ndarray:
+        assert xdata.has_covs(self.cov_names), \
+            "Prediction data does not have the covariates used for fitting."
+        # copy dorm structure
+        xdata.copy_dorm_structure(self.xdata)
+        # create design matrix
+        relation_mat = self.create_relation_mat(xdata)
+        cov_mat = self.create_cov_mat(xdata)
+        design_mat = self.create_design_mat(xdata, relation_mat, cov_mat)
+        # create prediction
+        prediction = design_mat.dot(self.beta)
+        # predict for study
+        if predict_for_study and self.use_random_intercept:
+            u = np.array([
+                self.random_vars[sid]
+                if sid in self.xdata.studies else 0.0
+                for sid in xdata.study_id
+            ])
+            prediction += u
+        # sort by data id
+        if sort_by_data_id:
+            prediction = prediction[np.argsort(xdata.data_id)]
+        return prediction
+
+    def sample_soln(self,
+                    sample_size: int = 1) -> np.ndarray:
+        if self.lt is None:
+            raise ValueError("Please fit the model first.")
+
+        beta_samples = np.random.multivariate_normal(
+            mean=self.beta,
+            cov=self.beta_vcov,
+            size=sample_size
+        )
+        return beta_samples
+
+    def create_draws(self,
+                     xdata: XData,
+                     beta_samples: np.ndarray,
+                     random_study: bool = True,
+                     sort_by_data_id: bool = False) -> np.ndarray:
+        sample_size = beta_samples.shape[0]
+        # copy dorm structure
+        xdata.copy_dorm_structure(self.xdata)
+        # create design matrix
+        relation_mat = self.create_relation_mat(xdata)
+        cov_mat = self.create_cov_mat(xdata)
+        design_mat = self.create_design_mat(xdata, relation_mat, cov_mat)
+        # create draws
+        draws = beta_samples.dot(design_mat.T)
+        # adding uncertainty from random effects
+        if random_study and self.use_random_intercept:
+            u_samples = np.random.randn(sample_size, 1)*np.sqrt(self.gamma[0])
+            draws += u_samples
+        if sort_by_data_id:
+            y_samples = y_samples[:, np.argsort(xdata.data_id)]
+        return y_samples.T

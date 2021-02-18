@@ -9,10 +9,9 @@ from typing import List
 from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
-import warnings
 from mrtool.xwalk.utils import array_structure, process_dorms
 from mrtool.core.data import MRData
-from mrtool.core.utils import empty_array, expand_array
+from mrtool.core.utils import empty_array
 
 
 @dataclass
@@ -23,10 +22,13 @@ class XData(MRData):
     def __post_init__(self):
         super().__post_init__()
         if len(self.alt_dorms) == 0:
-            self.alt_dorms = [["alt"]]*self.num_points
+            self.alt_dorms = np.array([["alt"]]*self.num_points)
         if len(self.ref_dorms) == 0:
-            self.ref_dorms = [["ref"]]*self.num_points
-
+            self.ref_dorms = np.array([["ref"]]*self.num_points)
+        self._sort_by_data_id()
+        if not self.is_empty() and self.num_studies != 1:
+            sort_index = np.argsort(self.study_id)
+            self._sort_xdata(sort_index)
         self._get_dorm_structure()
 
     def _get_dorm_structure(self):
@@ -56,7 +58,7 @@ class XData(MRData):
         return self.unique_alt_dorms[np.argmax(self.alt_dorm_sizes)]
 
     @property
-    def min_ref_dorm(self) -> str:
+    def min_alt_dorm(self) -> str:
         return self.unique_alt_dorms[np.argmin(self.alt_dorm_sizes)]
 
     @property
@@ -96,7 +98,25 @@ class XData(MRData):
                                        default_dorm="alt", dorm_separator=dorm_separator)
         self.ref_dorms = process_dorms(dorms=ref_dorms, size=self.num_points,
                                        default_dorm="ref", dorm_separator=dorm_separator)
+        self._sort_by_data_id()
+        if not self.is_empty() and self.num_studies != 1:
+            sort_index = np.argsort(self.study_id)
+            self._sort_xdata(sort_index)
         self._get_dorm_structure()
+
+    def copy_dorm_structure(self, xdata):
+        assert xdata.num_dorms >= self.num_dorms
+        assert all([dorm in xdata.unique_dorms for dorm in self.unique_dorms])
+
+        self.num_dorms = xdata.num_dorms
+        self.unique_dorms = xdata.unique_dorms
+        self.dorm_idx = xdata.dorm_idx
+
+    def _sort_xdata(self, index: np.ndarray):
+        index = np.array(index)
+        super()._sort_data(index)
+        self.alt_dorms = np.array(self.alt_dorms)[index]
+        self.ref_dorms = np.array(self.ref_dorms)[index]
 
     def __repr__(self):
         return (f"number of observations: {self.num_obs}\n"
