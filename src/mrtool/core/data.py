@@ -166,6 +166,20 @@ class MRData:
             self.cols.append(InterceptColumn())
             self.col_names.append("intercept")
 
+    def _get_required_cols(self) -> Dict:
+        return dict(
+            obs=self.obs.name,
+            obs_se=self.obs_se.name,
+            group=self.group.name,
+            key=self.key.name
+        )
+
+    def _get_init_inputs(self) -> Dict:
+        required_cols = self._get_required_cols()
+        other_cols = [col_name for col_name in self.col_names
+                      if col_name not in required_cols.values()]
+        return dict(**required_cols, other_cols=other_cols)
+
     @property
     def df(self) -> DataFrame:
         return self._df
@@ -199,9 +213,15 @@ class MRData:
         instance.df = df
         return instance
 
+    def copy(self) -> "MRData":
+        return self.__copy__()
+
     def __getitem__(self, col_names: Union[str, List[str]]) -> ndarray:
         self._assert_not_empty()
         return self.df[col_names].to_numpy()
+
+    def __copy__(self) -> "MRData":
+        return type(self)(**self._get_init_inputs())
 
     def __repr__(self) -> str:
         if self.is_empty:

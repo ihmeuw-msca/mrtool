@@ -90,3 +90,10 @@ def test_load(df):
         other_cols=["cov"]
     )
     assert data.shape == df.shape
+
+
+def test_copy(df, data):
+    data.df = df
+    new_data = data.copy()
+    assert set(data.col_names) == set(new_data.col_names)
+    assert new_data.is_empty
