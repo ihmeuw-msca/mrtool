@@ -117,7 +117,7 @@ class GroupColumn(Column):
     name: str = "group"
 
     def _set_default_values(self, df: DataFrame):
-        df[self.name] = "uknown"
+        df[self.name] = "unknown"
 
 
 @dataclass
@@ -131,7 +131,13 @@ class InterceptColumn(Column):
     def _set_default_values(self, df: DataFrame):
         df[self.name] = 1.0
 
+    def _check_df_values(self, df: DataFrame):
+        super()._check_df_values(df)
+        if not np.allclose(df[self.name], 1):
+            raise ValueError(f"Column({self.name}) values has to be 1.")
 
+
+# pylint: disable=too-many-instance-attributes
 class MRData:
     """Data for simple linear mixed effects model.
     """
