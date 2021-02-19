@@ -10,13 +10,123 @@ import warnings
 from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
+from numpy import ndarray
+from pandas import DataFrame
 from .utils import empty_array, to_list, is_numeric_array, expand_array
+
+
+@dataclass
+class Column:
+    """
+    General DataFrame column
+    """
+
+    name: str = "blah"
+    _df: DataFrame = field(default=None, init=False, repr=False)
+
+    @staticmethod
+    def _check_df_type(df: DataFrame):
+        if not (isinstance(df, DataFrame) or df is None):
+            raise TypeError("df must be DataFrame or None.")
+
+    def _check_df_values(self, df: DataFrame):
+        if self.name not in df.columns:
+            self._set_default_values(df)
+        if any(df[self.name].isna()):
+            raise ValueError("Column values cannot contain NaN.")
+
+    def _set_default_values(self, df: DataFrame):
+        raise ValueError(f"df must contain column {self.name}.")
+
+    def _check_df(self, df: DataFrame):
+        self._check_df_type(df)
+        if (df is not None) and (self.name is not None):
+            self._check_df_values(df)
+
+    def _assert_not_empty(self):
+        if self.is_empty:
+            raise ValueError("Please attach df and/or specify col name.")
+
+    @property
+    def df(self) -> DataFrame:
+        return self._df
+
+    @df.setter
+    def df(self, df: DataFrame):
+        self._check_df(df)
+        self._df = df
+
+    @property
+    def is_empty(self) -> bool:
+        return self.df is None or self.name is None
+
+    @property
+    def values(self) -> ndarray:
+        self._assert_not_empty()
+        return self.df[self.name].to_numpy()
+
+    @property
+    def unique_values(self) -> ndarray:
+        self._assert_not_empty()
+        return self.df[self.name].unique()
+
+    @property
+    def value_counts(self) -> Dict:
+        self._assert_not_empty()
+        return self.df[self.name].value_counts().to_dict()
+
+
+@dataclass
+class SEColumn(Column):
+    """
+    Standard deviation column
+    """
+
+    name: str = "obs_se"
+
+    def _set_default_values(self, df: DataFrame):
+        df[self.name] = 1.0
+
+    def _check_df_values(self, df: DataFrame):
+        super()._check_df_values(df)
+        if any(df[self.name] <= 0):
+            raise ValueError("Column values has to be all positive.")
+
+
+@dataclass
+class KeyColumn(Column):
+    """
+    Key column
+    """
+
+    name: str = "key"
+
+    def _set_default_values(self, df: DataFrame):
+        df[self.name] = np.arange(df.shape[0])
+
+    def _check_df_values(self, df: DataFrame):
+        super()._check_df_values(df)
+        if len(df[self.name].unique()) != df.shape[0]:
+            raise ValueError("Key column values has to be unique for each row.")
+
+
+@dataclass
+class GroupColumn(Column):
+    """
+    Group column
+    """
+
+    name: str = "group"
+
+    def _set_default_values(self, df: DataFrame):
+        df[self.name] = "uknown"
 
 
 @dataclass
 class MRData:
     """Data for simple linear mixed effects model.
     """
+
     obs: np.ndarray = field(default_factory=empty_array)
     obs_se: np.ndarray = field(default_factory=empty_array)
     covs: Dict[str, np.ndarray] = field(default_factory=dict)
@@ -102,7 +212,7 @@ class MRData:
         """Sort the object.
 
         Args:
-            index (np.ndarray): Sorting index.
+            index(np.ndarray): Sorting index.
         """
         index = np.array(index)
         assert (np.sort(index) == np.arange(self.num_obs)).all(), "Sorting index must go from 0 to num_obs - 1."
@@ -143,7 +253,7 @@ class MRData:
         """Remove the data point by index.
 
         Args:
-            index (np.ndarray): Bool array, when ``True`` delete corresponding data.
+            index(np.ndarray): Bool array, when ``True`` delete corresponding data.
         """
         assert len(index) == self.num_obs
         assert all([isinstance(i, (bool, np.bool_)) for i in index])
@@ -160,7 +270,7 @@ class MRData:
         """Get the data point by index.
 
         Args:
-            index (np.ndarray): Indices of the data we want to get.
+            index(np.ndarray): Indices of the data we want to get.
 
         Returns:
             MRData: data object contains the data from indices.
@@ -267,7 +377,7 @@ class MRData:
         """If the data has the provided covariates.
 
         Args:
-            covs (Union[List[str], str]):
+            covs(Union[List[str], str]):
                 List of covariate names or one covariate name.
 
         Returns:
@@ -315,7 +425,7 @@ class MRData:
         """Get covariate matrix.
 
         Args:
-            covs (Union[List[str], str]):
+            covs(Union[List[str], str]):
                 List of covariate names or one covariate name.
 
         Returns:
@@ -332,7 +442,7 @@ class MRData:
         """Get study specific data.
 
         Args:
-            studies (Union[List[Any], Any]): List of studies or  one study.
+            studies(Union[List[Any], Any]): List of studies or one study.
 
         Returns
             MRData: Data object contains the study specific data.
