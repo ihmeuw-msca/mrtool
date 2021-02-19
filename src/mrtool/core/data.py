@@ -185,6 +185,12 @@ class MRData:
         self._assert_not_empty()
         self.df.sort_values(by, inplace=True)
 
+    @classmethod
+    def load(cls, df: DataFrame, **kwargs) -> "MRData":
+        instance = cls(**kwargs)
+        instance.df = df
+        return instance
+
     def __getitem__(self, col_names: Union[str, List[str]]) -> ndarray:
         self._assert_not_empty()
         return self.df[col_names].to_numpy()
