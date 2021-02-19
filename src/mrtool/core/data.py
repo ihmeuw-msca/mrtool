@@ -157,8 +157,10 @@ class MRData:
 
         self.cols = [self.obs, self.obs_se, self.group, self.key]
         if other_cols is not None:
-            self.cols.extend([Column(col_name) for col_name in other_cols])
-        self.col_names = [col.name for col in self.cols if col.name is not None]
+            self.cols.extend([Column(col_name) for col_name in other_cols
+                              if col_name not in self.cols])
+        self.col_names = list(set(col.name for col in self.cols
+                                  if col.name is not None))
 
         if "intercept" not in self.col_names:
             self.cols.append(InterceptColumn())
