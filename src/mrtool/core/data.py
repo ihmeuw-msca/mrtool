@@ -203,9 +203,10 @@ class MRData:
         self._assert_not_empty()
         return self.df.shape
 
-    def sort_values(self, by: Union[str, List[str]]):
+    def sort_values(self, *args, **kwargs):
         self._assert_not_empty()
-        self.df.sort_values(by, inplace=True)
+        kwargs = dict(**kwargs, inplace=True)
+        self.df.sort_values(*args, **kwargs)
 
     @classmethod
     def load(cls, df: DataFrame, **kwargs) -> "MRData":
