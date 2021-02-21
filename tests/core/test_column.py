@@ -100,14 +100,14 @@ def test_col_value_counts(df, name):
 
 def test_secol_init_default():
     col = SEColumn()
-    assert col.name == "obs_se"
+    assert col.name is None
 
 
 @pytest.mark.parametrize("name", ["obs_se1"])
 def test_secol_df_value_default(df, name):
     col = SEColumn(name=name)
-    col.df = df
-    assert np.allclose(col.values, 1)
+    with pytest.raises(ValueError):
+        col.df = df
 
 
 @pytest.mark.parametrize("name", ["obs_se1"])

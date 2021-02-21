@@ -80,11 +80,6 @@ class SEColumn(Column):
     Standard deviation column
     """
 
-    name: str = "obs_se"
-
-    def _set_default_values(self, df: DataFrame):
-        df[self.name] = 1.0
-
     def _check_df_values(self, df: DataFrame):
         super()._check_df_values(df)
         if any(df[self.name] <= 0):
