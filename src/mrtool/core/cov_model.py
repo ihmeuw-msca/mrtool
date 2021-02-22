@@ -50,11 +50,8 @@ class Covariate:
                        data: MRData,
                        spline: XSpline = None,
                        use_spline_intercept: bool = False) -> ndarray:
-        if self.is_empty:
-            design_mat = self.get_mat(data)
-        else:
-            mat = self.get_mat(data)
-            design_mat = utils.avg_integral(mat, spline, use_spline_intercept)
+        mat = self.get_mat(data)
+        design_mat = utils.avg_integral(mat, spline, use_spline_intercept)
         return design_mat
 
     def __repr__(self) -> str:
@@ -198,9 +195,9 @@ class CovModel:
             prior_gamma_laplace(numpy.ndarray, optional):
                 Direct Laplace prior for gamma.
         """
-        self.covs = []
-        self.alt_cov = utils.input_cols(alt_cov, append_to=self.covs)
-        self.ref_cov = utils.input_cols(ref_cov, append_to=self.covs)
+        self.alt_cov = Covariate(alt_cov)
+        self.ref_cov = Covariate(ref_cov)
+        self.covs = self.alt_cov.name + self.ref_cov.name
 
         self.name = name
         self.use_re = use_re
@@ -257,13 +254,7 @@ class CovModel:
     def _check_inputs(self):
         """Check the attributes.
         """
-        assert utils.is_cols(self.alt_cov)
-        assert utils.is_cols(self.ref_cov)
         assert isinstance(self.name, str) or self.name is None
-        if isinstance(self.alt_cov, list):
-            assert len(self.alt_cov) <= 2
-        if isinstance(self.ref_cov, list):
-            assert len(self.ref_cov) <= 2
         assert isinstance(self.use_re, bool)
         assert isinstance(self.use_spline, bool)
 
@@ -329,11 +320,6 @@ class CovModel:
     def _process_inputs(self):
         """Process attributes.
         """
-        # covariates names
-        if not isinstance(self.alt_cov, list):
-            self.alt_cov = [self.alt_cov]
-        if not isinstance(self.ref_cov, list):
-            self.ref_cov = [self.ref_cov]
         # model name
         if self.name is None:
             if len(self.alt_cov) == 1:
@@ -424,8 +410,8 @@ class CovModel:
             xspline.XSpline: The spline object.
         """
         # extract covariate
-        alt_cov = data.get_covs(self.alt_cov)
-        ref_cov = data.get_covs(self.ref_cov)
+        alt_cov = self.alt_cov.get_mat(data)
+        ref_cov = self.ref_cov.get_mat(data)
 
         cov_all = np.hstack((alt_cov.ravel(), ref_cov.ravel()))
         cov = np.array([min(cov_all), max(cov_all)])
@@ -477,13 +463,8 @@ class CovModel:
             tuple{numpy.ndarray, numpy.ndarray}:
                 Return the design matrix for linear cov or spline.
         """
-        alt_cov = data.get_covs(self.alt_cov)
-        ref_cov = data.get_covs(self.ref_cov)
-
-        alt_mat = utils.avg_integral(alt_cov, spline=self.spline,
-                                     use_spline_intercept=self.use_spline_intercept)
-        ref_mat = utils.avg_integral(ref_cov, spline=self.spline,
-                                     use_spline_intercept=self.use_spline_intercept)
+        alt_mat = self.alt_cov.get_design_mat(data, self.spline, self.use_spline_intercept)
+        ref_mat = self.ref_cov.get_design_mat(data, self.spline, self.use_spline_intercept)
 
         return alt_mat, ref_mat
 
