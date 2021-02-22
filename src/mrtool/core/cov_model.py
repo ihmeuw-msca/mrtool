@@ -30,19 +30,12 @@ class Covariate:
         if not (covs is None or
                 isinstance(covs, str) or
                 all([isinstance(cov, str) for cov in covs])):
-            raise TypeError("Covaraite name can only be None or string or "
-                            "list of strings.")
+            raise TypeError("Covaraite name can only be None or string or list of strings.")
 
-        if covs is None:
-            covs = []
-        elif isinstance(covs, str):
-            covs = [covs]
-        else:
-            covs = list(covs)
+        covs = [] if covs is None else [covs] if isinstance(covs, str) else list(covs)
 
         if len(covs) not in [0, 1, 2]:
-            raise ValueError("Covariate can only contain zero, one or "
-                             "two name(s).")
+            raise ValueError("Covariate can only contain zero, one or two name(s).")
 
         self._name = covs
 
