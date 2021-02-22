@@ -20,23 +20,35 @@ class Covariate:
     Covariate class, main responsibility is to create design mat.
     """
 
-    def __init__(self, name: Union[str, Iterable[str]]):
+    def __init__(self, name: Union[None, str, Iterable[str]] = None):
         self.name = name
 
     name = property(operator.attrgetter("_name"))
 
     @name.setter
-    def name(self, covs: Union[str, Iterable[str]]):
-        if not (isinstance(covs, str) or
+    def name(self, covs: Union[None, str, Iterable[str]]):
+        if not (covs is None or
+                isinstance(covs, str) or
                 all([isinstance(cov, str) for cov in covs])):
-            raise TypeError("Covaraite name must be string or list of strings.")
+            raise TypeError("Covaraite name can only be None or string or "
+                            "list of strings.")
 
-        covs = [covs] if isinstance(covs, str) else list(covs)
+        if covs is None:
+            covs = []
+        elif isinstance(covs, str):
+            covs = [covs]
+        else:
+            covs = list(covs)
 
-        if len(covs) not in [1, 2]:
-            raise ValueError("Covariate can only contain one or two name(s).")
+        if len(covs) not in [0, 1, 2]:
+            raise ValueError("Covariate can only contain zero, one or "
+                             "two name(s).")
 
         self._name = covs
+
+    @property
+    def is_empty(self) -> bool:
+        return len(self.name) == 0
 
     def get_mat(self, data: MRData) -> ndarray:
         return data[self.name]
@@ -45,8 +57,12 @@ class Covariate:
                        data: MRData,
                        spline: XSpline = None,
                        use_spline_intercept: bool = False) -> ndarray:
-        mat = self.get_mat(data)
-        return utils.avg_integral(mat, spline, use_spline_intercept)
+        if self.is_empty:
+            design_mat = self.get_mat(data)
+        else:
+            mat = self.get_mat(data)
+            design_mat = utils.avg_integral(mat, spline, use_spline_intercept)
+        return design_mat
 
     def __repr__(self) -> str:
         return f"Covariate(name={self.name})"

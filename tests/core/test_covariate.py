@@ -48,10 +48,18 @@ def test_init_bad_type(name):
         Covariate(name)
 
 
-@pytest.mark.parametrize("name", [[], ["a", "b", "c"]])
+@pytest.mark.parametrize("name", [["a", "b", "c"]])
 def test_init_bad_value(name):
     with pytest.raises(ValueError):
         Covariate(name)
+
+
+@pytest.mark.parametrize(("name", "result"), [(None, True),
+                                              ([], True),
+                                              (["a", "b"], False)])
+def test_is_empty(name, result):
+    cov = Covariate(name)
+    assert cov.is_empty == result
 
 
 @pytest.mark.parametrize("name", ["cov0", ["cov0", "cov1"]])
@@ -65,6 +73,12 @@ def test_get_design_mat(name, data):
     cov = Covariate(name)
     assert np.allclose(cov.get_design_mat(data),
                        data[cov.name].mean(axis=1)[:, np.newaxis])
+
+
+@pytest.mark.parametrize("name", [[], None])
+def test_get_design_mat_empty(name, data):
+    cov = Covariate(name)
+    assert cov.get_design_mat(data).size == 0
 
 
 @pytest.mark.parametrize("name", [["cov0", "cov1"]])
