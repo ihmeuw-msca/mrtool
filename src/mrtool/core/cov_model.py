@@ -53,6 +53,7 @@ class Covariate:
                        data: MRData,
                        spline: XSpline = None) -> ndarray:
         mat = self.get_mat(data)
+        # TODO: change the utils function no need for intercept considieration
         design_mat = utils.avg_integral(mat, spline)
         return design_mat
 
