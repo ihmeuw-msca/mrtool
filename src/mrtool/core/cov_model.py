@@ -6,14 +6,15 @@
     Covariates model for `mrtool`.
 """
 import operator
-from typing import Callable, Iterable, Union
+from typing import Callable, Iterable, List, Union, Dict
+from collections import defaultdict
 
 import numpy as np
 from mrtool.core import utils
 from mrtool.core.data import MRData
 from numpy import ndarray
-from regmod.prior import (GaussianPrior, LinearPrior, Prior, SplinePrior,
-                          UniformPrior)
+from mrtool.core.prior import (GaussianPrior, LinearPrior, Prior, SplinePrior,
+                               UniformPrior)
 from regmod.utils import SplineSpecs
 from xspline import XSpline
 
@@ -67,8 +68,7 @@ class CovModel:
     def __init__(self,
                  alt_cov: Union[str, Iterable[str]],
                  ref_cov: Union[str, Iterable[str]] = None,
-                 spline: XSpline = None,
-                 spline_specs: SplineSpecs = None,
+                 spline: Union[XSpline, SplineSpecs] = None,
                  priors: Iterable[Prior] = None):
 
         self.alt_cov = Covariate(alt_cov)
@@ -76,61 +76,49 @@ class CovModel:
         self.covs = self.alt_cov.name + self.ref_cov.name
 
         self.spline = spline
-        self.spline_specs = spline_specs
 
         self.priors = [] if priors is None else list(priors)
-        self.uprior = None
-        self.gprior = None
-        self.linear_gpriors = []
-        self.linear_upriors = []
-
-        self._process_priors()
+        self.sorted_priors = defaultdict(list)
+        self.sort_priors()
+        self.activate_spline_priors()
 
     @property
     def use_spline(self) -> bool:
-        return (self.spline is not None) or (self.spline_specs is not None)
+        return self.spline is not None
 
     @property
     def size(self) -> int:
         if self.use_spline:
-            if self.spline is not None:
-                return self.spline.num_spline_bases
-            return self.spline_specs.num_spline_bases
+            return self.spline.num_spline_bases
         return 1
 
-    def _process_priors(self):
-        """Process priors.
+    def sort_priors(self) -> Dict[str, List[Prior]]:
+        """sort priors.
         """
         for prior in self.priors:
-            if isinstance(prior, LinearPrior) and isinstance(prior, GaussianPrior):
-                assert self.use_spline, "Cannot use linear prior on uni-var."
-                self.linear_gpriors.append(prior)
-            elif isinstance(prior, LinearPrior) and isinstance(prior, UniformPrior):
-                assert self.use_spline, "Cannot use linear prior on uni-var."
-                self.linear_upriors.append(prior)
-            elif isinstance(prior, GaussianPrior):
-                if self.gprior is not None and self.gprior != prior:
-                    raise ValueError("Can only provide one Gaussian prior.")
-                self.gprior = prior
-                assert self.gprior.size == self.size, \
-                    "Gaussian prior size not match."
-            elif isinstance(prior, UniformPrior):
-                if self.uprior is not None and self.uprior != prior:
-                    raise ValueError("Can only provide one Uniform prior.")
-                self.uprior = prior
-                assert self.uprior.size == self.size, \
-                    "Uniform prior size not match."
-            else:
-                raise ValueError("Unknown prior type.")
+            self.sorted_priors[prior.ptype].append(prior)
+
+        if ((len(self.sorted_priors["gprior"]) >= 2 or
+             len(self.sorted_priors["uprior"]) >= 2)):
+            raise ValueError("Cannot have multiple gprior or uprior.")
+        if ((len(self.sorted_priors["linear_gprior"]) >= 1 or
+             len(self.sorted_priors["linear_uprior"]) >= 1) and
+                (not self.use_spline)):
+            raise ValueError("Cannot have linear priors for uni-variate.")
+
+    def activate_spline_priors(self):
+        if isinstance(self.spline, XSpline):
+            for prior in (self.sort_priors["linear_uprior"] +
+                          self.sort_priors["linear_gprior"]):
+                if isinstance(prior, SplinePrior):
+                    prior.attach_spline(self.spline)
 
     def attach_data(self, data: MRData):
         """Attach data.
         """
-        if self.use_spline and self.spline is None:
-            self.spline = self.spline_specs.create_spline(data[self.covs])
-            for prior in self.linear_upriors + self.linear_gpriors:
-                if isinstance(prior, SplinePrior):
-                    prior.attach_spline(self.spline)
+        if isinstance(self.spline, SplineSpecs):
+            self.spline = self.spline.create_spline(data[self.covs])
+        self.activate_spline_priors()
 
     def get_mat(self, data):
         """Create design matrix.
@@ -148,56 +136,62 @@ class CovModel:
         raise NotImplementedError("Do not directly use CovModel class.")
 
     def get_gvec(self) -> np.ndarray:
-        if self.gprior is None:
+        gprior = self.sorted_priors["gprior"]
+        if not gprior:
             gvec = np.repeat([[0.0], [np.inf]], self.size, axis=1)
         else:
-            gvec = np.vstack([self.gprior.mean, self.gprior.sd])
+            gvec = np.vstack([gprior[0].mean, gprior[0].sd])
         return gvec
 
     def get_uvec(self) -> np.ndarray:
-        if self.uprior is None:
+        uprior = self.sorted_priors["uprior"]
+        if not uprior:
             uvec = np.repeat([[-np.inf], [np.inf]], self.size, axis=1)
         else:
-            uvec = np.vstack([self.uprior.lb, self.uprior.ub])
+            uvec = np.vstack([uprior[0].lb, uprior[0].ub])
         return uvec
 
     def get_linear_uvec(self) -> np.ndarray:
-        if not self.linear_upriors:
+        linear_uprior = self.sorted_priors["linear_uprior"]
+        if not linear_uprior:
             uvec = np.empty((2, 0))
         else:
             uvec = np.hstack([
                 np.vstack([prior.lb, prior.ub])
-                for prior in self.linear_upriors
+                for prior in linear_uprior
             ])
         return uvec
 
     def get_linear_gvec(self) -> np.ndarray:
-        if not self.linear_gpriors:
+        linear_gprior = self.sorted_priors["linear_gprior"]
+        if not linear_gprior:
             gvec = np.empty((2, 0))
         else:
             gvec = np.hstack([
                 np.vstack([prior.mean, prior.sd])
-                for prior in self.linear_gpriors
+                for prior in linear_gprior
             ])
         return gvec
 
     def get_linear_umat(self, data: MRData = None) -> np.ndarray:
         self.attach_data(data)
-        if not self.linear_upriors:
+        linear_uprior = self.sorted_priors["linear_uprior"]
+        if not linear_uprior:
             umat = np.empty((0, self.size))
         else:
             umat = np.vstack([
-                prior.mat for prior in self.linear_upriors
+                prior.mat for prior in linear_uprior
             ])
         return umat
 
     def get_linear_gmat(self, data: MRData = None) -> np.ndarray:
         self.attach_data(data)
-        if not self.linear_gpriors:
+        linear_gprior = self.sorted_priors["linear_gprior"]
+        if not linear_gprior:
             gmat = np.empty((0, self.size))
         else:
             gmat = np.vstack([
-                prior.mat for prior in self.linear_gpriors
+                prior.mat for prior in linear_gprior
             ])
         return gmat
 
