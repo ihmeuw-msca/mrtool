@@ -84,7 +84,7 @@ def test_get_design_mat_empty(name, data):
 @pytest.mark.parametrize("name", [["cov0", "cov1"]])
 def test_get_design_mat_spline(name, data, spline):
     cov = Covariate(name)
-    my_mat = cov.get_design_mat(data, spline=spline, use_spline_intercept=True)
+    my_mat = cov.get_design_mat(data, spline=spline)
     tr_mat = spline.design_imat(data[cov.name[0]],
                                 data[cov.name[1]],
                                 order=1)/np.diff(data[cov.name], axis=1)
