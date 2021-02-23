@@ -107,8 +107,8 @@ class CovModel:
 
     def activate_spline_priors(self):
         if isinstance(self.spline, XSpline):
-            for prior in (self.sort_priors["linear_uprior"] +
-                          self.sort_priors["linear_gprior"]):
+            for prior in (self.sorted_priors["linear_uprior"] +
+                          self.sorted_priors["linear_gprior"]):
                 if isinstance(prior, SplinePrior):
                     prior.attach_spline(self.spline)
 
