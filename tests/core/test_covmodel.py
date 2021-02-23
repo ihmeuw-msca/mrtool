@@ -7,7 +7,7 @@ from pandas import DataFrame
 from xspline import XSpline
 from regmod.utils import SplineSpecs
 from mrtool.core.data import MRData
-from mrtool.core.cov_model import CovModel
+from mrtool.core.cov_model import CovModel, LinearCovModel, LogCovModel
 from mrtool.core.prior import GaussianPrior, UniformPrior, SplineGaussianPrior, SplineUniformPrior
 
 
@@ -200,3 +200,17 @@ def test_get_linear_gvec_default(gprior, uprior):
                      priors=[gprior, uprior])
     linear_gvec = model.get_linear_gvec()
     assert linear_gvec.shape == (2, 0)
+
+
+def test_linear_cov_model(data):
+    model = LinearCovModel("cov0")
+    fun, jac_fun = model.get_fun(data)
+    assert np.allclose(fun([1.0]), data["cov0"])
+    assert np.allclose(jac_fun([1.0]), model.get_mat(data))
+
+
+def test_log_cov_model(data):
+    model = LogCovModel("cov0")
+    fun, jac_fun = model.get_fun(data)
+    assert np.allclose(fun([0.0]), 0.0)
+    assert np.allclose(jac_fun([0.0]), model.get_mat(data))
