@@ -220,6 +220,7 @@ class LogCovModel(CovModel):
     """
 
     def __init__(self, *args, **kwargs):
+        # TODO: add the prior for positive constraint of value
         super().__init__(*args, **kwargs)
 
     def get_fun(self, data):
