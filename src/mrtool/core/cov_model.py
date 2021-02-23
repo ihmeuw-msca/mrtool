@@ -13,8 +13,7 @@ import numpy as np
 from mrtool.core import utils
 from mrtool.core.data import MRData
 from numpy import ndarray
-from mrtool.core.prior import (GaussianPrior, LinearPrior, Prior, SplinePrior,
-                               UniformPrior)
+from mrtool.core.prior import Prior, SplinePrior
 from regmod.utils import SplineSpecs
 from xspline import XSpline
 
