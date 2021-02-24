@@ -14,6 +14,7 @@ from regmod.utils import default_vec_factory
 @dataclass
 class Prior:
     size: int = None
+    ptype: str = field(default="prior", repr=False, init=False)
 
     def process_size(self, vecs: List[Any]):
         if self.size is None:
@@ -56,6 +57,7 @@ class LinearPrior:
     mat: np.ndarray = field(default_factory=lambda: np.empty(shape=(0, 1)),
                             repr=False)
     size: int = None
+    ptype: str = field(default="linear_prior", repr=False, init=False)
 
     def __post_init__(self):
         if self.size is None:
