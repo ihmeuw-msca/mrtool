@@ -18,7 +18,7 @@ if __name__ == '__main__':
         'pandas',
         'scipy',
         'xspline',
-        'xarray'
+        'regmod'
     ]
 
     unsolved_requirements = [
@@ -61,5 +61,5 @@ if __name__ == '__main__':
               'docs': doc_requirements,
               'test': test_requirements,
               'dev': doc_requirements + test_requirements
-          },
-          zip_safe=False,)
+    },
+        zip_safe=False,)

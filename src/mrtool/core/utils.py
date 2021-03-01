@@ -11,10 +11,13 @@ try:
     from cdd import Matrix, RepType, Polyhedron
 except:
     Warning("no cdd module installed, create fake classes.")
+
     class Matrix:
         pass
+
     class RepType:
         INEQUALITY = None
+
     class Polyhedron:
         def get_generators(self):
             pass
@@ -158,7 +161,9 @@ def is_gaussian_prior(prior, size=None):
         ok = ok and np.all(prior[1] > 0.0)
     return ok
 
+
 is_laplace_prior = is_gaussian_prior
+
 
 def is_uniform_prior(prior, size=None):
     """Check if variable satisfy uniform prior format
@@ -212,7 +217,9 @@ def input_gaussian_prior(prior, size):
         assert prior.shape[1] == size
         return prior
 
+
 input_laplace_prior = input_gaussian_prior
+
 
 def input_uniform_prior(prior, size):
     """Process the input Gaussian prior
@@ -239,7 +246,7 @@ def input_uniform_prior(prior, size):
         return prior
 
 
-def avg_integral(mat, spline=None, use_spline_intercept=False):
+def avg_integral(mat, spline=None):
     """Compute average integral.
 
     Args:
@@ -249,8 +256,6 @@ def avg_integral(mat, spline=None, use_spline_intercept=False):
         spline (xspline.XSpline | None, optional):
             Spline integrate over with, when `None` treat the function as
             linear.
-        use_spline_intercept (bool, optional):
-            If `True` use all bases from spline, otherwise remove the first bases.
 
     Returns:
         numpy.ndarray:
@@ -259,8 +264,6 @@ def avg_integral(mat, spline=None, use_spline_intercept=False):
     assert mat.ndim == 2
     if mat.size == 0:
         return mat.reshape(mat.shape[0], 0)
-
-    index = 0 if use_spline_intercept else 1
 
     if mat.shape[1] == 1:
         return mat if spline is None else spline.design_mat(
@@ -287,9 +290,11 @@ def avg_integral(mat, spline=None, use_spline_intercept=False):
                     l_extra=True,
                     r_extra=True)/(dx[int_idx][:, None])
 
-            return mat[:, index:]
+            return mat
 
 # random knots
+
+
 def sample_knots(num_intervals: int,
                  knot_bounds: Union[np.ndarray, None] = None,
                  interval_sizes: Union[np.ndarray, None] = None,
@@ -456,7 +461,7 @@ def nonlinear_trans(score, slope=6.0, quantile=0.7):
         else:
             weight_trans[i] = 1.0
 
-    weight_trans = (weight_trans - np.min(weight_trans))/\
+    weight_trans = (weight_trans - np.min(weight_trans)) /\
         (np.max(weight_trans) - np.min(weight_trans))
 
     return weight_trans
@@ -477,6 +482,7 @@ def mat_to_fun(alt_mat, ref_mat=None):
             mat = alt_mat
         else:
             mat = alt_mat - ref_mat
+
         def fun(x, mat=mat):
             return mat.dot(x)
 
@@ -484,6 +490,7 @@ def mat_to_fun(alt_mat, ref_mat=None):
             return mat
 
     return fun, jac_fun
+
 
 def mat_to_log_fun(alt_mat, ref_mat=None, add_one=True):
     alt_mat = np.array(alt_mat)
@@ -506,17 +513,18 @@ def mat_to_log_fun(alt_mat, ref_mat=None, add_one=True):
         else:
             def fun(beta):
                 return np.log(shift + alt_mat.dot(beta)) - \
-                       np.log(shift + ref_mat.dot(beta))
+                    np.log(shift + ref_mat.dot(beta))
 
             def jac_fun(beta):
                 return alt_mat/(shift + alt_mat.dot(beta)[:, None]) - \
-                       ref_mat/(shift + ref_mat.dot(beta)[:, None])
+                    ref_mat/(shift + ref_mat.dot(beta)[:, None])
 
     return fun, jac_fun
 
 
 def empty_array():
     return np.array(list())
+
 
 def to_list(obj: Any) -> List[Any]:
     """Convert objective to list of object.
