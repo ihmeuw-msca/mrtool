@@ -117,7 +117,7 @@ class MRBRT:
 
     @property
     def fe_fun(self) -> Tuple[Callable, Callable]:
-        funs = [model.get_fun() for model in self.fe_cov_models]
+        funs = [model.get_fun(self.data) for model in self.fe_cov_models]
         funs, jac_funs = tuple(zip(*funs))
         indicies = utils.sizes_to_sclices(self.fe_sizes)
 
@@ -132,6 +132,8 @@ class MRBRT:
 
     @property
     def re_mat(self) -> ndarray:
+        if len(self.re_cov_models) == 0:
+            return np.empty(shape=(self.df.shape[0], 0))
         return np.hstack([model.get_mat() for model in self.re_cov_models])
 
     @property
