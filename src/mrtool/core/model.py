@@ -12,16 +12,9 @@ import numpy as np
 from mrtool.core import utils
 from mrtool.core.cov_model import CovModel
 from mrtool.core.data import MRData
+from mrtool.core.limetr_api import get_limetr
 from numpy import ndarray
 from scipy.linalg import block_diag
-
-# try:
-#     from limetr import LimeTr
-# except:
-#     Warning("no limetr module, create fake Limetr class")
-
-#     class LimeTr:
-#         pass
 
 
 # pylint:disable=too-many-instance-attributes
@@ -39,6 +32,8 @@ class MRBRT:
 
         self.df = self.data.df
         self.attach_data()
+
+        self.lt = get_limetr(self)
 
     data = property(operator.attrgetter("_data"))
 
