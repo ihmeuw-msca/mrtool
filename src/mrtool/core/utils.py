@@ -70,7 +70,7 @@ def avg_integral(mat, spline=None):
 
     if mat.shape[1] == 1:
         return mat if spline is None else spline.design_mat(
-            mat.ravel(), l_extra=True, r_extra=True)[:, index:]
+            mat.ravel(), l_extra=True, r_extra=True)
     else:
         if spline is None:
             return mat.mean(axis=1)[:, None]

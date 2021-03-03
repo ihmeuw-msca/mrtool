@@ -174,7 +174,7 @@ class MRBRT:
         ])
 
     def fit_model(self, **fit_options):
-        pass
+        self.lt.fit(**fit_options)
 
     def predict(self) -> np.ndarray:
         pass
