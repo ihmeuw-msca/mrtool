@@ -175,6 +175,7 @@ class MRBRT:
 
     def fit_model(self, **fit_options):
         self.lt.fitModel(**fit_options)
+        self.df["is_outlier"] = (self.lt.w <= 0.1).astype(int)
 
     def predict(self) -> np.ndarray:
         pass
