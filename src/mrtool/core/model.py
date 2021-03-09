@@ -121,8 +121,8 @@ class MRBRT:
                         for i, index in enumerate(indicies)])
 
         def jac_fun(beta: ndarray) -> ndarray:
-            return sum([jac_funs[i](beta[index])
-                        for i, index in enumerate(indicies)])
+            return np.hstack([jac_funs[i](beta[index])
+                              for i, index in enumerate(indicies)])
         return fun, jac_fun
 
     @property
@@ -174,7 +174,7 @@ class MRBRT:
         ])
 
     def fit_model(self, **fit_options):
-        self.lt.fit(**fit_options)
+        self.lt.fitModel(**fit_options)
 
     def predict(self) -> np.ndarray:
         pass
