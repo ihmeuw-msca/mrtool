@@ -4,22 +4,22 @@ Interface for LimeTr
 from pkg_resources import working_set
 import numpy as np
 from mrtool.core.utils import mat_to_fun
+from mrtool.core.soln import MRSoln
 
 # pylint:disable=not-an-iterable
 installed_pkgs = [p.key for p in working_set]
 # pylint:disable=import-error
 if "limetr" in installed_pkgs:
     from limetr import LimeTr
+    from limetr.utils import varMat
 else:
     # create fake LimeTr class
     class LimeTr:
-        def __init__(self, n, k_beta, k_gamma, Y, F, JF, Z,
-                     S=None, share_obs_std=False,
-                     C=None, JC=None, c=None,
-                     H=None, JH=None, h=None,
-                     uprior=None, gprior=None, lprior=None,
-                     certain_inlier_id=None,
-                     inlier_percentage=1.0):
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class varMat:
+        def __init__(self, *args, **kwargs):
             pass
 
 
@@ -69,3 +69,24 @@ def get_limetr(model: "MRBRT") -> LimeTr:
                   uprior=uvec,
                   gprior=gvec,
                   inlier_percentage=model.inlier_pct)
+
+
+def get_soln(model: "MRBRT") -> MRSoln:
+    beta = model.lt.beta
+    gamma = model.lt.gamma
+
+    # compute vcov matrices
+    femat = model.lt.JF(beta)*np.sqrt(model.lt.w)[:, None]
+    remat = model.lt.Z*np.sqrt(model.lt.w)[:, None]
+    varmat = varMat(model.lt.S**(2*model.lt.w), remat, model.lt.n)
+    beta_vcov = femat.T.dot(varmat.invDot(femat))
+    gamma_vcov = model.lt.get_gamma_fisher(gamma)
+
+    # compute random effects
+    u = model.lt.estimateRE()
+    random_effects = {
+        g: u[i]
+        for i, g in enumerate(model.data.group.values)
+    }
+
+    return MRSoln(beta, gamma, beta_vcov, gamma_vcov, random_effects)

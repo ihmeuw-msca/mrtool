@@ -9,10 +9,11 @@ import operator
 from typing import Callable, Iterable, List, Tuple, Union
 
 import numpy as np
+from pandas import DataFrame
 from mrtool.core import utils
 from mrtool.core.cov_model import CovModel
 from mrtool.core.data import MRData
-from mrtool.core.limetr_api import get_limetr
+from mrtool.core.limetr_api import get_limetr, get_soln
 from numpy import ndarray
 from scipy.linalg import block_diag
 
@@ -34,6 +35,7 @@ class MRBRT:
         self.attach_data()
 
         self.lt = get_limetr(self)
+        self.soln = None
 
     data = property(operator.attrgetter("_data"))
 
@@ -175,9 +177,23 @@ class MRBRT:
 
     def fit_model(self, **fit_options):
         self.lt.fitModel(**fit_options)
+        self.df["is_outlier"] = (self.lt.w <= 0.1).astype(int)
+        self.soln = get_soln(self)
 
-    def predict(self) -> np.ndarray:
-        pass
+    def predict(self, df: DataFrame = None, **kwargs) -> np.ndarray:
+        df = self.df if df is None else df
+        self.data.df = df
+        fe_fun, _ = self.fe_fun
+        re_mat = self.re_mat
+        pred = self.soln.predict(fe_fun, re_mat, **kwargs)
+        self.data.df = self.df
+        return pred
 
-    def get_draws(self) -> np.ndarray:
-        pass
+    def get_draws(self, df: DataFrame = None, **kwargs) -> np.ndarray:
+        df = self.df if df is None else df
+        self.data.df = df
+        fe_fun, _ = self.fe_fun
+        re_mat = self.re_mat
+        draws = self.soln.get_draws(fe_fun, re_mat, **kwargs)
+        self.data.df = self.df
+        return draws
