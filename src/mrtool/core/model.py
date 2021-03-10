@@ -12,7 +12,7 @@ import numpy as np
 from mrtool.core import utils
 from mrtool.core.cov_model import CovModel
 from mrtool.core.data import MRData
-from mrtool.core.limetr_api import get_limetr
+from mrtool.core.limetr_api import get_limetr, get_soln
 from numpy import ndarray
 from scipy.linalg import block_diag
 
@@ -34,6 +34,7 @@ class MRBRT:
         self.attach_data()
 
         self.lt = get_limetr(self)
+        self.soln = None
 
     data = property(operator.attrgetter("_data"))
 
@@ -176,6 +177,7 @@ class MRBRT:
     def fit_model(self, **fit_options):
         self.lt.fitModel(**fit_options)
         self.df["is_outlier"] = (self.lt.w <= 0.1).astype(int)
+        self.soln = get_soln(self)
 
     def predict(self) -> np.ndarray:
         pass
