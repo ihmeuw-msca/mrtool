@@ -11,14 +11,14 @@ installed_pkgs = [p.key for p in working_set]
 # pylint:disable=import-error
 if "limetr" in installed_pkgs:
     from limetr import LimeTr
-    from limetr.utils import varMat
+    from limetr.utils import VarMat
 else:
     # create fake LimeTr class
     class LimeTr:
         def __init__(self, *args, **kwargs):
             pass
 
-    class varMat:
+    class VarMat:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -72,21 +72,24 @@ def get_limetr(model: "MRBRT") -> LimeTr:
 
 
 def get_soln(model: "MRBRT") -> MRSoln:
-    beta = model.lt.beta
-    gamma = model.lt.gamma
+    lt = model.lt
+    beta = lt.beta
+    gamma = lt.gamma
 
     # compute vcov matrices
-    femat = model.lt.JF(beta)*np.sqrt(model.lt.w)[:, None]
-    remat = model.lt.Z*np.sqrt(model.lt.w)[:, None]
-    varmat = varMat(model.lt.S**(2*model.lt.w), remat, model.lt.n)
-    beta_vcov = femat.T.dot(varmat.invDot(femat))
-    gamma_vcov = model.lt.get_gamma_fisher(gamma)
+    femat = lt.JF(beta)*np.sqrt(model.lt.w)[:, None]
+    remat = lt.Z*np.sqrt(model.lt.w)[:, None]
+    varmat = VarMat(lt.S**(2*lt.w), remat, gamma, model.lt.n)
+    beta_hessian = femat.T.dot(varmat.invDot(femat)) + np.diag(lt.gw[:lt.k_beta])
+    gamma_hessian = lt.get_gamma_fisher(gamma)
+    beta_vcov = np.linalg.inv(beta_hessian)
+    gamma_vcov = np.linalg.inv(gamma_hessian)
 
     # compute random effects
-    u = model.lt.estimateRE()
+    u = lt.estimateRE()
     random_effects = {
         g: u[i]
-        for i, g in enumerate(model.data.group.values)
+        for i, g in enumerate(model.data.group.unique_values)
     }
 
     return MRSoln(beta, gamma, beta_vcov, gamma_vcov, random_effects)
