@@ -82,5 +82,5 @@ class MRSoln:
                 ])
             else:
                 re = np.zeros(re_mat.shape[1])
-            re_pred = re_mat.dot(re)
+            re_pred = (re_mat*re).sum(axis=1)
         return fe_pred + re_pred
