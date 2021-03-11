@@ -43,7 +43,10 @@ def soln(beta, gamma, beta_vcov, gamma_vcov, random_effects):
 def fe_fun():
     np.random.seed(123)
     fe_mat = np.random.randn(200, 5)
-    return lambda beta: fe_mat.dot(beta)
+
+    def fun(beta):
+        return fe_mat.dot(beta)
+    return fun
 
 
 @pytest.fixture
