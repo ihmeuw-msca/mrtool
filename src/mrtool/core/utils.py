@@ -43,7 +43,7 @@ def sizes_to_indices(sizes):
     return indices
 
 
-def sizes_to_sclices(sizes: np.array) -> List[slice]:
+def sizes_to_slices(sizes: np.array) -> List[slice]:
     ends = np.cumsum(sizes)
     starts = np.insert(ends, 0, 0)[:-1]
     return [slice(*pair) for pair in zip(starts, ends)]

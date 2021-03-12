@@ -116,7 +116,7 @@ class MRBRT:
     def fe_fun(self) -> Tuple[Callable, Callable]:
         funs = [model.get_fun(self.data) for model in self.fe_cov_models]
         funs, jac_funs = tuple(zip(*funs))
-        indicies = utils.sizes_to_sclices(self.fe_sizes)
+        indicies = utils.sizes_to_slices(self.fe_sizes)
 
         def fun(beta: ndarray) -> ndarray:
             return sum([funs[i](beta[index])
