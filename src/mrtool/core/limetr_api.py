@@ -45,7 +45,7 @@ def get_limetr(model: "MRBRT") -> LimeTr:
     linear_gfun, linear_gjac_fun = mat_to_fun(model.linear_gmat)
     linear_gvec = model.linear_gvec
 
-    # consider the situation when there is not random effects
+    # consider the situation when there is no random effects
     if k_gamma == 0:
         k_gamma = 1
         z_mat = np.ones((data.shape[0], 1))
