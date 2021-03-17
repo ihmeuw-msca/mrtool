@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
     test_utils
-    ~~~~~~~~~~
-    Test `utils` module of `sfma` package.
 """
 import numpy as np
 import pytest
