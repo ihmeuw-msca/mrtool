@@ -180,7 +180,7 @@ class MRBRT:
         self.df["is_outlier"] = (self.lt.w <= 0.1).astype(int)
         self.soln = get_soln(self)
 
-    def predict(self, df: DataFrame = None, **kwargs) -> ndarray:
+    def get_prediction(self, df: DataFrame = None, **kwargs) -> ndarray:
         df = self.df if df is None else df
         self.data.df = df
         fe_fun, _ = self.fe_fun

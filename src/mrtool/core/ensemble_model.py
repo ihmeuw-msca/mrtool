@@ -50,9 +50,9 @@ class MRBeRT:
         w = np.vstack([model.lt.w for model in self.sub_models])
         self.df.is_outlier = (w.T.dot(self.sub_model_weights) <= 0.1).astype(int)
 
-    def predict(self, df: DataFrame = None, **kwargs) -> ndarray:
+    def get_prediction(self, df: DataFrame = None, **kwargs) -> ndarray:
         predictions = np.vstack([
-            model.predict(df, **kwargs)
+            model.get_prediction(df, **kwargs)
             for model in self.sub_models
         ])
 
