@@ -82,15 +82,10 @@ class MRBeRT:
         if fe_cov_models is None:
             fe_cov_models = []
 
-        spline_specs = [
-            SplineSpecs(knots, **spline_options)
-            for knots in knots_samples
-        ]
-
         sub_models = []
-        for i in range(len(spline_specs)):
+        for i in range(len(knots_samples)):
             cov_model = deepcopy(ensemble_fe_cov_model)
-            cov_model.spline = spline_specs[i]
+            cov_model.spline = SplineSpecs(knots_samples[i], **spline_options)
             sub_fe_cov_models = [cov_model] + deepcopy(fe_cov_models)
             sub_models.append(
                 MRBRT(data, sub_fe_cov_models, re_cov_models, inlier_pct)
