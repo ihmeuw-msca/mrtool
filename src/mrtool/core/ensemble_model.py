@@ -1,10 +1,14 @@
 """
 Ensemble Model
 """
-from typing import List
+from typing import List, Dict
+from copy import deepcopy
 import numpy as np
 from numpy import ndarray
 from pandas import DataFrame
+from regmod.utils import SplineSpecs
+from mrtool.core.data import MRData
+from mrtool.core.cov_model import CovModel
 from mrtool.core.model import MRBRT
 from mrtool.core.utils import proj_simplex
 
@@ -37,6 +41,7 @@ class MRBeRT:
         for model in self.sub_models:
             model.fit_model(**fit_options)
             # for now use the insample objective as the score
+            # discuss cross-validation
             scores.append(-model.lt.objective(model.lt.soln))
 
         self.sub_model_weights = proj_simplex(np.array(scores))
@@ -62,3 +67,33 @@ class MRBeRT:
             model.get_draws(df, size=sizes[i], **kwargs)
             for i, model in enumerate(self.sub_models)
         ])
+
+    @classmethod
+    def get_knots_ensemble_model(cls,
+                                 data: MRData,
+                                 ensemble_fe_cov_model: CovModel,
+                                 knots_samples: ndarray,
+                                 spline_options: Dict = None,
+                                 fe_cov_models: List[CovModel] = None,
+                                 re_cov_models: List[CovModel] = None,
+                                 inlier_pct: float = 1.0) -> "MRBeRT":
+        if spline_options is None:
+            spline_options = {}
+        if fe_cov_models is None:
+            fe_cov_models = []
+
+        spline_specs = [
+            SplineSpecs(knots, **spline_options)
+            for knots in knots_samples
+        ]
+
+        sub_models = []
+        for i in range(len(spline_specs)):
+            cov_model = deepcopy(ensemble_fe_cov_model)
+            cov_model.spline = spline_specs[i]
+            sub_fe_cov_models = [cov_model] + deepcopy(fe_cov_models)
+            sub_models.append(
+                MRBRT(data, sub_fe_cov_models, re_cov_models, inlier_pct)
+            )
+
+        return cls(sub_models)
