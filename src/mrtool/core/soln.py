@@ -69,6 +69,9 @@ class MRSoln:
                   group: ndarray = None,
                   include_group_uncertainty: bool = True) -> ndarray:
 
+        if size == 0:
+            return np.empty(shape=(0, re_mat.shape[0]))
+
         self.sample_soln(size, sample_beta, sample_gamma)
         fe_pred = np.vstack([fe_fun(beta) for beta in self.beta_samples])
         if include_group_uncertainty:

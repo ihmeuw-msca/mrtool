@@ -410,3 +410,19 @@ def ravel_dict(x: dict) -> dict:
             for i in range(v.size):
                 new_x[f'{k}_{i}'] = v[i]
     return new_x
+
+
+def proj_simplex(x: np.ndarray) -> np.ndarray:
+    # sort x in the desending order
+    u = x.copy()
+    u[::-1].sort()
+
+    # compute intermediate variable
+    j = np.arange(u.size)
+    v = (1.0 - np.cumsum(u))/(j + 1)
+
+    # pick index and compute lambda
+    rho = np.max(j*(u + v > 0))
+    lam = v[rho]
+
+    return np.maximum(x + lam, 0.0)

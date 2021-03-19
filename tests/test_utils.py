@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 """
     test_utils
-    ~~~~~~~~~~
-    Test `utils` module of `sfma` package.
 """
 import numpy as np
 import pytest
-from mrtool import utils
+from mrtool.core import utils
 
 
 @pytest.mark.parametrize('sizes', [np.array([1, 2, 3])])
@@ -26,3 +24,11 @@ def test_to_list(obj):
         assert obj_list is obj
     else:
         assert isinstance(obj_list, list)
+
+
+@pytest.mark.parametrize(("x", "result"),
+                         [(np.ones(3), np.ones(3)/3),
+                          (np.array([0.0, 1.0]), np.array([0.0, 1.0]))])
+def test_proj_simplex(x, result):
+    my_result = utils.proj_simplex(x)
+    assert np.allclose(my_result, result)
