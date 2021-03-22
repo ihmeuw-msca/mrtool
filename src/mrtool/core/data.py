@@ -158,13 +158,13 @@ class MRData:
             cols.extend([Column(col_name) for col_name in other_cols])
         cols.append(InterceptColumn)
 
-        for col in self.cols:
+        for col in cols:
             self._add_column(col)
 
     def _add_column(self, col: Column):
-        assert col.name not in self.col_names, f"{col.name} already exist."
-        self.cols.append(col)
-        self.col_names.append(col.name)
+        if (col.name is not None) and (col.name not in self.col_names):
+            self.cols.append(col)
+            self.col_names.append(col.name)
 
     def _get_required_cols(self) -> Dict:
         return dict(
