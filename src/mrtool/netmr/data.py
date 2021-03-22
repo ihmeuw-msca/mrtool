@@ -5,121 +5,68 @@
 
     `data` module of the `crosswalk` package.
 """
-from typing import List
-from dataclasses import dataclass, field
+from typing import Dict
+from dataclasses import dataclass
 import numpy as np
-import pandas as pd
-from mrtool.xwalk.utils import array_structure, process_dorms
-from mrtool.core.data import MRData
-from mrtool.core.utils import empty_array
+from numpy import ndarray
+from pandas import DataFrame
+from mrtool.core.data import Column, MRData
 
 
 @dataclass
-class XData(MRData):
-    alt_dorms: List[List[str]] = field(default_factory=empty_array)
-    ref_dorms: List[List[str]] = field(default_factory=empty_array)
+class DormColumn(Column):
+    """
+    Dorm Column
+    """
 
-    def __post_init__(self):
-        super().__post_init__()
-        if len(self.alt_dorms) == 0:
-            self.alt_dorms = np.array([["alt"]]*self.num_points)
-        if len(self.ref_dorms) == 0:
-            self.ref_dorms = np.array([["ref"]]*self.num_points)
-        self._sort_by_data_id()
-        if not self.is_empty() and self.num_studies != 1:
-            sort_index = np.argsort(self.study_id)
-            self._sort_xdata(sort_index)
-        self._get_dorm_structure()
+    separator: str = None
 
-    def _get_dorm_structure(self):
-        (self.num_dorms,
-         self.dorm_sizes,
-         self.unique_dorms) = array_structure(np.hstack([self.alt_dorms, self.ref_dorms]))
-        (self.num_alt_dorms,
-         self.alt_dorm_sizes,
-         self.unique_alt_dorms) = array_structure(self.alt_dorms)
-        (self.num_ref_dorms,
-         self.ref_dorm_sizes,
-         self.unique_ref_dorms) = array_structure(self.ref_dorms)
-
-        self.dorm_idx = {dorm: i
-                         for i, dorm in enumerate(self.unique_dorms)}
+    def _set_default_values(self, df: DataFrame):
+        df[self.name] = self.name
 
     @property
-    def max_dorm(self) -> str:
-        return self.unique_dorms[np.argmax(self.dorm_sizes)]
+    def values(self) -> ndarray:
+        self._assert_not_empty()
+        return self.df[self.name].str.split(pat=self.separator).to_numpy()
 
     @property
-    def min_dorm(self) -> str:
-        return self.unique_dorms[np.argmin(self.dorm_sizes)]
+    def unique_values(self) -> ndarray:
+        return np.unique(np.hstack(self.values))
 
     @property
-    def max_alt_dorm(self) -> str:
-        return self.unique_alt_dorms[np.argmax(self.alt_dorm_sizes)]
+    def value_counts(self) -> Dict:
+        values, counts = np.unique(np.hstack(self.values), return_counts=True)
+        return dict(zip(values, counts))
 
-    @property
-    def min_alt_dorm(self) -> str:
-        return self.unique_alt_dorms[np.argmin(self.alt_dorm_sizes)]
 
-    @property
-    def max_ref_dorm(self) -> str:
-        return self.unique_ref_dorms[np.argmax(self.ref_dorm_sizes)]
+@dataclass
+class RefDormColumn(DormColumn):
+    """
+    Reference Dorm Column
+    """
 
-    @property
-    def min_ref_dorm(self) -> str:
-        return self.unique_ref_dorms[np.argmin(self.ref_dorm_sizes)]
+    name: str = "ref_dorm"
 
-    def reset(self):
-        super().reset()
-        self.alt_dorms = empty_array()
-        self.ref_dorms = empty_array()
 
-    def load_df(self,
-                data: pd.DataFrame,
-                col_obs: str = None,
-                col_obs_se: str = None,
-                col_covs: List[str] = None,
-                col_study_id: str = None,
-                col_data_id: str = None,
-                col_alt_dorms: str = None,
-                col_ref_dorms: str = None,
-                dorm_separator: str = None):
-        super().load_df(data,
-                        col_obs,
-                        col_obs_se,
-                        col_covs,
-                        col_study_id,
-                        col_data_id)
+@dataclass
+class AltDormColumn(DormColumn):
+    """
+    Alternative Dorm Column
+    """
 
-        alt_dorms = None if col_alt_dorms is None else data[col_alt_dorms].to_numpy().astype(str)
-        ref_dorms = None if col_ref_dorms is None else data[col_ref_dorms].to_numpy().astype(str)
+    name: str = "alt_dorm"
 
-        self.alt_dorms = process_dorms(dorms=alt_dorms, size=self.num_points,
-                                       default_dorm="alt", dorm_separator=dorm_separator)
-        self.ref_dorms = process_dorms(dorms=ref_dorms, size=self.num_points,
-                                       default_dorm="ref", dorm_separator=dorm_separator)
-        self._sort_by_data_id()
-        if not self.is_empty() and self.num_studies != 1:
-            sort_index = np.argsort(self.study_id)
-            self._sort_xdata(sort_index)
-        self._get_dorm_structure()
 
-    def copy_dorm_structure(self, xdata):
-        assert xdata.num_dorms >= self.num_dorms
-        assert all([dorm in xdata.unique_dorms for dorm in self.unique_dorms])
+class NetMRData(MRData):
+    """Data for network meta analysis model.
+    """
 
-        self.num_dorms = xdata.num_dorms
-        self.unique_dorms = xdata.unique_dorms
-        self.dorm_idx = xdata.dorm_idx
-
-    def _sort_xdata(self, index: np.ndarray):
-        index = np.array(index)
-        super()._sort_data(index)
-        self.alt_dorms = np.array(self.alt_dorms)[index]
-        self.ref_dorms = np.array(self.ref_dorms)[index]
-
-    def __repr__(self):
-        return (f"number of observations: {self.num_obs}\n"
-                f"number of covariates  : {self.num_covs}\n"
-                f"number of defs/methods: {self.num_dorms}\n"
-                f"number of studies     : {self.num_studies}")
+    def __init__(self,
+                 ref_dorm: str = RefDormColumn.name,
+                 alt_dorm: str = AltDormColumn.name,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.ref_dorm = RefDormColumn(ref_dorm)
+        self.alt_dorm = AltDormColumn(alt_dorm)
+        self._add_column(self.ref_dorm)
+        self._add_column(self.alt_dorm)

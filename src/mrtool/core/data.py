@@ -150,16 +150,21 @@ class MRData:
         self.key = KeyColumn(key)
         self._df = None
 
-        self.cols = [self.obs, self.obs_se, self.group, self.key]
-        if other_cols is not None:
-            self.cols.extend([Column(col_name) for col_name in other_cols
-                              if col_name not in self.cols])
-        self.col_names = list(set(col.name for col in self.cols
-                                  if col.name is not None))
+        self.cols = []
+        self.col_names = []
 
-        if "intercept" not in self.col_names:
-            self.cols.append(InterceptColumn())
-            self.col_names.append("intercept")
+        cols = [self.obs, self.obs_se, self.group, self.key]
+        if other_cols is not None:
+            cols.extend([Column(col_name) for col_name in other_cols])
+        cols.append(InterceptColumn)
+
+        for col in self.cols:
+            self._add_column(col)
+
+    def _add_column(self, col: Column):
+        assert col.name not in self.col_names, f"{col.name} already exist."
+        self.cols.append(col)
+        self.col_names.append(col.name)
 
     def _get_required_cols(self) -> Dict:
         return dict(
