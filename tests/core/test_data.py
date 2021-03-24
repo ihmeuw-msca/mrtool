@@ -4,7 +4,7 @@ Test data module
 import pytest
 import numpy as np
 from pandas import DataFrame
-from mrtool.core.data import MRData
+from mrtool.core.data import Column, MRData
 
 # pylint:disable=redefined-outer-name
 
@@ -17,7 +17,8 @@ def df() -> DataFrame:
         "obs_se": 0.01 + np.random.rand(5),
         "group": ["A", "A", "B", "C", "D"],
         "key": ["a", "b", "c", "d", "e"],
-        "cov": np.random.randn(5)
+        "cov": np.random.randn(5),
+        "cov_other": np.random.randn(5)
     })
 
 
@@ -97,3 +98,13 @@ def test_copy(df, data):
     new_data = data.copy()
     assert set(data.col_names) == set(new_data.col_names)
     assert new_data.is_empty
+
+
+def test_add_column(df, data):
+    data.df = df
+    col_names = data.col_names.copy()
+    data.add_column(Column("cov_other"))
+    new_col_names = data.col_names.copy()
+
+    assert "cov_other" in new_col_names
+    assert "cov_other" not in col_names

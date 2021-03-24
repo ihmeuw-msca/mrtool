@@ -64,9 +64,10 @@ class NetMRData(MRData):
     def __init__(self,
                  ref_dorm: str = RefDormColumn.name,
                  alt_dorm: str = AltDormColumn.name,
+                 dorm_separator: str = DormColumn.separator,
                  **kwargs):
         super().__init__(**kwargs)
-        self.ref_dorm = RefDormColumn(ref_dorm)
-        self.alt_dorm = AltDormColumn(alt_dorm)
-        self._add_column(self.ref_dorm)
-        self._add_column(self.alt_dorm)
+        self.ref_dorm = RefDormColumn(ref_dorm, separator=dorm_separator)
+        self.alt_dorm = AltDormColumn(alt_dorm, separator=dorm_separator)
+        self.add_column(self.ref_dorm)
+        self.add_column(self.alt_dorm)

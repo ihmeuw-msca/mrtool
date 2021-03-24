@@ -7,6 +7,7 @@
 """
 from dataclasses import dataclass, field
 from typing import Dict, List, Union
+from copy import deepcopy
 
 import numpy as np
 from numpy import ndarray
@@ -159,26 +160,12 @@ class MRData:
         cols.append(InterceptColumn)
 
         for col in cols:
-            self._add_column(col)
+            self.add_column(col)
 
-    def _add_column(self, col: Column):
+    def add_column(self, col: Column):
         if (col.name is not None) and (col.name not in self.col_names):
             self.cols.append(col)
             self.col_names.append(col.name)
-
-    def _get_required_cols(self) -> Dict:
-        return dict(
-            obs=self.obs.name,
-            obs_se=self.obs_se.name,
-            group=self.group.name,
-            key=self.key.name
-        )
-
-    def _get_init_inputs(self) -> Dict:
-        required_cols = self._get_required_cols()
-        other_cols = [col_name for col_name in self.col_names
-                      if col_name not in required_cols.values()]
-        return dict(**required_cols, other_cols=other_cols)
 
     @property
     def df(self) -> DataFrame:
@@ -222,11 +209,16 @@ class MRData:
         return self.df[col_names].to_numpy()
 
     def __copy__(self) -> "MRData":
-        return type(self)(**self._get_init_inputs())
+        df = self.df
+        self.df = None
+        other = deepcopy(self)
+        self.df = df
+        return other
 
     def __repr__(self) -> str:
+        name = type(self).__name__
         if self.is_empty:
-            summary = "MRData(empty)"
+            summary = f"{name}(empty)"
         else:
-            summary = f"MRData(shape={self.shape})"
+            summary = f"{name}(shape={self.shape})"
         return summary
