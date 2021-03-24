@@ -71,3 +71,9 @@ class NetMRData(MRData):
         self.alt_dorm = AltDormColumn(alt_dorm, separator=dorm_separator)
         self.add_column(self.ref_dorm)
         self.add_column(self.alt_dorm)
+
+    @property
+    def unique_dorms(self) -> ndarray:
+        self._assert_not_empty()
+        return np.unique(np.hstack([self.ref_dorm.unique_values,
+                                    self.alt_dorm.unique_values]))
