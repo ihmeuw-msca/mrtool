@@ -12,8 +12,15 @@ class NetLinearCovModel(LinearCovModel):
     """
     Net Linear Covariates Model
     """
-    # size
     # priors
+
+    def attach_data(self, data: NetMRData):
+        super().attach_data(data)
+        if not self.use_spline:
+            size_per_dorm = 1
+        else:
+            size_per_dorm = self.spline.num_spline_bases
+        self.size = size_per_dorm*len(data.unique_dorms)
 
     def get_fun(self, data: NetMRData) -> Callable:
         relation_mat = data.get_relation_mat()

@@ -94,13 +94,12 @@ class NetMRData(MRData):
 
     def get_relation_mat(self) -> ndarray:
         self._assert_not_empty()
-        dorms = list(self.unique_dorms)
-        mat = np.zeros(self.shape[0], len(dorms))
+        mat = np.zeros(self.shape[0], len(self.unique_dorms))
 
         for i in range(self.shape[0]):
             for dorm in self.alt_dorm.values:
-                mat[i, dorms.index(dorm)] += 1.0
+                mat[i, self.unique_dorms.index(dorm)] += 1.0
             for dorm in self.ref_dorm.values:
-                mat[i, dorms.index(dorm)] -= 1.0
+                mat[i, self.unique_dorms.index(dorm)] -= 1.0
 
         return mat
