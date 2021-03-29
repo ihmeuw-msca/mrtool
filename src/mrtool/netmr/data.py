@@ -6,6 +6,7 @@
     `data` module of the `crosswalk` package.
 """
 from typing import Dict
+from collections import Counter
 from dataclasses import dataclass
 import numpy as np
 from numpy import ndarray
@@ -77,3 +78,10 @@ class NetMRData(MRData):
         self._assert_not_empty()
         return np.unique(np.hstack([self.ref_dorm.unique_values,
                                     self.alt_dorm.unique_values]))
+
+    @property
+    def dorm_counts(self) -> Dict:
+        counter = Counter()
+        counter.update(self.ref_dorm.value_counts)
+        counter.update(self.alt_dorm.value_counts)
+        return dict(counter)
