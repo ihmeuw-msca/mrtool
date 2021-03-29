@@ -73,19 +73,24 @@ class NetMRData(MRData):
         self.alt_dorm = AltDormColumn(alt_dorm, separator=dorm_separator)
         self.add_column(self.ref_dorm)
         self.add_column(self.alt_dorm)
+        self.unique_dorms = []
+        self.dorm_counts = {}
 
-    @property
-    def unique_dorms(self) -> ndarray:
-        self._assert_not_empty()
-        return np.unique(np.hstack([self.ref_dorm.unique_values,
-                                    self.alt_dorm.unique_values]))
+    @MRData.df.setter
+    def df(self, df: DataFrame):
+        super(NetMRData, type(self)).df.fset(self, df)
 
-    @property
-    def dorm_counts(self) -> Dict:
-        counter = Counter()
-        counter.update(self.ref_dorm.value_counts)
-        counter.update(self.alt_dorm.value_counts)
-        return dict(counter)
+        if not self.unique_dorms:
+            self.unique_dorms = list(np.unique(np.hstack([
+                self.ref_dorm.unique_values,
+                self.alt_dorm.unique_values
+            ])))
+
+        if not self.dorm_counts:
+            counter = Counter()
+            counter.update(self.ref_dorm.value_counts)
+            counter.update(self.alt_dorm.value_counts)
+            self.dorm_counts = dict(counter)
 
     def get_relation_mat(self) -> ndarray:
         self._assert_not_empty()
