@@ -195,7 +195,7 @@ class CovModel:
         return gmat
 
     def __repr__(self) -> str:
-        return (f"CovModel(alt_cov={self.alt_cov.name}, "
+        return (f"{type(self).__name__}(alt_cov={self.alt_cov.name}, "
                 f"ref_cov={self.ref_cov.name}, "
                 f"use_spline={self.use_spline})")
 
@@ -204,27 +204,16 @@ class LinearCovModel(CovModel):
     """Linear Covariates Model.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def get_fun(self, data: MRData) -> Callable:
         alt_mat = self.alt_cov.get_design_mat(data, self.spline)
         ref_mat = self.ref_cov.get_design_mat(data, self.spline)
         return utils.mat_to_fun(alt_mat, ref_mat=ref_mat)
 
-    def __repr__(self) -> str:
-        return (f"LinearCovModel(alt_cov={self.alt_cov.name}, "
-                f"ref_cov={self.ref_cov.name}, "
-                f"use_spline={self.use_spline})")
-
 
 class LogCovModel(CovModel):
     """Log Covariates Model.
     """
-
-    def __init__(self, *args, **kwargs):
-        # TODO: add the prior for positive constraint of value
-        super().__init__(*args, **kwargs)
+    # TODO: add the prior for positive constraint of value
 
     def get_fun(self, data):
         self.attach_data(data)
@@ -232,8 +221,3 @@ class LogCovModel(CovModel):
         ref_mat = self.ref_cov.get_design_mat(data, self.spline)
         add_one = not (self.use_spline and self.spline.include_first_basis)
         return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat, add_one=add_one)
-
-    def __repr__(self) -> str:
-        return (f"LogCovModel(alt_cov={self.alt_cov.name}, "
-                f"ref_cov={self.ref_cov.name}, "
-                f"use_spline={self.use_spline})")
