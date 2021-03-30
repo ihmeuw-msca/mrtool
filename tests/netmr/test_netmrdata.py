@@ -43,3 +43,16 @@ def test_data(data, df):
     assert len(data.ref_dorm.unique_values) == 3
     assert len(data.alt_dorm.unique_values) == 3
     assert len(data.unique_dorms) == 3
+
+
+def test_data_unique_dorms(data, df):
+    data.df = df
+    assert len(data.unique_dorms) == 3
+    data.df = None
+    assert len(data.unique_dorms) == 3
+
+
+def test_get_relation_mat(data, df):
+    data.df = df
+    mat = data.get_relation_mat()
+    assert np.allclose(mat.sum(axis=1), np.array([-1.0] + [0.0]*4))
