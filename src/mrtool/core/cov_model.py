@@ -6,7 +6,7 @@
     Covariates model for `mrtool`.
 """
 import operator
-from typing import Callable, Iterable, List, Union, Dict
+from typing import Callable, Iterable, List, Union, Dict, Tuple
 from collections import defaultdict
 
 import numpy as np
@@ -134,9 +134,8 @@ class CovModel:
         """
         raise NotImplementedError("Do not directly use CovModel class.")
 
-    def get_priors(self, ptype: str):
-        arr = self.get_prior_array(ptype)
-        mat, vec = arr[0], arr[1]
+    def get_priors(self, ptype: str) -> Union[ndarray, Tuple[ndarray]]:
+        mat, vec = self.get_prior_array(ptype)
         if mat is not None:
             if mat.shape[1] != self.size:
                 raise ValueError("Linear prior size not match.")
@@ -147,24 +146,24 @@ class CovModel:
             result = vec
         return result
 
-    def get_prior_array(self, ptype: str):
+    def get_prior_array(self, ptype: str) -> Tuple[ndarray]:
         priors = self.sorted_priors[ptype]
-        arr = [None, None]
+        mat = None
+        vec = None
         if not priors:
             if "linear" in ptype:
-                arr[0] = np.empty((0, self.size))
-                arr[1] = np.empty((2, 0))
+                mat = np.empty((0, self.size))
+                vec = np.empty((2, 0))
             else:
-                arr[1] = np.repeat(default_prior_params[ptype], self.size, axis=1)
+                vec = np.tile(default_prior_params[ptype], (1, self.size))
         else:
-            arr[1] = np.hstack([prior.info for prior in priors])
+            vec = np.hstack([prior.info for prior in priors])
             if "linear" in ptype:
-                arr[0] = np.vstack([prior.mat for prior in priors])
+                mat = np.vstack([prior.mat for prior in priors])
             else:
-                if arr[1].shape[1] == 1:
-                    arr[1] = np.repeat(arr[1], self.size, axis=1)
-
-        return arr
+                if vec.shape[1] == 1:
+                    vec = np.tile(vec, (1, self.size))
+        return (mat, vec)
 
     def __repr__(self) -> str:
         return (f"{type(self).__name__}(alt_cov={self.alt_cov.name}, "

@@ -157,7 +157,7 @@ class MRData:
         cols = [self.obs, self.obs_se, self.group, self.key]
         if other_cols is not None:
             cols.extend([Column(col_name) for col_name in other_cols])
-        cols.append(InterceptColumn)
+        cols.append(InterceptColumn())
 
         for col in cols:
             self.add_column(col)
