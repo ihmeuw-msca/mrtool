@@ -13,7 +13,7 @@ import numpy as np
 from mrtool.core import utils
 from mrtool.core.data import MRData
 from numpy import ndarray
-from mrtool.core.prior import Prior, SplinePrior
+from mrtool.core.prior import Prior, SplinePrior, default_prior_params
 from regmod.utils import SplineSpecs
 from xspline import XSpline
 
@@ -134,65 +134,37 @@ class CovModel:
         """
         raise NotImplementedError("Do not directly use CovModel class.")
 
-    def get_gvec(self) -> np.ndarray:
-        gprior = self.sorted_priors["gprior"]
-        if not gprior:
-            gvec = np.repeat([[0.0], [np.inf]], self.size, axis=1)
+    def get_priors(self, ptype: str):
+        arr = self.get_prior_array(ptype)
+        mat, vec = arr[0], arr[1]
+        if mat is not None:
+            if mat.shape[1] != self.size:
+                raise ValueError("Linear prior size not match.")
+            result = (mat, vec)
         else:
-            gvec = np.vstack([gprior[0].mean, gprior[0].sd])
-        return gvec
+            if vec.shape[1] != self.size:
+                raise ValueError("Prior size not match")
+            result = vec
+        return result
 
-    def get_uvec(self) -> np.ndarray:
-        uprior = self.sorted_priors["uprior"]
-        if not uprior:
-            uvec = np.repeat([[-np.inf], [np.inf]], self.size, axis=1)
+    def get_prior_array(self, ptype: str):
+        priors = self.sorted_priors[ptype]
+        arr = [None, None]
+        if not priors:
+            if "linear" in ptype:
+                arr[0] = np.empty((0, self.size))
+                arr[1] = np.empty((2, 0))
+            else:
+                arr[1] = np.repeat(default_prior_params[ptype], self.size, axis=1)
         else:
-            uvec = np.vstack([uprior[0].lb, uprior[0].ub])
-        return uvec
+            arr[1] = np.hstack([prior.info for prior in priors])
+            if "linear" in ptype:
+                arr[0] = np.vstack([prior.mat for prior in priors])
+            else:
+                if arr[1].shape[1] == 1:
+                    arr[1] = np.repeat(arr[1], self.size, axis=1)
 
-    def get_linear_uvec(self) -> np.ndarray:
-        linear_uprior = self.sorted_priors["linear_uprior"]
-        if not linear_uprior:
-            uvec = np.empty((2, 0))
-        else:
-            uvec = np.hstack([
-                np.vstack([prior.lb, prior.ub])
-                for prior in linear_uprior
-            ])
-        return uvec
-
-    def get_linear_gvec(self) -> np.ndarray:
-        linear_gprior = self.sorted_priors["linear_gprior"]
-        if not linear_gprior:
-            gvec = np.empty((2, 0))
-        else:
-            gvec = np.hstack([
-                np.vstack([prior.mean, prior.sd])
-                for prior in linear_gprior
-            ])
-        return gvec
-
-    def get_linear_umat(self, data: MRData = None) -> np.ndarray:
-        self.attach_data(data)
-        linear_uprior = self.sorted_priors["linear_uprior"]
-        if not linear_uprior:
-            umat = np.empty((0, self.size))
-        else:
-            umat = np.vstack([
-                prior.mat for prior in linear_uprior
-            ])
-        return umat
-
-    def get_linear_gmat(self, data: MRData = None) -> np.ndarray:
-        self.attach_data(data)
-        linear_gprior = self.sorted_priors["linear_gprior"]
-        if not linear_gprior:
-            gmat = np.empty((0, self.size))
-        else:
-            gmat = np.vstack([
-                prior.mat for prior in linear_gprior
-            ])
-        return gmat
+        return arr
 
     def __repr__(self) -> str:
         return (f"{type(self).__name__}(alt_cov={self.alt_cov.name}, "

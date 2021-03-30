@@ -133,47 +133,16 @@ class MRBRT:
             return np.empty(shape=(self.df.shape[0], 0))
         return np.hstack([model.get_mat() for model in self.re_cov_models])
 
-    @property
-    def uvec(self) -> ndarray:
-        return np.hstack([
-            model.get_uvec()
-            for model in self.fe_cov_models + self.re_cov_models
-        ])
-
-    @property
-    def gvec(self) -> ndarray:
-        return np.hstack([
-            model.get_gvec()
-            for model in self.fe_cov_models + self.re_cov_models
-        ])
-
-    @property
-    def linear_umat(self) -> ndarray:
-        return block_diag(*[
-            model.get_linear_umat()
-            for model in self.fe_cov_models + self.re_cov_models
-        ])
-
-    @property
-    def linear_uvec(self) -> ndarray:
-        return np.hstack([
-            model.get_linear_uvec()
-            for model in self.fe_cov_models + self.re_cov_models
-        ])
-
-    @property
-    def linear_gmat(self) -> ndarray:
-        return block_diag(*[
-            model.get_linear_gmat()
-            for model in self.fe_cov_models + self.re_cov_models
-        ])
-
-    @property
-    def linear_gvec(self) -> ndarray:
-        return np.hstack([
-            model.get_linear_gvec()
-            for model in self.fe_cov_models + self.re_cov_models
-        ])
+    def get_priors(self, ptype: str):
+        priors = [model.get_priors(ptype)
+                  for model in self.fe_cov_models + self.re_cov_models]
+        if "linear" not in ptype:
+            result = np.hstack(priors)
+        else:
+            mat = block_diag(*[prior[0] for prior in priors])
+            vec = np.hstack([prior[1] for prior in priors])
+            result = (mat, vec)
+        return result
 
     def fit_model(self, **fit_options):
         self.lt.fitModel(**fit_options)

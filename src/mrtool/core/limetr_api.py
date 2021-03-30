@@ -38,12 +38,14 @@ def get_limetr(model: "MRBRT") -> LimeTr:
     z_mat = model.re_mat
 
     # priors
-    uvec = model.uvec
-    gvec = model.gvec
-    linear_ufun, linear_ujac_fun = mat_to_fun(model.linear_umat)
-    linear_uvec = model.linear_uvec
-    linear_gfun, linear_gjac_fun = mat_to_fun(model.linear_gmat)
-    linear_gvec = model.linear_gvec
+    uvec = model.get_priors("uprior")
+    gvec = model.get_priors("gprior")
+    linear_uprior = model.get_priors("linear_uprior")
+    linear_gprior = model.get_priors("linear_gprior")
+    linear_ufun, linear_ujac_fun = mat_to_fun(linear_uprior[0])
+    linear_uvec = linear_uprior[1]
+    linear_gfun, linear_gjac_fun = mat_to_fun(linear_gprior[0])
+    linear_gvec = linear_gprior[1]
 
     # consider the situation when there is no random effects
     if k_gamma == 0:
