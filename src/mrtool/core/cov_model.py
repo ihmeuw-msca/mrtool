@@ -6,14 +6,14 @@
     Covariates model for `mrtool`.
 """
 import operator
-from typing import Callable, Iterable, List, Union, Dict
+from typing import Callable, Iterable, List, Union, Dict, Tuple
 from collections import defaultdict
 
 import numpy as np
 from mrtool.core import utils
 from mrtool.core.data import MRData
 from numpy import ndarray
-from mrtool.core.prior import Prior, SplinePrior
+from mrtool.core.prior import Prior, SplinePrior, default_prior_params
 from regmod.utils import SplineSpecs
 from xspline import XSpline
 
@@ -134,68 +134,39 @@ class CovModel:
         """
         raise NotImplementedError("Do not directly use CovModel class.")
 
-    def get_gvec(self) -> np.ndarray:
-        gprior = self.sorted_priors["gprior"]
-        if not gprior:
-            gvec = np.repeat([[0.0], [np.inf]], self.size, axis=1)
+    def get_priors(self, ptype: str) -> Union[ndarray, Tuple[ndarray]]:
+        mat, vec = self.get_prior_array(ptype)
+        if mat is not None:
+            if mat.shape[1] != self.size:
+                raise ValueError("Linear prior size not match.")
+            result = (mat, vec)
         else:
-            gvec = np.vstack([gprior[0].mean, gprior[0].sd])
-        return gvec
+            if vec.shape[1] != self.size:
+                raise ValueError("Prior size not match")
+            result = vec
+        return result
 
-    def get_uvec(self) -> np.ndarray:
-        uprior = self.sorted_priors["uprior"]
-        if not uprior:
-            uvec = np.repeat([[-np.inf], [np.inf]], self.size, axis=1)
+    def get_prior_array(self, ptype: str) -> Tuple[ndarray]:
+        priors = self.sorted_priors[ptype]
+        mat = None
+        vec = None
+        if not priors:
+            if "linear" in ptype:
+                mat = np.empty((0, self.size))
+                vec = np.empty((2, 0))
+            else:
+                vec = np.tile(default_prior_params[ptype], (1, self.size))
         else:
-            uvec = np.vstack([uprior[0].lb, uprior[0].ub])
-        return uvec
-
-    def get_linear_uvec(self) -> np.ndarray:
-        linear_uprior = self.sorted_priors["linear_uprior"]
-        if not linear_uprior:
-            uvec = np.empty((2, 0))
-        else:
-            uvec = np.hstack([
-                np.vstack([prior.lb, prior.ub])
-                for prior in linear_uprior
-            ])
-        return uvec
-
-    def get_linear_gvec(self) -> np.ndarray:
-        linear_gprior = self.sorted_priors["linear_gprior"]
-        if not linear_gprior:
-            gvec = np.empty((2, 0))
-        else:
-            gvec = np.hstack([
-                np.vstack([prior.mean, prior.sd])
-                for prior in linear_gprior
-            ])
-        return gvec
-
-    def get_linear_umat(self, data: MRData = None) -> np.ndarray:
-        self.attach_data(data)
-        linear_uprior = self.sorted_priors["linear_uprior"]
-        if not linear_uprior:
-            umat = np.empty((0, self.size))
-        else:
-            umat = np.vstack([
-                prior.mat for prior in linear_uprior
-            ])
-        return umat
-
-    def get_linear_gmat(self, data: MRData = None) -> np.ndarray:
-        self.attach_data(data)
-        linear_gprior = self.sorted_priors["linear_gprior"]
-        if not linear_gprior:
-            gmat = np.empty((0, self.size))
-        else:
-            gmat = np.vstack([
-                prior.mat for prior in linear_gprior
-            ])
-        return gmat
+            vec = np.hstack([prior.info for prior in priors])
+            if "linear" in ptype:
+                mat = np.vstack([prior.mat for prior in priors])
+            else:
+                if vec.shape[1] == 1:
+                    vec = np.tile(vec, (1, self.size))
+        return (mat, vec)
 
     def __repr__(self) -> str:
-        return (f"CovModel(alt_cov={self.alt_cov.name}, "
+        return (f"{type(self).__name__}(alt_cov={self.alt_cov.name}, "
                 f"ref_cov={self.ref_cov.name}, "
                 f"use_spline={self.use_spline})")
 
@@ -204,27 +175,16 @@ class LinearCovModel(CovModel):
     """Linear Covariates Model.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def get_fun(self, data: MRData) -> Callable:
         alt_mat = self.alt_cov.get_design_mat(data, self.spline)
         ref_mat = self.ref_cov.get_design_mat(data, self.spline)
         return utils.mat_to_fun(alt_mat, ref_mat=ref_mat)
 
-    def __repr__(self) -> str:
-        return (f"LinearCovModel(alt_cov={self.alt_cov.name}, "
-                f"ref_cov={self.ref_cov.name}, "
-                f"use_spline={self.use_spline})")
-
 
 class LogCovModel(CovModel):
     """Log Covariates Model.
     """
-
-    def __init__(self, *args, **kwargs):
-        # TODO: add the prior for positive constraint of value
-        super().__init__(*args, **kwargs)
+    # TODO: add the prior for positive constraint of value
 
     def get_fun(self, data):
         self.attach_data(data)
@@ -232,8 +192,3 @@ class LogCovModel(CovModel):
         ref_mat = self.ref_cov.get_design_mat(data, self.spline)
         add_one = not (self.use_spline and self.spline.include_first_basis)
         return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat, add_one=add_one)
-
-    def __repr__(self) -> str:
-        return (f"LogCovModel(alt_cov={self.alt_cov.name}, "
-                f"ref_cov={self.ref_cov.name}, "
-                f"use_spline={self.use_spline})")

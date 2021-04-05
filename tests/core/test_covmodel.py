@@ -106,7 +106,7 @@ def test_get_uvec(gprior, uprior, linear_gprior, linear_uprior):
     model = CovModel("cov0",
                      spline=XSpline([0.0, 1.0], 3),
                      priors=[gprior, uprior, linear_gprior, linear_uprior])
-    uvec = model.get_uvec()
+    uvec = model.get_priors("uprior")
     assert np.all(uvec[0] == 0.0)
     assert np.all(uvec[1] == 1.0)
 
@@ -115,7 +115,7 @@ def test_get_uvec_default(linear_gprior, linear_uprior):
     model = CovModel("cov0",
                      spline=XSpline([0.0, 1.0], 3),
                      priors=[linear_gprior, linear_uprior])
-    uvec = model.get_uvec()
+    uvec = model.get_priors("uprior")
     assert np.all(np.isinf(uvec[0]))
     assert np.all(np.isinf(uvec[1]))
 
@@ -124,7 +124,7 @@ def test_get_gvec(gprior, uprior, linear_gprior, linear_uprior):
     model = CovModel("cov0",
                      spline=XSpline([0.0, 1.0], 3),
                      priors=[gprior, uprior, linear_gprior, linear_uprior])
-    gvec = model.get_gvec()
+    gvec = model.get_priors("gprior")
     assert np.all(gvec[0] == 0.0)
     assert np.all(gvec[1] == 1.0)
 
@@ -133,7 +133,7 @@ def test_get_gvec_default(linear_gprior, linear_uprior):
     model = CovModel("cov0",
                      spline=XSpline([0.0, 1.0], 3),
                      priors=[linear_gprior, linear_uprior])
-    gvec = model.get_gvec()
+    gvec = model.get_priors("gprior")
     assert np.all(gvec[0] == 0.0)
     assert np.all(np.isinf(gvec[1]))
 
@@ -142,7 +142,7 @@ def test_get_linear_umat(gprior, uprior, linear_gprior, linear_uprior):
     model = CovModel("cov0",
                      spline=XSpline([0.0, 1.0], 3),
                      priors=[gprior, uprior, linear_gprior, linear_uprior])
-    linear_umat = model.get_linear_umat()
+    linear_umat = model.get_priors("linear_uprior")[0]
     assert linear_umat.shape == (linear_uprior.size, model.size)
 
 
@@ -150,7 +150,7 @@ def test_get_linear_umat_default(gprior, uprior):
     model = CovModel("cov0",
                      spline=XSpline([0.0, 1.0], 3),
                      priors=[gprior, uprior])
-    linear_umat = model.get_linear_umat()
+    linear_umat = model.get_priors("linear_uprior")[0]
     assert linear_umat.shape == (0, model.size)
 
 
@@ -158,7 +158,7 @@ def test_get_linear_gmat(gprior, uprior, linear_gprior, linear_uprior):
     model = CovModel("cov0",
                      spline=XSpline([0.0, 1.0], 3),
                      priors=[gprior, uprior, linear_gprior, linear_uprior])
-    linear_gmat = model.get_linear_gmat()
+    linear_gmat = model.get_priors("linear_gprior")[0]
     assert linear_gmat.shape == (linear_gprior.size, model.size)
 
 
@@ -166,7 +166,7 @@ def test_get_linear_gmat_default(gprior, uprior):
     model = CovModel("cov0",
                      spline=XSpline([0.0, 1.0], 3),
                      priors=[gprior, uprior])
-    linear_gmat = model.get_linear_gmat()
+    linear_gmat = model.get_priors("linear_gprior")[0]
     assert linear_gmat.shape == (0, model.size)
 
 
@@ -174,7 +174,7 @@ def test_get_linear_uvec(gprior, uprior, linear_gprior, linear_uprior):
     model = CovModel("cov0",
                      spline=XSpline([0.0, 1.0], 3),
                      priors=[gprior, uprior, linear_gprior, linear_uprior])
-    linear_uvec = model.get_linear_uvec()
+    linear_uvec = model.get_priors("linear_uprior")[1]
     assert linear_uvec.shape == (2, linear_uprior.size)
 
 
@@ -182,7 +182,7 @@ def test_get_linear_uvec_default(gprior, uprior):
     model = CovModel("cov0",
                      spline=XSpline([0.0, 1.0], 3),
                      priors=[gprior, uprior])
-    linear_uvec = model.get_linear_uvec()
+    linear_uvec = model.get_priors("linear_uprior")[1]
     assert linear_uvec.shape == (2, 0)
 
 
@@ -190,7 +190,7 @@ def test_get_linear_gvec(gprior, uprior, linear_gprior, linear_uprior):
     model = CovModel("cov0",
                      spline=XSpline([0.0, 1.0], 3),
                      priors=[gprior, uprior, linear_gprior, linear_uprior])
-    linear_gvec = model.get_linear_gvec()
+    linear_gvec = model.get_priors("linear_gprior")[1]
     assert linear_gvec.shape == (2, linear_uprior.size)
 
 
@@ -198,7 +198,7 @@ def test_get_linear_gvec_default(gprior, uprior):
     model = CovModel("cov0",
                      spline=XSpline([0.0, 1.0], 3),
                      priors=[gprior, uprior])
-    linear_gvec = model.get_linear_gvec()
+    linear_gvec = model.get_priors("linear_gprior")[1]
     assert linear_gvec.shape == (2, 0)
 
 

@@ -114,28 +114,34 @@ def test_size(model):
 
 
 def test_uvec(model, uprior):
-    assert np.allclose(model.uvec[0], uprior.lb)
-    assert np.allclose(model.uvec[1], uprior.ub)
+    uvec = model.get_priors("uprior")
+    assert np.allclose(uvec[0], uprior.lb[0])
+    assert np.allclose(uvec[1], uprior.ub[0])
 
 
 def test_gvec(model, gprior):
-    assert np.allclose(model.gvec[0], gprior.mean)
-    assert np.allclose(model.gvec[1], gprior.sd)
+    gvec = model.get_priors("gprior")
+    assert np.allclose(gvec[0], gprior.mean[0])
+    assert np.allclose(gvec[1], gprior.sd[0])
 
 
 def test_linear_umat(model, linear_uprior):
-    assert np.allclose(model.linear_umat, linear_uprior.mat)
+    linear_umat = model.get_priors("linear_uprior")[0]
+    assert np.allclose(linear_umat, linear_uprior.mat)
 
 
 def test_linear_uvec(model, linear_uprior):
-    assert np.allclose(model.linear_uvec[0], linear_uprior.lb)
-    assert np.allclose(model.linear_uvec[1], linear_uprior.ub)
+    linear_uvec = model.get_priors("linear_uprior")[1]
+    assert np.allclose(linear_uvec[0], linear_uprior.lb)
+    assert np.allclose(linear_uvec[1], linear_uprior.ub)
 
 
 def test_linear_gmat(model, linear_gprior):
-    assert np.allclose(model.linear_gmat, linear_gprior.mat)
+    linear_gmat = model.get_priors("linear_gprior")[0]
+    assert np.allclose(linear_gmat, linear_gprior.mat)
 
 
 def test_linear_gvec(model, linear_gprior):
-    assert np.allclose(model.linear_gvec[0], linear_gprior.mean)
-    assert np.allclose(model.linear_gvec[1], linear_gprior.sd)
+    linear_gvec = model.get_priors("linear_gprior")[1]
+    assert np.allclose(linear_gvec[0], linear_gprior.mean)
+    assert np.allclose(linear_gvec[1], linear_gprior.sd)

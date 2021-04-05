@@ -6,9 +6,22 @@ from dataclasses import dataclass, field
 from typing import Any, List
 
 import numpy as np
+from numpy import ndarray
 from xspline import XSpline
 
 from regmod.utils import default_vec_factory
+
+default_params = {
+    "Gaussian": np.array([[0.0], [np.inf]]),
+    "Uniform": np.array([[-np.inf], [np.inf]])
+}
+
+default_prior_params = {
+    "gprior": default_params["Gaussian"],
+    "uprior": default_params["Uniform"],
+    "linear_gprior": default_params["Gaussian"],
+    "linear_uprior": default_params["Uniform"]
+}
 
 
 @dataclass
@@ -28,9 +41,9 @@ class Prior:
 
 @dataclass
 class GaussianPrior(Prior):
-    mean: np.ndarray = field(default=None, repr=False)
-    sd: np.ndarray = field(default=None, repr=False)
-    ptype: str = field(default="gprior", repr=False, init=False)
+    mean: ndarray = field(default=None, repr=False)
+    sd: ndarray = field(default=None, repr=False)
+    ptype = "gprior"
 
     def __post_init__(self):
         self.process_size([self.mean, self.sd])
@@ -38,12 +51,16 @@ class GaussianPrior(Prior):
         self.sd = default_vec_factory(self.sd, self.size, np.inf, vec_name='sd')
         assert all(self.sd > 0.0), "Standard deviation must be all positive."
 
+    @property
+    def info(self) -> ndarray:
+        return np.vstack([self.mean, self.sd])
+
 
 @dataclass
 class UniformPrior(Prior):
-    lb: np.ndarray = field(default=None, repr=False)
-    ub: np.ndarray = field(default=None, repr=False)
-    ptype: str = field(default="uprior", repr=False, init=False)
+    lb: ndarray = field(default=None, repr=False)
+    ub: ndarray = field(default=None, repr=False)
+    ptype = "uprior"
 
     def __post_init__(self):
         self.process_size([self.lb, self.ub])
@@ -51,13 +68,17 @@ class UniformPrior(Prior):
         self.ub = default_vec_factory(self.ub, self.size, np.inf, vec_name='ub')
         assert all(self.lb <= self.ub), "Lower bounds must be less or equal than upper bounds."
 
+    @property
+    def info(self) -> ndarray:
+        return np.vstack([self.lb, self.ub])
+
 
 @dataclass
 class LinearPrior:
-    mat: np.ndarray = field(default_factory=lambda: np.empty(shape=(0, 1)),
-                            repr=False)
+    mat: ndarray = field(default_factory=lambda: np.empty(shape=(0, 1)),
+                         repr=False)
     size: int = None
-    ptype: str = field(default="linear_prior", repr=False, init=False)
+    ptype = "linear_prior"
 
     def __post_init__(self):
         if self.size is None:
@@ -86,7 +107,7 @@ class SplinePrior(LinearPrior):
             assert self.domain_lb >= 0.0 and self.domain_ub <= 1.0, \
                 "Using relative domain, bounds must be numbers between 0 and 1."
 
-    def attach_spline(self, spline: XSpline) -> np.ndarray:
+    def attach_spline(self, spline: XSpline) -> ndarray:
         knots_lb = spline.knots[0]
         knots_ub = spline.knots[-1]
         if self.domain_type == "rel":
@@ -103,7 +124,7 @@ class SplinePrior(LinearPrior):
 
 @dataclass
 class LinearGaussianPrior(LinearPrior, GaussianPrior):
-    ptype: str = field(default="linear_gprior", repr=False, init=False)
+    ptype = "linear_gprior"
 
     def __post_init__(self):
         LinearPrior.__post_init__(self)
@@ -112,7 +133,7 @@ class LinearGaussianPrior(LinearPrior, GaussianPrior):
 
 @dataclass
 class LinearUniformPrior(LinearPrior, UniformPrior):
-    ptype: str = field(default="linear_uprior", repr=False, init=False)
+    ptype = "linear_uprior"
 
     def __post_init__(self):
         LinearPrior.__post_init__(self)
@@ -121,7 +142,7 @@ class LinearUniformPrior(LinearPrior, UniformPrior):
 
 @dataclass
 class SplineGaussianPrior(SplinePrior, GaussianPrior):
-    ptype: str = field(default="linear_gprior", repr=False, init=False)
+    ptype = "linear_gprior"
 
     def __post_init__(self):
         SplinePrior.__post_init__(self)
@@ -130,7 +151,7 @@ class SplineGaussianPrior(SplinePrior, GaussianPrior):
 
 @dataclass
 class SplineUniformPrior(SplinePrior, UniformPrior):
-    ptype: str = field(default="linear_uprior", repr=False, init=False)
+    ptype = "linear_uprior"
 
     def __post_init__(self):
         SplinePrior.__post_init__(self)
