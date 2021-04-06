@@ -13,6 +13,7 @@ import numpy as np
 from mrtool.core import utils
 from mrtool.core.data import MRData
 from numpy import ndarray
+from pandas import DataFrame
 from mrtool.core.prior import Prior, SplinePrior, default_prior_params
 from regmod.utils import SplineSpecs
 from xspline import XSpline
@@ -46,8 +47,8 @@ class Covariate:
     def is_empty(self) -> bool:
         return len(self.name) == 0
 
-    def get_mat(self, data: MRData) -> ndarray:
-        return data[self.name]
+    def get_mat(self, data: Union[DataFrame, MRData]) -> ndarray:
+        return np.asarray(data[self.name])
 
     def get_design_mat(self,
                        data: MRData,
