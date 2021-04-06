@@ -34,8 +34,8 @@ def get_limetr(model: "MRBRT") -> LimeTr:
     k_gamma = model.re_size
 
     # create x fun and z mat
-    x_fun, x_fun_jac = model.fe_fun
-    z_mat = model.re_mat
+    x_fun, x_fun_jac = model.get_fe_fun()
+    z_mat = model.get_re_mat()
 
     # priors
     uvec = model.get_priors("uprior")
