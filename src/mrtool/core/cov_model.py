@@ -190,5 +190,5 @@ class LogCovModel(CovModel):
         self.attach_data(data)
         alt_mat = self.alt_cov.get_design_mat(data, self.spline)
         ref_mat = self.ref_cov.get_design_mat(data, self.spline)
-        add_one = not (self.use_spline and self.spline.include_first_basis)
+        add_one = not (self.use_spline and self.spline.basis_start == 0)
         return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat, add_one=add_one)

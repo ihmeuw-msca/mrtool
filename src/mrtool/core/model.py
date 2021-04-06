@@ -130,7 +130,7 @@ class MRBRT:
     @property
     def re_mat(self) -> ndarray:
         if len(self.re_cov_models) == 0:
-            return np.empty(shape=(self.df.shape[0], 0))
+            return np.empty(shape=(self.data.shape[0], 0))
         return np.hstack([model.get_mat() for model in self.re_cov_models])
 
     def get_priors(self, ptype: str):
