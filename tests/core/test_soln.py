@@ -70,7 +70,7 @@ def test_sample_soln(soln, size, sample_beta, sample_gamma):
     assert soln.gamma_samples.shape == (size, soln.gamma.size)
 
 
-@pytest.mark.parametrize("group", [None, np.array(["a"]*200)])
+@pytest.mark.parametrize("group", [np.array(["a"]*200)])
 def test_predict(soln, fe_fun, re_mat, group):
     pred = soln.predict(fe_fun, re_mat, group)
     assert pred.size == 200
@@ -79,12 +79,12 @@ def test_predict(soln, fe_fun, re_mat, group):
 @pytest.mark.parametrize("size", [100])
 @pytest.mark.parametrize("sample_beta", [True, False])
 @pytest.mark.parametrize("sample_gamma", [True, False])
-@pytest.mark.parametrize("group", [None, np.array(["uknown"]*200)])
+@pytest.mark.parametrize("group", [np.array(["uknown"]*200)])
 @pytest.mark.parametrize("include_group_uncertainty", [True, False])
 def test_get_draws(soln, fe_fun, re_mat,
                    size, sample_beta, sample_gamma,
                    group, include_group_uncertainty):
-    draws = soln.get_draws(fe_fun, re_mat,
+    draws = soln.get_draws(fe_fun, re_mat, group,
                            size, sample_beta, sample_gamma,
-                           group, include_group_uncertainty)
+                           include_group_uncertainty)
     assert draws.shape == (size, 200)

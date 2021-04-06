@@ -45,28 +45,28 @@ class MRSoln:
         else:
             self.gamma_samples = np.repeat(self.gamma[None, :], size, axis=0)
 
+    def get_random_effects(self, group: ndarray) -> ndarray:
+        return np.vstack([
+            self.random_effects[g] if g in self.random_effects else 0.0
+            for g in group
+        ])
+
     def predict(self,
                 fe_fun: Callable,
                 re_mat: ndarray,
-                group: ndarray = None) -> ndarray:
+                group: ndarray) -> ndarray:
         fe_pred = fe_fun(self.beta)
-        if group is not None:
-            re = np.vstack([
-                self.random_effects[g] if g in self.random_effects else 0.0
-                for g in group
-            ])
-        else:
-            re = np.zeros(re_mat.shape)
+        re = self.get_random_effects(group)
         re_pred = (re_mat*re).sum(axis=1)
         return fe_pred + re_pred
 
     def get_draws(self,
                   fe_fun: Callable,
                   re_mat: ndarray,
+                  group: ndarray,
                   size: int = 1,
                   sample_beta: bool = True,
                   sample_gamma: bool = False,
-                  group: ndarray = None,
                   include_group_uncertainty: bool = True) -> ndarray:
 
         if size == 0:
@@ -78,12 +78,6 @@ class MRSoln:
             re_samples = np.random.randn(size, re_mat.shape[1])*np.sqrt(self.gamma_samples)
             re_pred = np.vstack([re_mat.dot(re) for re in re_samples])
         else:
-            if group is not None:
-                re = np.vstack([
-                    self.random_effects[g] if g in self.random_effects else 0.0
-                    for g in group
-                ])
-            else:
-                re = np.zeros(re_mat.shape[1])
+            re = self.get_random_effects(group)
             re_pred = (re_mat*re).sum(axis=1)
         return fe_pred + re_pred

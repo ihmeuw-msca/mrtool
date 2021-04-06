@@ -154,7 +154,8 @@ class MRBRT:
         self.data.df = df
         fe_fun, _ = self.fe_fun
         re_mat = self.re_mat
-        pred = self.soln.predict(fe_fun, re_mat, **kwargs)
+        group = self.data.group.values
+        pred = self.soln.predict(fe_fun, re_mat, group)
         self.data.df = self.df
         return pred
 
@@ -163,6 +164,7 @@ class MRBRT:
         self.data.df = df
         fe_fun, _ = self.fe_fun
         re_mat = self.re_mat
-        draws = self.soln.get_draws(fe_fun, re_mat, **kwargs)
+        group = self.data.group.values
+        draws = self.soln.get_draws(fe_fun, re_mat, group, **kwargs)
         self.data.df = self.df
         return draws
