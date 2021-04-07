@@ -157,72 +157,6 @@ def to_list(obj: Any) -> List[Any]:
         return [obj]
 
 
-def is_numeric_array(array: np.ndarray) -> bool:
-    """Check if an array is numeric.
-
-    Args:
-        array (np.ndarray): Array need to be checked.
-
-    Returns:
-        bool: True if the array is numeric.
-    """
-    numerical_dtype_kinds = {'b',  # boolean
-                             'u',  # unsigned integer
-                             'i',  # signed integer
-                             'f',  # floats
-                             'c'}  # complex
-    try:
-        return array.dtype.kind in numerical_dtype_kinds
-    except AttributeError:
-        # in case it's not a numpy array it will probably have no dtype.
-        return np.asarray(array).dtype.kind in numerical_dtype_kinds
-
-
-def expand_array(array: np.ndarray,
-                 shape: Tuple[int],
-                 value: Any,
-                 name: str) -> np.ndarray:
-    """Expand array when it is empty.
-
-    Args:
-        array (np.ndarray):
-            Target array. If array is empty, fill in the ``value``. And
-            When it is not empty assert the ``shape`` agrees and return the original array.
-        shape (Tuple[int]): The expected shape of the array.
-        value (Any): The expected value in final array.
-        name (str): Variable name of the array (for error message).
-
-    Returns:
-        np.ndarray: Expanded array.
-    """
-    array = np.array(array)
-    if len(array) == 0:
-        if hasattr(value, '__iter__') and not isinstance(value, str):
-            value = np.array(value)
-            assert value.shape == shape, f"{name}, alternative value inconsistent shape."
-            array = value
-        else:
-            array = np.full(shape, value)
-    else:
-        assert array.shape == shape, f"{name}, inconsistent shape."
-    return array
-
-
-def ravel_dict(x: dict) -> dict:
-    """Ravel dictionary.
-    """
-    assert all([isinstance(k, str) for k in x.keys()])
-    assert all([isinstance(v, np.ndarray) for v in x.values()])
-    new_x = {}
-    for k, v in x.items():
-        if v.size == 1:
-            new_x[k] = v
-        else:
-            for i in range(v.size):
-                new_x[f'{k}_{i}'] = v[i]
-    return new_x
-
-
 def proj_simplex(x: np.ndarray) -> np.ndarray:
     # sort x in the desending order
     u = x.copy()
@@ -237,3 +171,39 @@ def proj_simplex(x: np.ndarray) -> np.ndarray:
     lam = v[rho]
 
     return np.maximum(x + lam, 0.0)
+
+
+def sample_knots(num_knots: int = 5,
+                 sample_width: float = 0.05,
+                 sample_size: int = 1) -> np.ndarray:
+    if num_knots < 2:
+        raise ValueError("Number of knots must be greater or equal than 2.")
+    if sample_width < 0.0 or sample_width > 1.0:
+        raise ValueError("sample_width need to be between 0 and 1.")
+    if sample_size < 1:
+        raise ValueError("sample_size at least need to be 1.")
+
+    knots = np.linspace(0, 1, int(num_knots))
+    inner_knots = knots[1:-1]
+    if inner_knots.size == 0:
+        return np.tile(knots, (sample_size, 1))
+
+    inner_knots_bounds = np.vstack([
+        np.minimum(1.0, np.maximum(0.0, inner_knots - sample_width)),
+        np.minimum(1.0, np.maximum(0.0, inner_knots + sample_width))
+    ])
+
+    inner_knots_samples = np.random.uniform(
+        inner_knots_bounds[0],
+        inner_knots_bounds[1],
+        size=(sample_size, inner_knots.size)
+    )
+
+    knots_samples = np.hstack([
+        np.zeros((sample_size, 1)),
+        inner_knots_samples,
+        np.ones((sample_size, 1))
+    ])
+    knots_samples.sort(axis=1)
+
+    return knots_samples
