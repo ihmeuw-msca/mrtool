@@ -155,6 +155,27 @@ def proj_simplex(x: np.ndarray) -> np.ndarray:
 def sample_knots(num_knots: int = 5,
                  sample_width: float = 0.05,
                  sample_size: int = 1) -> np.ndarray:
+    """
+    Sample knots
+
+    Parameters
+    ----------
+    num_knots : int, optional
+        Total number of knots, include the boundary knots, must be greater or
+        equal than 2. Default to be 5.
+    sample_width : float, optional
+        Sample interval for each knot. For example, if ``num_knots=3``, we have
+        one interior knots and the average position is 0.5.
+        If ``sample_width=0.1``, we sample the interior knot between,
+        ``[0.5 - 0.1, 0.5 + 0.1]``. Default to be 0.05.
+    sample_size : int, optional
+        Number of samples, must be greater or equal to 1. Default to be 1.
+
+    Returns
+    -------
+    ndarray
+        Knots samples matrix, with shape ``(sample_size, num_knots)``.
+    """
     if num_knots < 2:
         raise ValueError("Number of knots must be greater or equal than 2.")
     if sample_width < 0.0 or sample_width > 1.0:
