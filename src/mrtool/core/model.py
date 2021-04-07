@@ -112,9 +112,10 @@ class MRBRT:
     def size(self) -> int:
         return self.fe_size + self.re_size
 
-    @property
-    def fe_fun(self) -> Tuple[Callable, Callable]:
-        funs = [model.get_fun(self.data) for model in self.fe_cov_models]
+    def get_fe_fun(self, data: Union[DataFrame, MRData] = None) -> Tuple[Callable, Callable]:
+        if data is None:
+            data = self.data
+        funs = [model.get_fun(data) for model in self.fe_cov_models]
         funs, jac_funs = tuple(zip(*funs))
         indicies = utils.sizes_to_slices(self.fe_sizes)
 
@@ -127,11 +128,12 @@ class MRBRT:
                               for i, index in enumerate(indicies)])
         return fun, jac_fun
 
-    @property
-    def re_mat(self) -> ndarray:
+    def get_re_mat(self, data: Union[DataFrame, MRData] = None) -> ndarray:
+        if data is None:
+            data = self.data
         if len(self.re_cov_models) == 0:
-            return np.empty(shape=(self.data.shape[0], 0))
-        return np.hstack([model.get_mat() for model in self.re_cov_models])
+            return np.empty(shape=(data.shape[0], 0))
+        return np.hstack([model.get_mat(data) for model in self.re_cov_models])
 
     def get_priors(self, ptype: str):
         priors = [model.get_priors(ptype)
@@ -149,20 +151,19 @@ class MRBRT:
         self.df["is_outlier"] = (self.lt.w <= 0.1).astype(int)
         self.soln = get_soln(self)
 
-    def get_prediction(self, df: DataFrame = None, **kwargs) -> ndarray:
-        df = self.df if df is None else df
-        self.data.df = df
-        fe_fun, _ = self.fe_fun
-        re_mat = self.re_mat
-        pred = self.soln.predict(fe_fun, re_mat, **kwargs)
-        self.data.df = self.df
-        return pred
+    def extract_pred_data(self, data: Union[DataFrame, MRData] = None):
+        fe_fun, _ = self.get_fe_fun(data)
+        re_mat = self.get_re_mat(data)
+        if self.data.group.name in data:
+            group = data[self.data.group.name]
+        else:
+            group = np.array(["unknown"]*data.shape[0])
+        return fe_fun, re_mat, group
 
-    def get_draws(self, df: DataFrame = None, **kwargs) -> ndarray:
-        df = self.df if df is None else df
-        self.data.df = df
-        fe_fun, _ = self.fe_fun
-        re_mat = self.re_mat
-        draws = self.soln.get_draws(fe_fun, re_mat, **kwargs)
-        self.data.df = self.df
-        return draws
+    def get_prediction(self, data: Union[DataFrame, MRData] = None) -> ndarray:
+        return self.soln.predict(*self.extract_pred_data(data))
+
+    def get_draws(self,
+                  data: Union[DataFrame, MRData] = None,
+                  **kwargs) -> ndarray:
+        return self.soln.get_draws(*self.extract_pred_data(data), **kwargs)

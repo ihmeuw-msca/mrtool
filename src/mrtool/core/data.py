@@ -215,6 +215,9 @@ class MRData:
         self.df = df
         return other
 
+    def __contains__(self, col_name: str) -> bool:
+        return col_name in self.col_names
+
     def __repr__(self) -> str:
         name = type(self).__name__
         if self.is_empty:
