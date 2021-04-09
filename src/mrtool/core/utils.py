@@ -4,23 +4,8 @@
     ~~~~~
     `utils` module of the `mrtool` package.
 """
-from typing import Union, List, Any, Tuple
+from typing import List
 import numpy as np
-import pandas as pd
-try:
-    from cdd import Matrix, RepType, Polyhedron
-except:
-    Warning("no cdd module installed, create fake classes.")
-
-    class Matrix:
-        pass
-
-    class RepType:
-        INEQUALITY = None
-
-    class Polyhedron:
-        def get_generators(self):
-            pass
 
 
 def sizes_to_indices(sizes):
@@ -95,180 +80,6 @@ def avg_integral(mat, spline=None):
 
             return mat
 
-# random knots
-
-
-def sample_knots(num_intervals: int,
-                 knot_bounds: Union[np.ndarray, None] = None,
-                 interval_sizes: Union[np.ndarray, None] = None,
-                 num_samples: int = 1) -> Union[np.ndarray, None]:
-    """Sample knots given a set of rules.
-
-    Args:
-        num_intervals
-            Number of intervals (number of knots minus 1).
-        knot_bounds
-            Bounds for the interior knots. Here we assume the domain span 0 to 1,
-            bound for a knot should be between 0 and 1, e.g. ``[0.1, 0.2]``.
-            ``knot_bounds`` should have number of interior knots of rows, and each row
-            is a bound for corresponding knot, e.g.
-            ``knot_bounds=np.array([[0.0, 0.2], [0.3, 0.4], [0.3, 1.0]])``,
-            for when we have three interior knots.
-        interval_sizes
-            Bounds for the distances between knots. For the same reason, we assume
-            elements in `interval_sizes` to be between 0 and 1. For example,
-            ``interval_distances=np.array([[0.1, 0.2], [0.1, 0.3], [0.1, 0.5], [0.1, 0.5]])``
-            means that the distance between first (0) and second knot has to be between 0.1 and 0.2, etc.
-            And the number of rows for ``interval_sizes`` has to be same with ``num_intervals``.
-        num_samples
-            Number of knots samples.
-
-    Returns:
-        np.ndarray: Return knots sample as array, with `num_samples` rows and number of knots columns.
-    """
-    # rename variables
-    k = num_intervals
-    b = knot_bounds
-    d = interval_sizes
-    N = num_samples
-
-    t0 = 0.0
-    tk = 1.0
-    # check input
-    assert t0 <= tk
-    assert k >= 2
-
-    if d is not None:
-        assert d.shape == (k, 2) and sum(d[:, 0]) <= 1.0 and\
-            np.all(d >= 0.0) and np.all(d <= 1.0)
-    else:
-        d = np.repeat(np.array([[0.0, 1.0]]), k, axis=0)
-
-    if b is not None:
-        assert b.shape == (k - 1, 2) and\
-            np.all(b[:, 0] <= b[:, 1]) and\
-            np.all(b[:-1, 1] <= b[1:, 1]) and\
-            np.all(b >= 0.0) and np.all(b <= 1.0)
-    else:
-        b = np.repeat(np.array([[0.0, 1.0]]), k - 1, axis=0)
-
-    d = d*(tk - t0)
-    b = b*(tk - t0) + t0
-    d[0] += t0
-    d[-1] -= tk
-
-    # find vertices of the polyhedron
-    D = -col_diff_mat(k - 1)
-    I = np.identity(k - 1)
-
-    A1 = np.vstack((-D, D))
-    A2 = np.vstack((-I, I))
-
-    b1 = np.hstack((-d[:, 0], d[:, 1]))
-    b2 = np.hstack((-b[:, 0], b[:, 1]))
-
-    A = np.vstack((A1, A2))
-    b = np.hstack((b1, b2))
-
-    mat = np.insert(-A, 0, b, axis=1)
-    mat = Matrix(mat)
-    mat.rep_type = RepType.INEQUALITY
-    poly = Polyhedron(mat)
-    ext = poly.get_generators()
-    vertices_and_rays = np.array(ext)
-
-    if vertices_and_rays.size == 0:
-        print('there is no feasible knots')
-        return None
-
-    if np.any(vertices_and_rays[:, 0] == 0.0):
-        print('polyhedron is not closed, something is wrong.')
-        return None
-    else:
-        vertices = vertices_and_rays[:, 1:]
-
-    # sample from the convex combination of the vertices
-    n = vertices.shape[0]
-    s_simplex = sample_simplex(n, N=N)
-    s = s_simplex.dot(vertices)
-
-    s = np.insert(s, 0, t0, axis=1)
-    s = np.insert(s, k, tk, axis=1)
-
-    return s
-
-
-def sample_simplex(n, N=1):
-    """sample from n dimensional simplex"""
-    assert n >= 1
-
-    # special case when n == 1
-    if n == 1:
-        return np.ones((N, n))
-
-    # other cases
-    s = np.random.rand(N, n - 1)
-    s.sort(axis=1)
-    s = np.insert(s, 0, 0.0, axis=1)
-    s = np.insert(s, n, 1.0, axis=1)
-
-    w = np.zeros((n + 1, n))
-    id_d0 = np.diag_indices(n)
-    id_d1 = (id_d0[0] + 1, id_d0[1])
-    w[id_d0] = -1.0
-    w[id_d1] = 1.0
-
-    return s.dot(w)
-
-
-def col_diff_mat(n):
-    """column difference matrix"""
-    D = np.zeros((n + 1, n))
-    id_d0 = np.diag_indices(n)
-    id_d1 = (id_d0[0] + 1, id_d0[1])
-    D[id_d0] = -1.0
-    D[id_d1] = 1.0
-
-    return D
-
-
-def nonlinear_trans(score, slope=6.0, quantile=0.7):
-    score_min = np.min(score)
-    score_max = np.max(score)
-    if score_max == score_min:
-        return np.ones(len(score))
-    else:
-        weight = (score - score_min)/(score_max - score_min)
-
-    sorted_weight = np.sort(weight)
-    x = sorted_weight[int(0.8*weight.size)]
-    y = 1.0 - x
-
-    # calculate the transformation coefficient
-    c = np.zeros(4)
-    c[1] = slope*x**2/quantile
-    c[0] = quantile*np.exp(c[1]/x)
-    c[3] = slope*y**2/(1.0 - quantile)
-    c[2] = (1.0 - quantile)*np.exp(c[3]/y)
-
-    weight_trans = np.zeros(weight.size)
-
-    for i in range(weight.size):
-        w = weight[i]
-        if w == 0.0:
-            weight_trans[i] = 0.0
-        elif w < x:
-            weight_trans[i] = c[0]*np.exp(-c[1]/w)
-        elif w < 1.0:
-            weight_trans[i] = 1.0 - c[2]*np.exp(-c[3]/(1.0 - w))
-        else:
-            weight_trans[i] = 1.0
-
-    weight_trans = (weight_trans - np.min(weight_trans)) /\
-        (np.max(weight_trans) - np.min(weight_trans))
-
-    return weight_trans
-
 
 def mat_to_fun(alt_mat, ref_mat=None):
     alt_mat = np.array(alt_mat)
@@ -325,93 +136,6 @@ def mat_to_log_fun(alt_mat, ref_mat=None, add_one=True):
     return fun, jac_fun
 
 
-def empty_array():
-    return np.array(list())
-
-
-def to_list(obj: Any) -> List[Any]:
-    """Convert objective to list of object.
-
-    Args:
-        obj (Any): Object need to be convert.
-
-    Returns:
-        List[Any]:
-            If `obj` already is a list object, return `obj` itself,
-            otherwise wrap `obj` with a list and return it.
-    """
-    if isinstance(obj, list):
-        return obj
-    else:
-        return [obj]
-
-
-def is_numeric_array(array: np.ndarray) -> bool:
-    """Check if an array is numeric.
-
-    Args:
-        array (np.ndarray): Array need to be checked.
-
-    Returns:
-        bool: True if the array is numeric.
-    """
-    numerical_dtype_kinds = {'b',  # boolean
-                             'u',  # unsigned integer
-                             'i',  # signed integer
-                             'f',  # floats
-                             'c'}  # complex
-    try:
-        return array.dtype.kind in numerical_dtype_kinds
-    except AttributeError:
-        # in case it's not a numpy array it will probably have no dtype.
-        return np.asarray(array).dtype.kind in numerical_dtype_kinds
-
-
-def expand_array(array: np.ndarray,
-                 shape: Tuple[int],
-                 value: Any,
-                 name: str) -> np.ndarray:
-    """Expand array when it is empty.
-
-    Args:
-        array (np.ndarray):
-            Target array. If array is empty, fill in the ``value``. And
-            When it is not empty assert the ``shape`` agrees and return the original array.
-        shape (Tuple[int]): The expected shape of the array.
-        value (Any): The expected value in final array.
-        name (str): Variable name of the array (for error message).
-
-    Returns:
-        np.ndarray: Expanded array.
-    """
-    array = np.array(array)
-    if len(array) == 0:
-        if hasattr(value, '__iter__') and not isinstance(value, str):
-            value = np.array(value)
-            assert value.shape == shape, f"{name}, alternative value inconsistent shape."
-            array = value
-        else:
-            array = np.full(shape, value)
-    else:
-        assert array.shape == shape, f"{name}, inconsistent shape."
-    return array
-
-
-def ravel_dict(x: dict) -> dict:
-    """Ravel dictionary.
-    """
-    assert all([isinstance(k, str) for k in x.keys()])
-    assert all([isinstance(v, np.ndarray) for v in x.values()])
-    new_x = {}
-    for k, v in x.items():
-        if v.size == 1:
-            new_x[k] = v
-        else:
-            for i in range(v.size):
-                new_x[f'{k}_{i}'] = v[i]
-    return new_x
-
-
 def proj_simplex(x: np.ndarray) -> np.ndarray:
     # sort x in the desending order
     u = x.copy()
@@ -426,3 +150,60 @@ def proj_simplex(x: np.ndarray) -> np.ndarray:
     lam = v[rho]
 
     return np.maximum(x + lam, 0.0)
+
+
+def sample_knots(num_knots: int = 5,
+                 sample_width: float = 0.05,
+                 sample_size: int = 1) -> np.ndarray:
+    """
+    Sample knots
+
+    Parameters
+    ----------
+    num_knots : int, optional
+        Total number of knots, include the boundary knots, must be greater or
+        equal than 2. Default to be 5.
+    sample_width : float, optional
+        Sample interval for each knot. For example, if ``num_knots=3``, we have
+        one interior knots and the average position is 0.5.
+        If ``sample_width=0.1``, we sample the interior knot between,
+        ``[0.5 - 0.1, 0.5 + 0.1]``. Default to be 0.05.
+    sample_size : int, optional
+        Number of samples, must be greater or equal to 1. Default to be 1.
+
+    Returns
+    -------
+    ndarray
+        Knots samples matrix, with shape ``(sample_size, num_knots)``.
+    """
+    if num_knots < 2:
+        raise ValueError("Number of knots must be greater or equal than 2.")
+    if sample_width < 0.0 or sample_width > 1.0:
+        raise ValueError("sample_width need to be between 0 and 1.")
+    if sample_size < 1:
+        raise ValueError("sample_size at least need to be 1.")
+
+    knots = np.linspace(0, 1, int(num_knots))
+    inner_knots = knots[1:-1]
+    if inner_knots.size == 0:
+        return np.tile(knots, (sample_size, 1))
+
+    inner_knots_bounds = np.vstack([
+        np.minimum(1.0, np.maximum(0.0, inner_knots - sample_width)),
+        np.minimum(1.0, np.maximum(0.0, inner_knots + sample_width))
+    ])
+
+    inner_knots_samples = np.random.uniform(
+        inner_knots_bounds[0],
+        inner_knots_bounds[1],
+        size=(sample_size, inner_knots.size)
+    )
+
+    knots_samples = np.hstack([
+        np.zeros((sample_size, 1)),
+        inner_knots_samples,
+        np.ones((sample_size, 1))
+    ])
+    knots_samples.sort(axis=1)
+
+    return knots_samples
