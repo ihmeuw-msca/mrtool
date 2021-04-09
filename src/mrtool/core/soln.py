@@ -23,7 +23,8 @@ class MRSolnVariable:
             self.name = np.asarray(self.name)
 
         if self.vcov.shape != (self.size, self.size):
-            raise ValueError(f"vcov must be shape {(self.size, self.size)}.")
+            raise ValueError(f"vcov.shape={self.vcov.shape} must be compatible "
+                             f"with mean.size={self.size}.")
 
         if self.name.size != self.size:
             raise ValueError(f"name must be size{self.size}")
