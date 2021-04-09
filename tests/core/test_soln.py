@@ -3,7 +3,7 @@ Test MRSoln Class
 """
 import pytest
 import numpy as np
-from mrtool.core.soln import MRSoln
+from mrtool.core.soln import MRSoln, MRSolnVariable
 
 
 # pylint:disable=redefined-outer-name
@@ -30,13 +30,23 @@ def gamma_vcov():
 
 
 @pytest.fixture
+def beta_soln(beta, beta_vcov):
+    return MRSolnVariable(beta, beta_vcov)
+
+
+@pytest.fixture
+def gamma_soln(gamma, gamma_vcov):
+    return MRSolnVariable(gamma, gamma_vcov)
+
+
+@pytest.fixture
 def random_effects():
     return {group: np.zeros(3) for group in ["a", "b"]}
 
 
 @pytest.fixture
-def soln(beta, gamma, beta_vcov, gamma_vcov, random_effects):
-    return MRSoln(beta, gamma, beta_vcov, gamma_vcov, random_effects)
+def soln(beta_soln, gamma_soln, random_effects):
+    return MRSoln(beta_soln, gamma_soln, random_effects)
 
 
 @pytest.fixture
@@ -55,8 +65,8 @@ def re_mat():
     return np.random.randn(200, 3)
 
 
-def test_init(beta, gamma, beta_vcov, gamma_vcov, random_effects):
-    soln = MRSoln(beta, gamma, beta_vcov, gamma_vcov, random_effects)
+def test_init(beta_soln, gamma_soln, random_effects):
+    soln = MRSoln(beta_soln, gamma_soln, random_effects)
     assert soln.beta_samples.shape == (0, soln.beta.size)
     assert soln.gamma_samples.shape == (0, soln.gamma.size)
 

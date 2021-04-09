@@ -4,7 +4,7 @@ Interface for LimeTr
 from pkg_resources import working_set
 import numpy as np
 from mrtool.core.utils import mat_to_fun
-from mrtool.core.soln import MRSoln
+from mrtool.core.soln import MRSoln, MRSolnVariable
 
 # pylint:disable=not-an-iterable
 installed_pkgs = [p.key for p in working_set]
@@ -94,4 +94,6 @@ def get_soln(model: "MRBRT") -> MRSoln:
         for i, g in enumerate(model.data.group.unique_values)
     }
 
-    return MRSoln(beta, gamma, beta_vcov, gamma_vcov, random_effects)
+    beta_soln = MRSolnVariable(beta, beta_vcov)
+    gamma_soln = MRSolnVariable(gamma, gamma_vcov)
+    return MRSoln(beta_soln, gamma_soln, random_effects)

@@ -1,19 +1,46 @@
 """
 Solution Module
 """
-from typing import Callable, Dict
+from typing import Callable, Dict, Iterable, List
 from dataclasses import dataclass, field
 import numpy as np
 from numpy import ndarray
 
 
 @dataclass
+class MRSolnVariable:
+
+    mean: Iterable[float]
+    vcov: Iterable[float]
+    name: List[str] = None
+
+    def __post_init__(self):
+        self.mean = np.asarray(self.mean)
+        self.vcov = np.asarray(self.vcov)
+        if self.name is None:
+            self.name = np.tile(None, self.size)
+        else:
+            self.name = np.asarray(self.name)
+
+        if self.vcov.shape != (self.size, self.size):
+            raise ValueError(f"vcov must be shape {(self.size, self.size)}.")
+
+        if self.name.size != self.size:
+            raise ValueError(f"name must be size{self.size}")
+
+    @property
+    def size(self) -> int:
+        return self.mean.size
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(size={self.size})"
+
+
+@dataclass
 class MRSoln:
 
-    beta: ndarray
-    gamma: ndarray
-    beta_vcov: ndarray = field(repr=False)
-    gamma_vcov: ndarray = field(repr=False)
+    beta: MRSolnVariable
+    gamma: MRSolnVariable
     random_effects: Dict
 
     beta_samples: ndarray = field(init=False, repr=False)
@@ -29,21 +56,21 @@ class MRSoln:
                     sample_gamma: bool = False):
         if sample_beta:
             self.beta_samples = np.random.multivariate_normal(
-                mean=self.beta,
-                cov=self.beta_vcov,
+                mean=self.beta.mean,
+                cov=self.beta.vcov,
                 size=size
             )
         else:
-            self.beta_samples = np.repeat(self.beta[None, :], size, axis=0)
+            self.beta_samples = np.repeat(self.beta.mean[None, :], size, axis=0)
 
         if sample_gamma:
             self.gamma_samples = np.random.multivariate_normal(
-                mean=self.gamma,
-                cov=self.gamma_vcov,
+                mean=self.gamma.mean,
+                cov=self.gamma.vcov,
                 size=size
             )
         else:
-            self.gamma_samples = np.repeat(self.gamma[None, :], size, axis=0)
+            self.gamma_samples = np.repeat(self.gamma.mean[None, :], size, axis=0)
 
     def get_random_effects(self, group: ndarray) -> ndarray:
         return np.vstack([
@@ -55,7 +82,7 @@ class MRSoln:
                 fe_fun: Callable,
                 re_mat: ndarray,
                 group: ndarray) -> ndarray:
-        fe_pred = fe_fun(self.beta)
+        fe_pred = fe_fun(self.beta.mean)
         re = self.get_random_effects(group)
         re_pred = (re_mat*re).sum(axis=1)
         return fe_pred + re_pred
