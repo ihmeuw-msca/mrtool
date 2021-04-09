@@ -65,6 +65,12 @@ def re_mat():
     return np.random.randn(200, 3)
 
 
+def test_soln_variable(beta_soln):
+    beta_soln.name = np.array(["a", "b", "c", "c", "d"])
+    beta_sub = beta_soln["c"]
+    assert beta_sub.size == 2
+
+
 def test_init(beta_soln, gamma_soln, random_effects):
     soln = MRSoln(beta_soln, gamma_soln, random_effects)
     assert soln.beta_samples.shape == (0, soln.beta.size)

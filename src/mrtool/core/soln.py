@@ -32,6 +32,12 @@ class MRSolnVariable:
     def size(self) -> int:
         return self.mean.size
 
+    def get_index(self, key: str) -> ndarray:
+        return self.name == key
+
+    def __getitem__(self, key: str):
+        return self.mean[self.get_index(key)]
+
     def __repr__(self) -> str:
         return f"{type(self).__name__}(size={self.size})"
 
