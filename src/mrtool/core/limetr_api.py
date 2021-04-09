@@ -86,6 +86,16 @@ def get_soln(model: "MRBRT") -> MRSoln:
     gamma_hessian = lt.get_gamma_fisher(gamma)
     beta_vcov = np.linalg.inv(beta_hessian)
     gamma_vcov = np.linalg.inv(gamma_hessian)
+    beta_name = np.hstack([
+        [cov_model.name]*cov_model.size
+        for cov_model in model.fe_cov_models
+    ])
+    gamma_name = np.hstack([
+        [cov_model.name]*cov_model.size
+        for cov_model in model.re_cov_models
+    ])
+    if gamma_name.size == 0:
+        gamma_name = np.array(["None"])
 
     # compute random effects
     u = lt.estimateRE()
@@ -94,6 +104,6 @@ def get_soln(model: "MRBRT") -> MRSoln:
         for i, g in enumerate(model.data.group.unique_values)
     }
 
-    beta_soln = MRSolnVariable(beta, beta_vcov)
-    gamma_soln = MRSolnVariable(gamma, gamma_vcov)
+    beta_soln = MRSolnVariable(beta, beta_vcov, beta_name)
+    gamma_soln = MRSolnVariable(gamma, gamma_vcov, gamma_name)
     return MRSoln(beta_soln, gamma_soln, random_effects)

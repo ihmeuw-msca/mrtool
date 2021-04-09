@@ -69,7 +69,8 @@ class CovModel:
                  alt_cov: Union[str, Iterable[str]],
                  ref_cov: Union[str, Iterable[str]] = None,
                  spline: Union[XSpline, SplineSpecs] = None,
-                 priors: Iterable[Prior] = None):
+                 priors: Iterable[Prior] = None,
+                 name: str = None):
 
         self.alt_cov = Covariate(alt_cov)
         self.ref_cov = Covariate(ref_cov)
@@ -81,6 +82,11 @@ class CovModel:
         self.sorted_priors = defaultdict(list)
         self.sort_priors()
         self.activate_spline_priors()
+
+        if name is None:
+            self.name = "-".join(self.alt_cov.name + self.ref_cov.name)
+        else:
+            self.name = str(name)
 
     @property
     def use_spline(self) -> bool:
