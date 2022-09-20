@@ -24,7 +24,6 @@ if __name__ == '__main__':
     unsolved_requirements = [
         'ipopt',
         'limetr',
-        'pycddlib'
     ]
 
     test_requirements = [
