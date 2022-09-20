@@ -368,40 +368,6 @@ def sample_knots(num_knots: int,
     return knots
 
 
-def sample_simplex(n, N=1):
-    """sample from n dimensional simplex"""
-    assert n >= 1
-
-    # special case when n == 1
-    if n == 1:
-        return np.ones((N, n))
-
-    # other cases
-    s = np.random.rand(N, n - 1)
-    s.sort(axis=1)
-    s = np.insert(s, 0, 0.0, axis=1)
-    s = np.insert(s, n, 1.0, axis=1)
-
-    w = np.zeros((n + 1, n))
-    id_d0 = np.diag_indices(n)
-    id_d1 = (id_d0[0] + 1, id_d0[1])
-    w[id_d0] = -1.0
-    w[id_d1] = 1.0
-
-    return s.dot(w)
-
-
-def col_diff_mat(n):
-    """column difference matrix"""
-    D = np.zeros((n + 1, n))
-    id_d0 = np.diag_indices(n)
-    id_d1 = (id_d0[0] + 1, id_d0[1])
-    D[id_d0] = -1.0
-    D[id_d1] = 1.0
-
-    return D
-
-
 def nonlinear_trans(score, slope=6.0, quantile=0.7):
     score_min = np.min(score)
     score_max = np.max(score)
