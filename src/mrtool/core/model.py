@@ -665,7 +665,7 @@ def create_knots_samples(data: MRData,
                          num_splines: int = 50,
                          num_knots: int = 5,
                          width_pct: float = 0.2,
-                         return_settings: bool = False) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
+                         return_settings: bool = False) -> Union[Tuple[np.ndarray, np.ndarray, float], np.ndarray]:
     """Create knot samples for relative risk application.
 
     Args:
@@ -699,15 +699,13 @@ def create_knots_samples(data: MRData,
     start = (np.percentile(dose, 10) - dose_min) / (dose_max - dose_min)
     end = (np.percentile(dose, 90) - dose_min) / (dose_max - dose_min)
     knot_bounds = np.array([[start, end]] * (num_knots - 2))
-    min_size = (end - start) * width_pct
-    interval_sizes = np.array([[min_size, 1.]] * (num_knots - 1))
+    min_dist = (end - start) * width_pct
     knots_samples = utils.sample_knots(
-        num_knots - 1,
+        num_knots=num_knots - 2,
         knot_bounds=knot_bounds,
-        interval_sizes=interval_sizes,
+        min_dist=min_dist,
         num_samples=num_splines
     )
     if return_settings:
-        return knots_samples, knot_bounds, interval_sizes
-    else:
-        return knots_samples
+        return knots_samples, knot_bounds, min_dist
+    return knots_samples
