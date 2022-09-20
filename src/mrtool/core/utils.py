@@ -280,8 +280,7 @@ def avg_integral(mat, spline=None, use_spline_intercept=False):
 
 
 # random knots
-def sample_knots(num_knots: int,
-                 knot_bounds: np.ndarray,
+def sample_knots(num_knots: int, knot_bounds: np.ndarray,
                  min_dist: Union[float, np.ndarray],
                  num_samples: int = 1) -> np.ndarray:
     """Sample knot vectors given a set of rules.
@@ -306,29 +305,54 @@ def sample_knots(num_knots: int,
         Sampled knot vectors.
 
     """
-    # Check num_knots and num_samples
-    num_dict = {'num_knots': num_knots, 'num_samples': num_samples}
-    for num_name, num_val in num_dict.items():
-        if not isinstance(num_val, int):
-            raise TypeError(f"{num_name} must be an integer")
-        if num_val < 1:
-            raise ValueError(f"{num_name} must be at least 1")
+    # Check input
+    _check_nums('num_knots', num_knots)
+    _check_nums('num_samples', num_samples)
+    knot_bounds = _check_knot_bounds(num_knots, knot_bounds)
+    min_dist = _check_min_dist(num_knots, knot_bounds, min_dist)
+    left_bounds, right_bounds = _check_feasibility(num_knots, knot_bounds,
+                                                   min_dist)
 
-    # Check knot_bounds
+    # Sample knots
+    knots = np.zeros((num_samples, num_knots + 2))
+    knots[:, 0] = knot_bounds[0, 0]
+    knots[:, -1] = knot_bounds[-1, 1]
+    for ii in range(num_knots):
+        left_bound = np.maximum(left_bounds[ii], knots[:, ii] + min_dist[ii])
+        if np.any(left_bound > right_bounds[ii]):
+            raise ValueError('empty sampling interval')
+        knots[:, ii + 1] = np.random.uniform(left_bound, right_bounds[ii])
+    return knots
+
+
+def _check_nums(num_name: str, num_val: int) -> None:
+    """Check num_knots and num_samples."""
+    if not isinstance(num_val, int):
+        raise TypeError(f"{num_name} must be an integer")
+    if num_val < 1:
+        raise ValueError(f"{num_name} must be at least 1")
+
+
+def _check_knot_bounds(num_knots: int, knot_bounds: np.ndarray) -> np.ndarray:
+    """Check knot_bounds."""
     if not isinstance(knot_bounds, np.ndarray):
         raise TypeError('knot_bounds must be an array')
     if knot_bounds.shape != (num_knots, 2):
         if knot_bounds.shape == (2,):
             knot_bounds = np.tile(knot_bounds, (num_knots, 1))
         else:
-            msg = 'knot_bounds must have shape (2,) or (num_knots,2)'
+            msg = 'knot_bounds must have shape(2,) or (num_knots,2)'
             raise ValueError(msg)
     bounds_sorted = np.all(np.diff(knot_bounds, axis=1) > 0.)
     neighbors_sorted = np.all(np.diff(knot_bounds, axis=0) >= 0.)
     if not (bounds_sorted and neighbors_sorted):
         raise ValueError('knot_bounds must be sorted')
+    return knot_bounds
 
-    # Check min_dist
+
+def _check_min_dist(num_knots: int, knot_bounds: np.ndarray,
+                    min_dist: Union[float, np.ndarray]) -> np.ndarray:
+    """Check knot min_dist."""
     if not isinstance(min_dist, np.ndarray):
         if isinstance(min_dist, float):
             min_dist = np.tile(min_dist, num_knots + 1)
@@ -340,8 +364,12 @@ def sample_knots(num_knots: int,
         raise ValueError('min_dist must be positive')
     if np.sum(min_dist) > knot_bounds[-1, 1] - knot_bounds[0, 0]:
         raise ValueError('min_dist cannot exceed knot_bounds')
+    return min_dist
 
-    # Check feasibility
+
+def _check_feasibility(num_knots: int, knot_bounds: np.ndarray,
+                       min_dist: np.ndarray) -> Tuple(np.ndarray):
+    """Check knot feasibility and get left and right boundaries."""
     left_bounds = np.zeros(num_knots)
     left_bounds[0] = knot_bounds[0, 0] + min_dist[0]
     for ii in range(1, num_knots):
@@ -354,18 +382,7 @@ def sample_knots(num_knots: int,
                                       right_bounds[ii + 1] - min_dist[ii])
     if np.any(left_bounds > right_bounds):
         raise ValueError('knot_bounds and min_dist not feasible')
-
-    # Sample knots
-    knots = np.zeros((num_samples, num_knots + 2))
-    knots[:, 0] = knot_bounds[0, 0]
-    knots[:, -1] = knot_bounds[-1, 1]
-    for ii in range(num_knots):
-        left_bound = np.maximum(left_bounds[ii], knots[:, ii] + min_dist[ii])
-        if np.any(left_bound > right_bounds[ii]):
-            raise ValueError('empty sampling interval')
-        knots[:, ii + 1] = np.random.uniform(left_bound, right_bounds[ii])
-
-    return knots
+    return left_bounds, right_bounds
 
 
 def nonlinear_trans(score, slope=6.0, quantile=0.7):
