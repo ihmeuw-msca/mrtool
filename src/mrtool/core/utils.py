@@ -309,7 +309,7 @@ def sample_knots(num_knots: int, knot_bounds: np.ndarray,
     _check_nums('num_knots', num_knots)
     _check_nums('num_samples', num_samples)
     knot_bounds = _check_knot_bounds(num_knots, knot_bounds)
-    min_dist = _check_min_dist(num_knots, knot_bounds, min_dist)
+    min_dist = _check_min_dist(num_knots, min_dist)
     left_bounds, right_bounds = _check_feasibility(num_knots, knot_bounds,
                                                    min_dist)
 
@@ -350,7 +350,7 @@ def _check_knot_bounds(num_knots: int, knot_bounds: np.ndarray) -> np.ndarray:
     return knot_bounds
 
 
-def _check_min_dist(num_knots: int, knot_bounds: np.ndarray,
+def _check_min_dist(num_knots: int,
                     min_dist: Union[float, np.ndarray]) -> np.ndarray:
     """Check knot min_dist."""
     if not isinstance(min_dist, np.ndarray):
@@ -362,14 +362,14 @@ def _check_min_dist(num_knots: int, knot_bounds: np.ndarray,
         raise ValueError('min_dist must have shape(num_knots+1,)')
     if np.any(min_dist < 0.):
         raise ValueError('min_dist must be positive')
-    if np.sum(min_dist) > knot_bounds[-1, 1] - knot_bounds[0, 0]:
-        raise ValueError('min_dist cannot exceed knot_bounds')
     return min_dist
 
 
 def _check_feasibility(num_knots: int, knot_bounds: np.ndarray,
                        min_dist: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Check knot feasibility and get left and right boundaries."""
+    if np.sum(min_dist) > knot_bounds[-1, 1] - knot_bounds[0, 0]:
+        raise ValueError('min_dist cannot exceed knot_bounds')
     left_bounds = np.zeros(num_knots)
     left_bounds[0] = knot_bounds[0, 0] + min_dist[0]
     for ii in range(1, num_knots):
