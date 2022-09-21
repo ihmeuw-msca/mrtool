@@ -7,17 +7,6 @@
 from typing import Union, List, Any, Tuple
 import numpy as np
 import pandas as pd
-try:
-    from cdd import Matrix, RepType, Polyhedron
-except:
-    Warning("no cdd module installed, create fake classes.")
-    class Matrix:
-        pass
-    class RepType:
-        INEQUALITY = None
-    class Polyhedron:
-        def get_generators(self):
-            pass
 
 
 def get_cols(df, cols):
@@ -289,139 +278,114 @@ def avg_integral(mat, spline=None, use_spline_intercept=False):
 
             return mat[:, index:]
 
+
 # random knots
-def sample_knots(num_intervals: int,
-                 knot_bounds: Union[np.ndarray, None] = None,
-                 interval_sizes: Union[np.ndarray, None] = None,
-                 num_samples: int = 1) -> Union[np.ndarray, None]:
-    """Sample knots given a set of rules.
+def sample_knots(num_knots: int, knot_bounds: np.ndarray,
+                 min_dist: Union[float, np.ndarray],
+                 num_samples: int = 1) -> np.ndarray:
+    """Sample knot vectors given a set of rules.
 
-    Args:
-        num_intervals
-            Number of intervals (number of knots minus 1).
-        knot_bounds
-            Bounds for the interior knots. Here we assume the domain span 0 to 1,
-            bound for a knot should be between 0 and 1, e.g. ``[0.1, 0.2]``.
-            ``knot_bounds`` should have number of interior knots of rows, and each row
-            is a bound for corresponding knot, e.g.
-            ``knot_bounds=np.array([[0.0, 0.2], [0.3, 0.4], [0.3, 1.0]])``,
-            for when we have three interior knots.
-        interval_sizes
-            Bounds for the distances between knots. For the same reason, we assume
-            elements in `interval_sizes` to be between 0 and 1. For example,
-            ``interval_distances=np.array([[0.1, 0.2], [0.1, 0.3], [0.1, 0.5], [0.1, 0.5]])``
-            means that the distance between first (0) and second knot has to be between 0.1 and 0.2, etc.
-            And the number of rows for ``interval_sizes`` has to be same with ``num_intervals``.
-        num_samples
-            Number of knots samples.
+    Parameters
+    ----------
+    num_knots : int
+        Number of interior knots.
+    knot_bounds : np.ndarray, shape(2,) or shape(`num_knots`,2)
+        Lower and upper bounds for knots. If shape(2,), boundary knots
+        placed at `knot_bounds[0]` and `knot_bounds[1]`. If
+        shape(`num_knots`,2), boundary knots placed at
+        `knot_bounds[0, 0]` and `knot_bounds[-1, 1]`.
+    min_dist : float or np.ndarray, shape(`num_knots`+1,)
+        Minimum distances between knots.
+    num_samples : int, optional
+        Number of knot vectors to sample. Default is 1.
 
-    Returns:
-        np.ndarray: Return knots sample as array, with `num_samples` rows and number of knots columns.
+    Returns
+    -------
+    np.ndarray, shape(`num_samples`,`num_knots`+2)
+        Sampled knot vectors.
+
     """
-    # rename variables
-    k = num_intervals
-    b = knot_bounds
-    d = interval_sizes
-    N = num_samples
+    # Check input
+    _check_nums('num_knots', num_knots)
+    _check_nums('num_samples', num_samples)
+    knot_bounds = _check_knot_bounds(num_knots, knot_bounds)
+    min_dist = _check_min_dist(num_knots, min_dist)
+    left_bounds, right_bounds = _check_feasibility(num_knots, knot_bounds,
+                                                   min_dist)
 
-    t0 = 0.0
-    tk = 1.0
-    # check input
-    assert t0 <= tk
-    assert k >= 2
-
-    if d is not None:
-        assert d.shape == (k, 2) and sum(d[:, 0]) <= 1.0 and\
-            np.all(d >= 0.0) and np.all(d <= 1.0)
-    else:
-        d = np.repeat(np.array([[0.0, 1.0]]), k, axis=0)
-
-    if b is not None:
-        assert b.shape == (k - 1, 2) and\
-            np.all(b[:, 0] <= b[:, 1]) and\
-            np.all(b[:-1, 1] <= b[1:, 1]) and\
-            np.all(b >= 0.0) and np.all(b <= 1.0)
-    else:
-        b = np.repeat(np.array([[0.0, 1.0]]), k - 1, axis=0)
-
-    d = d*(tk - t0)
-    b = b*(tk - t0) + t0
-    d[0] += t0
-    d[-1] -= tk
-
-    # find vertices of the polyhedron
-    D = -col_diff_mat(k - 1)
-    I = np.identity(k - 1)
-
-    A1 = np.vstack((-D, D))
-    A2 = np.vstack((-I, I))
-
-    b1 = np.hstack((-d[:, 0], d[:, 1]))
-    b2 = np.hstack((-b[:, 0], b[:, 1]))
-
-    A = np.vstack((A1, A2))
-    b = np.hstack((b1, b2))
-
-    mat = np.insert(-A, 0, b, axis=1)
-    mat = Matrix(mat)
-    mat.rep_type = RepType.INEQUALITY
-    poly = Polyhedron(mat)
-    ext = poly.get_generators()
-    vertices_and_rays = np.array(ext)
-
-    if vertices_and_rays.size == 0:
-        print('there is no feasible knots')
-        return None
-
-    if np.any(vertices_and_rays[:, 0] == 0.0):
-        print('polyhedron is not closed, something is wrong.')
-        return None
-    else:
-        vertices = vertices_and_rays[:, 1:]
-
-    # sample from the convex combination of the vertices
-    n = vertices.shape[0]
-    s_simplex = sample_simplex(n, N=N)
-    s = s_simplex.dot(vertices)
-
-    s = np.insert(s, 0, t0, axis=1)
-    s = np.insert(s, k, tk, axis=1)
-
-    return s
+    # Sample knots
+    knots = np.zeros((num_samples, num_knots + 2))
+    knots[:, 0] = knot_bounds[0, 0]
+    knots[:, -1] = knot_bounds[-1, 1]
+    for ii in range(num_knots):
+        left_bound = np.maximum(left_bounds[ii], knots[:, ii] + min_dist[ii])
+        if np.any(left_bound > right_bounds[ii]):
+            raise ValueError('empty sampling interval')
+        knots[:, ii + 1] = np.random.uniform(left_bound, right_bounds[ii])
+    return knots
 
 
-def sample_simplex(n, N=1):
-    """sample from n dimensional simplex"""
-    assert n >= 1
-
-    # special case when n == 1
-    if n == 1:
-        return np.ones((N, n))
-
-    # other cases
-    s = np.random.rand(N, n - 1)
-    s.sort(axis=1)
-    s = np.insert(s, 0, 0.0, axis=1)
-    s = np.insert(s, n, 1.0, axis=1)
-
-    w = np.zeros((n + 1, n))
-    id_d0 = np.diag_indices(n)
-    id_d1 = (id_d0[0] + 1, id_d0[1])
-    w[id_d0] = -1.0
-    w[id_d1] = 1.0
-
-    return s.dot(w)
+def _check_nums(num_name: str, num_val: int) -> None:
+    """Check num_knots and num_samples."""
+    if not isinstance(num_val, int):
+        raise TypeError(f"{num_name} must be an integer")
+    if num_val < 1:
+        raise ValueError(f"{num_name} must be at least 1")
 
 
-def col_diff_mat(n):
-    """column difference matrix"""
-    D = np.zeros((n + 1, n))
-    id_d0 = np.diag_indices(n)
-    id_d1 = (id_d0[0] + 1, id_d0[1])
-    D[id_d0] = -1.0
-    D[id_d1] = 1.0
+def _check_knot_bounds(num_knots: int, knot_bounds: np.ndarray) -> np.ndarray:
+    """Check knot_bounds."""
+    try:
+        knot_bounds = np.asarray(knot_bounds, dtype=float)
+    except Exception as error:
+        raise TypeError('knot_bounds must be an array') from error
+    if knot_bounds.shape != (num_knots, 2):
+        if knot_bounds.shape == (2,):
+            knot_bounds = np.tile(knot_bounds, (num_knots, 1))
+        else:
+            msg = 'knot_bounds must have shape(2,) or (num_knots,2)'
+            raise ValueError(msg)
+    bounds_sorted = np.all(np.diff(knot_bounds, axis=1) > 0.)
+    neighbors_sorted = np.all(np.diff(knot_bounds, axis=0) >= 0.)
+    if not (bounds_sorted and neighbors_sorted):
+        raise ValueError('knot_bounds must be sorted')
+    return knot_bounds
 
-    return D
+
+def _check_min_dist(num_knots: int,
+                    min_dist: Union[float, np.ndarray]) -> np.ndarray:
+    """Check knot min_dist."""
+    if np.isscalar(min_dist):
+        min_dist = np.tile(min_dist, num_knots + 1)
+    try:
+        min_dist = np.asarray(min_dist, dtype=float)
+    except Exception as error:
+        raise TypeError('min_dist must be a float or array') from error
+    if min_dist.shape != (num_knots + 1,):
+        raise ValueError('min_dist must have shape(num_knots+1,)')
+    if np.any(min_dist < 0.):
+        raise ValueError('min_dist must be positive')
+    return min_dist
+
+
+def _check_feasibility(num_knots: int, knot_bounds: np.ndarray,
+                       min_dist: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Check knot feasibility and get left and right boundaries."""
+    if np.sum(min_dist) > knot_bounds[-1, 1] - knot_bounds[0, 0]:
+        raise ValueError('min_dist cannot exceed knot_bounds')
+    left_bounds = np.zeros(num_knots)
+    left_bounds[0] = knot_bounds[0, 0] + min_dist[0]
+    for ii in range(1, num_knots):
+        left_bounds[ii] = np.maximum(knot_bounds[ii, 0],
+                                     left_bounds[ii - 1] + min_dist[ii])
+    right_bounds = np.zeros(num_knots)
+    right_bounds[-1] = knot_bounds[-1, 1] - min_dist[-1]
+    for ii in range(-2, -(num_knots + 1), -1):
+        right_bounds[ii] = np.minimum(knot_bounds[ii, 1],
+                                      right_bounds[ii + 1] - min_dist[ii])
+    if np.any(left_bounds > right_bounds):
+        raise ValueError('knot_bounds and min_dist not feasible')
+    return left_bounds, right_bounds
 
 
 def nonlinear_trans(score, slope=6.0, quantile=0.7):

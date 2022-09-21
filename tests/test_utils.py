@@ -99,3 +99,25 @@ def test_to_list(obj):
         assert obj_list is obj
     else:
         assert isinstance(obj_list, list)
+
+
+def test_knots_not_feasible():
+    """Raise ValueError if min_dist and knot_bounds not feasible."""
+    num_knots = 3
+    knot_bounds = [[0, 0.4], [0, 0.4], [0.4, 1]]
+    min_dist = 0.25
+    with pytest.raises(ValueError):
+        utils.sample_knots(num_knots, knot_bounds, min_dist)
+
+
+def test_knots_feasible():
+    """Output knots satisfy constraints."""
+    num_knots = 3
+    knot_bounds = [[0, 0.5], [0.25, 0.75], [0.5, 1]]
+    min_dist = [0.1, 0.2, 0.2, 0.1]
+    num_samples = 25
+    knots = utils.sample_knots(num_knots, knot_bounds, min_dist, num_samples)
+    assert np.all(np.diff(knots) >= min_dist)
+    for ii in range(num_knots):
+        assert np.all(knot_bounds[ii][0] <= knots[:, ii + 1])
+        assert np.all(knots[:, ii + 1] <= knot_bounds[ii][1])
