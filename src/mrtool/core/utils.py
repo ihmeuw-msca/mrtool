@@ -368,7 +368,7 @@ def _check_min_dist(num_knots: int, knot_bounds: np.ndarray,
 
 
 def _check_feasibility(num_knots: int, knot_bounds: np.ndarray,
-                       min_dist: np.ndarray) -> Tuple[np.ndarray]:
+                       min_dist: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Check knot feasibility and get left and right boundaries."""
     left_bounds = np.zeros(num_knots)
     left_bounds[0] = knot_bounds[0, 0] + min_dist[0]
