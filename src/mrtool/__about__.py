@@ -7,7 +7,7 @@ __title__ = "mrtool"
 __summary__ = "MRTool: Featured Nonlinear Mixed effects Models"
 __uri__ = "https://github.com/ihmeuw/mrtool"
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 __author__ = "Peng Zheng"
 __email__ = "zhengp@uw.edu"
