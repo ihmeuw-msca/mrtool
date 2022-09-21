@@ -335,8 +335,10 @@ def _check_nums(num_name: str, num_val: int) -> None:
 
 def _check_knot_bounds(num_knots: int, knot_bounds: np.ndarray) -> np.ndarray:
     """Check knot_bounds."""
-    if not isinstance(knot_bounds, np.ndarray):
-        raise TypeError('knot_bounds must be an array')
+    try:
+        knot_bounds = np.asarray(knot_bounds, dtype=float)
+    except Exception as error:
+        raise TypeError('knot_bounds must be an array') from error
     if knot_bounds.shape != (num_knots, 2):
         if knot_bounds.shape == (2,):
             knot_bounds = np.tile(knot_bounds, (num_knots, 1))
@@ -353,11 +355,12 @@ def _check_knot_bounds(num_knots: int, knot_bounds: np.ndarray) -> np.ndarray:
 def _check_min_dist(num_knots: int,
                     min_dist: Union[float, np.ndarray]) -> np.ndarray:
     """Check knot min_dist."""
-    if not isinstance(min_dist, np.ndarray):
-        if isinstance(min_dist, float):
-            min_dist = np.tile(min_dist, num_knots + 1)
-        else:
-            raise TypeError('min_dist must be a float or array')
+    if np.isscalar(min_dist):
+        min_dist = np.tile(min_dist, num_knots + 1)
+    try:
+        min_dist = np.asarray(min_dist, dtype=float)
+    except Exception as error:
+        raise TypeError('min_dist must be a float or array') from error
     if min_dist.shape != (num_knots + 1,):
         raise ValueError('min_dist must have shape(num_knots+1,)')
     if np.any(min_dist < 0.):
