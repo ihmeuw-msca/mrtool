@@ -1,6 +1,6 @@
 from pathlib import Path
-from setuptools import setup, find_packages
 
+from setuptools import find_packages, setup
 
 if __name__ == '__main__':
     base_dir = Path(__file__).parent
@@ -44,6 +44,7 @@ if __name__ == '__main__':
 
           description=about['__summary__'],
           long_description=long_description,
+          long_description_content_type='text/x-rst',
           license=about['__license__'],
           url=about['__uri__'],
 
