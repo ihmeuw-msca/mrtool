@@ -5,12 +5,12 @@
 import numpy as np
 import pandas as pd
 import pytest
-from mrtool import MRData, CovModel, LinearCovModel, LogCovModel
-from xspline import XSpline
+from mrtool import CovModel, LinearCovModel, MRData
 
 DUMMY_GPRIOR = np.array([[0.0], [np.inf]])
 DUMMY_LPRIOR = np.array([[0.0], [np.inf]])
 DUMMY_UPRIOR = np.array([[-np.inf], [np.inf]])
+
 
 @pytest.fixture
 def mrdata(seed=123):
