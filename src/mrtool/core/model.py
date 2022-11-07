@@ -287,7 +287,7 @@ class MRBRT:
         self.beta_soln = self.lt.beta.copy()
         self.gamma_soln = self.lt.gamma.copy()
         self.w_soln = self.lt.w.copy()
-        self.u_soln = self.lt.estimateRE()
+        self.u_soln = self.lt.estimate_re()
         self.fe_soln = {
             cov_name: self.beta_soln[self.x_vars_indices[self.get_cov_model_index(cov_name)]]
             for cov_name in self.cov_model_names
