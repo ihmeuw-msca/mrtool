@@ -5,25 +5,22 @@
 
     Model module for mrtool package.
 """
-from typing import List, Tuple, Union
 from copy import deepcopy
+from typing import List, Tuple, Union
+
 import numpy as np
 import pandas as pd
-from .data import MRData
-from .cov_model import CovModel
-from . import utils
+from limetr import LimeTr
 
-try:
-    from limetr import LimeTr
-except:
-    Warning("no limetr module, create fake Limetr class")
-    class LimeTr:
-        pass
+from . import utils
+from .cov_model import CovModel
+from .data import MRData
 
 
 class MRBRT:
     """MR-BRT Object
     """
+
     def __init__(self, data: MRData,
                  cov_models: List[CovModel],
                  inlier_pct: float = 1.0):
@@ -304,7 +301,6 @@ class MRBRT:
             if self.cov_models[self.get_cov_model_index(cov_name)].use_re
         }
 
-
     def extract_re(self, study_id: np.ndarray) -> np.ndarray:
         """Extract the random effect for a given dataset.
         """
@@ -433,6 +429,7 @@ class MRBRT:
 class MRBeRT:
     """Ensemble model of MRBRT.
     """
+
     def __init__(self,
                  data: MRData,
                  ensemble_cov_model: CovModel,
@@ -632,6 +629,7 @@ class MRBeRT:
         re_var['weights'] = np.hstack((self.weights, np.nan))
 
         return fe, re_var
+
 
 def score_sub_models_datafit(mr: MRBRT):
     """score the result of mrbert"""
