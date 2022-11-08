@@ -1,7 +1,3 @@
-======
-MRTool
-======
-
 .. image:: https://img.shields.io/badge/License-BSD%202--Clause-orange.svg
     :target: https://opensource.org/licenses/BSD-2-Clause
     :alt: License
@@ -10,21 +6,17 @@ MRTool
     :target: https://mrtool.readthedocs.io/en/latest/
     :alt: Documentation
 
-.. image:: https://github.com/ramittal/MRTool/workflows/build/badge.svg?branch=master
-    :target: https://github.com/ramittal/MRTool/actions?query=workflow%3Abuild
+.. image:: https://github.com/ihmeuw-msca/workflows/build/badge.svg?branch=main
+    :target: https://github.com/ihmeuw-msca/mrtool/actions
     :alt: BuildStatus
 
-.. image:: https://badge.fury.io/py/MRTool.svg
+.. image:: https://badge.fury.io/py/mrtool.svg
     :target: https://badge.fury.io/py/mrtool
     :alt: PyPI
 
-.. image:: https://coveralls.io/repos/github/ramittal/MRTool/badge.svg?branch=master
-    :target: https://coveralls.io/github/ramittal/MRTool?branch=master
-    :alt: Coverage
 
-.. image:: https://www.codefactor.io/repository/github/ramittal/mrtool/badge/master
-    :target: https://www.codefactor.io/repository/github/ramittal/mrtool/overview/master
-    :alt: CodeFactor
+MRTool
+======
 
 
 **MRTool** (Meta-Regression Tool) package is designed to solve general meta-regression problem.
@@ -44,21 +36,11 @@ Advanced features include,
 Installation
 ------------
 
-Required packages include,
-
-* basic scientific computing suite, Numpy, Scipy and Pandas,
-* main optimization engine, `IPOPT <https://github.com/matthias-k/cyipopt>`_,
-* customized packages, `LimeTr <https://github.com/zhengp0/limetr>`_ and
-  `XSpline <https://github.com/zhengp0/xspline>`_,
-* testing tool, Pytest.
-
-After install the required packages, clone the repository and install MRTool.
+Use pip to install the package
 
 .. code-block:: shell
 
-   git clone https://github.com/ihmeuw-msca/MRTool.git
-   cd MRTool && python setup.py install
+   pip install mrtool
 
 
 For more information please check the `documentation <https://mrtool.readthedocs.io/en/latest>`_.
-
