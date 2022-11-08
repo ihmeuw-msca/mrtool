@@ -3,12 +3,12 @@
     Cov Finder
     ~~~~~~~~~~
 """
-from typing import List, Dict, Tuple, Union
 import warnings
 from copy import deepcopy
+from typing import Dict, List, Tuple, Union
+
 import numpy as np
-from mrtool import MRData, LinearCovModel, MRBRT
-from mrtool.core.other_sampling import sample_simple_lme_beta
+from mrtool import MRBRT, LinearCovModel, MRData
 
 
 class CovFinder:
@@ -180,8 +180,7 @@ class CovFinder:
             Tuple[np.ndarray, np.ndarray, np.ndarray]:
                 Mean, standard deviation and indicator of the significance of beta solution.
         """
-        beta_samples = sample_simple_lme_beta(sample_size=self.num_samples,
-                                              model=gaussian_model)
+        beta_samples = gaussian_model.lt.sample_beta(size=self.num_samples)
         beta_mean = gaussian_model.beta_soln
         beta_std = np.std(beta_samples, axis=0)
         beta_sig = self.is_significance(beta_samples, var_type='beta', alpha=self.alpha)
