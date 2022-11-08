@@ -6,7 +6,7 @@
     :target: https://mrtool.readthedocs.io/en/latest/
     :alt: Documentation
 
-.. image:: https://github.com/ihmeuw-msca/mrtool/workflows/build/badge.svg
+.. image:: https://github.com/ihmeuw-msca/mrtool/workflows/python-build/badge.svg
     :target: https://github.com/ihmeuw-msca/mrtool/actions
     :alt: BuildStatus
 
