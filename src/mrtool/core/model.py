@@ -216,15 +216,8 @@ class MRBRT:
         """Fitting the model through limetr.
 
         Args:
-            x0 (NDArray): Initial guess for the optimization problem.
-            inner_print_level (int): If non-zero printing iteration information of the inner problem.
-            inner_max_iter (int): Maximum inner number of iterations.
-            inner_tol (float): Tolerance of the inner problem.
-            outer_verbose (bool): If `True` print out iteration information.
-            outer_max_iter (int): Maximum outer number of iterations.
-            outer_step_size (float): Step size of the outer problem.
-            outer_tol (float): Tolerance of the outer problem.
-            normalize_trimming_grad (bool): If `True`, normalize the gradient of the outer trimming problem.
+            fit_options: please check fit arguments in limetr.
+
         """
         if not all([cov_model.has_data() for cov_model in self.cov_models]):
             self.attach_data()
@@ -476,7 +469,7 @@ class MRBeRT:
         self.score_model(scores_weights=scores_weights,
                          slopes=slopes,
                          quantiles=quantiles)
-        
+
         self.w_soln = np.vstack([
             sub_model.w_soln for sub_model in self.sub_models
         ]).T.dot(self.weights)
