@@ -464,36 +464,22 @@ class MRBeRT:
         self.num_cov_models = self.sub_models[0].num_cov_models
 
     def fit_model(self,
-                  x0=None,
-                  inner_print_level=0,
-                  inner_max_iter=20,
-                  inner_tol=1e-8,
-                  outer_verbose=False,
-                  outer_max_iter=100,
-                  outer_step_size=1.0,
-                  outer_tol=1e-6,
-                  normalize_trimming_grad=False,
                   scores_weights=np.array([1.0, 1.0]),
                   slopes=np.array([2.0, 10.0]),
-                  quantiles=np.array([0.4, 0.4])):
+                  quantiles=np.array([0.4, 0.4]),
+                  **fit_options):
         """Fitting the model through limetr.
         """
         for sub_model in self.sub_models:
-            sub_model.fit_model(**dict(
-                x0=x0,
-                inner_print_level=inner_print_level,
-                inner_max_iter=inner_max_iter,
-                inner_tol=inner_tol,
-                outer_verbose=outer_verbose,
-                outer_max_iter=outer_max_iter,
-                outer_step_size=outer_step_size,
-                outer_tol=outer_tol,
-                normalize_trimming_grad=normalize_trimming_grad
-            ))
+            sub_model.fit_model(**fit_options)
 
         self.score_model(scores_weights=scores_weights,
                          slopes=slopes,
                          quantiles=quantiles)
+        
+        self.w_soln = np.vstack([
+            sub_model.w_soln for sub_model in self.sub_models
+        ]).T.dot(self.weights)
 
     def score_model(self,
                     scores_weights=np.array([1.0, 1.0]),

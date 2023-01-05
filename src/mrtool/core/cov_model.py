@@ -6,8 +6,10 @@
     Covariates model for `mrtool`.
 """
 from typing import Tuple
+
 import numpy as np
 import xspline
+
 from . import utils
 from .data import MRData
 
@@ -15,6 +17,7 @@ from .data import MRData
 class CovModel:
     """Covariates model.
     """
+
     def __init__(self,
                  alt_cov,
                  name=None,
@@ -189,12 +192,34 @@ class CovModel:
         self.prior_spline_maxder_gaussian = prior_spline_maxder_gaussian
         self.prior_spline_maxder_uniform = prior_spline_maxder_uniform
         self.prior_spline_normalization = prior_spline_normalization
-        self.prior_beta_gaussian = prior_beta_gaussian if prior_beta_gaussian is None else np.asarray(prior_beta_gaussian)
-        self.prior_beta_uniform = prior_beta_uniform if prior_beta_uniform is None else np.asarray(prior_beta_uniform)
-        self.prior_beta_laplace = prior_beta_laplace if prior_beta_laplace is None else np.asarray(prior_beta_laplace)
-        self.prior_gamma_gaussian = prior_gamma_gaussian if prior_gamma_gaussian is None else np.asarray(prior_gamma_gaussian)
-        self.prior_gamma_uniform = prior_gamma_uniform if prior_gamma_uniform is None else np.asarray(prior_gamma_uniform)
-        self.prior_gamma_laplace = prior_gamma_laplace if prior_gamma_laplace is None else np.asarray(prior_gamma_laplace)
+        self.prior_beta_gaussian = prior_beta_gaussian
+        self.prior_beta_uniform = prior_beta_uniform
+        self.prior_beta_laplace = prior_beta_laplace
+        self.prior_gamma_gaussian = prior_gamma_gaussian
+        self.prior_gamma_uniform = prior_gamma_uniform
+        self.prior_gamma_laplace = prior_gamma_laplace
+
+        attributes_need_parse = [
+            "prior_spline_derval_gaussian",
+            "prior_spline_derval_uniform",
+            "prior_spline_der2val_gaussian",
+            "prior_spline_der2val_uniform",
+            "prior_spline_funval_gaussian",
+            "prior_spline_funval_uniform",
+            "prior_spline_maxder_gaussian",
+            "prior_spline_maxder_uniform",
+            "prior_beta_gaussian",
+            "prior_beta_uniform",
+            "prior_beta_laplace",
+            "prior_gamma_gaussian",
+            "prior_gamma_uniform",
+            "prior_gamma_laplace",
+        ]
+
+        for attr_name in attributes_need_parse:
+            attr_value = getattr(self, attr_name)
+            if attr_value is not None:
+                setattr(self, attr_name, np.asarray(attr_value))
 
         self._check_inputs()
         self._process_inputs()
@@ -388,9 +413,9 @@ class CovModel:
                 spline_knots = cov.min() + self.spline_knots_template*(cov.max() - cov.min())
 
         self.prior_spline_monotonicity_domain = spline_knots[0] + \
-                                                self.prior_spline_monotonicity_domain_template*(spline_knots[-1] - spline_knots[0])
+            self.prior_spline_monotonicity_domain_template*(spline_knots[-1] - spline_knots[0])
         self.prior_spline_convexity_domain = spline_knots[0] + \
-                                             self.prior_spline_convexity_domain_template*(spline_knots[-1] - spline_knots[0])
+            self.prior_spline_convexity_domain_template*(spline_knots[-1] - spline_knots[0])
 
         self.prior_spline_derval_gaussian_domain = spline_knots[0] + \
             self.prior_spline_derval_gaussian_domain_template*(spline_knots[-1] - spline_knots[0])
@@ -452,7 +477,7 @@ class CovModel:
         derval_points = np.linspace(*self.prior_spline_derval_uniform_domain,
                                     self.prior_spline_num_constraint_points)
         der2val_points = np.linspace(*self.prior_spline_der2val_uniform_domain,
-                                    self.prior_spline_num_constraint_points)
+                                     self.prior_spline_num_constraint_points)
         funval_points = np.linspace(*self.prior_spline_funval_uniform_domain,
                                     self.prior_spline_num_constraint_points)
         mono_points = np.linspace(*self.prior_spline_monotonicity_domain,
@@ -520,7 +545,7 @@ class CovModel:
         derval_points = np.linspace(*self.prior_spline_derval_gaussian_domain,
                                     self.prior_spline_num_constraint_points)
         der2val_points = np.linspace(*self.prior_spline_der2val_uniform_domain,
-                                    self.prior_spline_num_constraint_points)
+                                     self.prior_spline_num_constraint_points)
         funval_points = np.linspace(*self.prior_spline_funval_gaussian_domain,
                                     self.prior_spline_num_constraint_points)
 
@@ -572,8 +597,8 @@ class CovModel:
             return 0
         else:
             num_c = self.prior_spline_num_constraint_points*(
-                    (self.prior_spline_monotonicity is not None) +
-                    (self.prior_spline_convexity is not None)
+                (self.prior_spline_monotonicity is not None) +
+                (self.prior_spline_convexity is not None)
             )
             num_c += (self.prior_spline_normalization is not None)
             if not np.isinf(self.prior_spline_maxder_uniform).all():
@@ -608,6 +633,7 @@ class CovModel:
 class LinearCovModel(CovModel):
     """Linear Covariates Model.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -648,6 +674,7 @@ class LinearCovModel(CovModel):
 class LogCovModel(CovModel):
     """Log Covariates Model.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # if self.use_spline_intercept:
