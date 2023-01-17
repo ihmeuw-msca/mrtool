@@ -216,15 +216,8 @@ class MRBRT:
         """Fitting the model through limetr.
 
         Args:
-            x0 (NDArray): Initial guess for the optimization problem.
-            inner_print_level (int): If non-zero printing iteration information of the inner problem.
-            inner_max_iter (int): Maximum inner number of iterations.
-            inner_tol (float): Tolerance of the inner problem.
-            outer_verbose (bool): If `True` print out iteration information.
-            outer_max_iter (int): Maximum outer number of iterations.
-            outer_step_size (float): Step size of the outer problem.
-            outer_tol (float): Tolerance of the outer problem.
-            normalize_trimming_grad (bool): If `True`, normalize the gradient of the outer trimming problem.
+            fit_options: please check fit arguments in limetr.
+
         """
         if not all([cov_model.has_data() for cov_model in self.cov_models]):
             self.attach_data()
@@ -464,36 +457,22 @@ class MRBeRT:
         self.num_cov_models = self.sub_models[0].num_cov_models
 
     def fit_model(self,
-                  x0=None,
-                  inner_print_level=0,
-                  inner_max_iter=20,
-                  inner_tol=1e-8,
-                  outer_verbose=False,
-                  outer_max_iter=100,
-                  outer_step_size=1.0,
-                  outer_tol=1e-6,
-                  normalize_trimming_grad=False,
                   scores_weights=np.array([1.0, 1.0]),
                   slopes=np.array([2.0, 10.0]),
-                  quantiles=np.array([0.4, 0.4])):
+                  quantiles=np.array([0.4, 0.4]),
+                  **fit_options):
         """Fitting the model through limetr.
         """
         for sub_model in self.sub_models:
-            sub_model.fit_model(**dict(
-                x0=x0,
-                inner_print_level=inner_print_level,
-                inner_max_iter=inner_max_iter,
-                inner_tol=inner_tol,
-                outer_verbose=outer_verbose,
-                outer_max_iter=outer_max_iter,
-                outer_step_size=outer_step_size,
-                outer_tol=outer_tol,
-                normalize_trimming_grad=normalize_trimming_grad
-            ))
+            sub_model.fit_model(**fit_options)
 
         self.score_model(scores_weights=scores_weights,
                          slopes=slopes,
                          quantiles=quantiles)
+
+        self.w_soln = np.vstack([
+            sub_model.w_soln for sub_model in self.sub_models
+        ]).T.dot(self.weights)
 
     def score_model(self,
                     scores_weights=np.array([1.0, 1.0]),
@@ -633,56 +612,3 @@ def score_sub_models_variation(mr: MRBRT,
     dmat = spline.design_dmat(x, n)[:, i:]
     d = dmat.dot(mr.beta_soln[mr.x_vars_indices[index]])
     return -np.mean(np.abs(d))
-
-
-def create_knots_samples(data: MRData,
-                         alt_cov_names: List[str] = None,
-                         ref_cov_names: List[str] = None,
-                         l_zero: bool = True,
-                         num_splines: int = 50,
-                         num_knots: int = 5,
-                         width_pct: float = 0.2,
-                         return_settings: bool = False) -> Union[Tuple[NDArray, NDArray, float], NDArray]:
-    """Create knot samples for relative risk application.
-
-    Args:
-        data (MRData): Data object.
-        alt_cov_names (List[str], optional):
-            Name of the alternative exposures, if `None` use `['b_0', 'b_1']`.
-            Default to `None`.
-        ref_cov_names (List[str], optional):
-            Name of the reference exposures, if `None` use `['a_0', 'a_1']`.
-            Default to `None`.
-        l_zero (bool, optional): If `True`, assume the exposure min is 0. Default to `True`.
-        num_splines (int, optional): Number of splines. Default to 50.
-        num_knots (int, optional): Number of the spline knots. Default to 5.
-        width_pct (float, optional): Minimum percentage distance between knots. Default to 0.2.
-        return_settings (bool, optional): Returns the knots setting if `True`. Default to `False`.
-
-    Returns:
-        NDArray: Knots samples.
-    """
-    # extract the dose information
-    alt_covs = data.get_covs(['b_0', 'b_1'] if alt_cov_names is None else alt_cov_names).T
-    ref_covs = data.get_covs(['a_0', 'a_1'] if ref_cov_names is None else ref_cov_names).T
-    all_covs = np.vstack((alt_covs, ref_covs))
-
-    dose_min = 0 if l_zero else np.min(all_covs)
-    dose_max = np.max(all_covs)
-
-    start_midpoints = ref_covs.mean(axis=0)
-    # end_midpoints = alt_covs.mean(axis=0)
-    dose = np.hstack([start_midpoints, alt_covs[0]])
-    start = (np.percentile(dose, 10) - dose_min) / (dose_max - dose_min)
-    end = (np.percentile(dose, 90) - dose_min) / (dose_max - dose_min)
-    knot_bounds = np.array([[start, end]] * (num_knots - 2))
-    min_dist = (end - start) * width_pct
-    knots_samples = utils.sample_knots(
-        num_knots=num_knots - 2,
-        knot_bounds=knot_bounds,
-        min_dist=min_dist,
-        num_samples=num_splines
-    )
-    if return_settings:
-        return knots_samples, knot_bounds, min_dist
-    return knots_samples
