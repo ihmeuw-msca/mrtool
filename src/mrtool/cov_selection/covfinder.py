@@ -8,6 +8,7 @@ from copy import deepcopy
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
+
 from mrtool import MRBRT, LinearCovModel, MRData
 
 
@@ -145,8 +146,7 @@ class CovFinder:
             MRBRT: the fitted model object.
         """
         gaussian_model = self.create_model(covs, prior_type='Gaussian')
-        gaussian_model.fit_model(x0=np.zeros(gaussian_model.num_vars),
-                                 inner_print_level=5, inner_max_iter=1000)
+        gaussian_model.fit_model(x0=np.zeros(gaussian_model.num_vars))
         empirical_gamma = np.var(gaussian_model.u_soln, axis=0)
         gaussian_model.gamma_soln = empirical_gamma
         gaussian_model.lt.gamma = empirical_gamma
@@ -165,8 +165,7 @@ class CovFinder:
         laplace_model = self.create_model(covs, prior_type='Laplace', laplace_std=laplace_std)
         lprior = laplace_model.create_lprior()
         scale = 1 if np.isinf(lprior[1]).all() else 2
-        laplace_model.fit_model(x0=np.zeros(scale*laplace_model.num_vars),
-                                inner_print_level=5, inner_max_iter=1000)
+        laplace_model.fit_model(x0=np.zeros(scale*laplace_model.num_vars))
         return laplace_model
 
     def summary_gaussian_model(self, gaussian_model: MRBRT) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
