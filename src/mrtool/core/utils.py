@@ -463,14 +463,16 @@ def mat_to_log_fun(alt_mat, ref_mat=None, add_one=True):
     else:
         if ref_mat is None or ref_mat.size == 0:
             def fun(beta):
-                return np.log(shift + alt_mat.dot(beta))
+                alt_val = np.abs(shift + alt_mat.dot(beta))
+                return np.log(alt_val)
 
             def jac_fun(beta):
                 return alt_mat/(shift + alt_mat.dot(beta)[:, None])
         else:
             def fun(beta):
-                return np.log(shift + alt_mat.dot(beta)) - \
-                       np.log(shift + ref_mat.dot(beta))
+                alt_val = np.abs(shift + alt_mat.dot(beta))
+                ref_val = np.abs(shift + ref_mat.dot(beta))
+                return np.log(alt_val) - np.log(ref_val)
 
             def jac_fun(beta):
                 return alt_mat/(shift + alt_mat.dot(beta)[:, None]) - \
