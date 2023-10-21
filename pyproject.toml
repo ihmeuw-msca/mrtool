@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mrtool"
-version = "0.1.3"
+version = "0.1.4"
 description = "Featured nonlinear mixed effects model"
 readme = "README.rst"
 requires-python = ">=3.10"
