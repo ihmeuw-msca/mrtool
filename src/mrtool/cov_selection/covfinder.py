@@ -37,30 +37,39 @@ class CovFinder:
     ):
         """Covariate Finder.
 
-        Args:
-            data (MRData): Data object used for variable selection.
-            covs (list[str]): Candidate covariates.
-            normalized_covs (bool): If true, will normalize the covariates.
-            pre_selected_covs (list[str] | None, optional):
-                Pre-selected covaraites, will always be in the selected list.
-            num_samples (int, optional):
-                Number of samples used for judging if a variable is significance.
-            laplace_threshold (float, optional):
-                When coefficients from the Laplace regression is above this value,
-                we consider it as the potential useful covariate.
-            power_range (tuple[float, float], optional):
-                Power range for the Laplace prior standard deviation.
-                Laplace prior standard deviation will go from `10**power_range[0]`
-                to `10**power_range[1]`.
-            power_step_size (float, optional): Step size of the swiping across the power range.
-            inlier_pct (float, optional): Trimming option inlier percentage. Default to 1.
-            alpha (float, optional): Significance threshold. Default to 0.05.
-            beta_gprior_std (float, optional): Loose beta Gaussian prior standard deviation. Default to 1.
-            bias_zero (bool, optional):
-                If `True`, fit when specify the Gaussian prior it will be mean zero. Default to `False`.
-            use_re (dict | None, optional):
-                A dictionary of use_re for each covariate. When `None` we have an uninformative prior
-                for the random effects variance. Default to `None`.
+        Parameters
+        ----------
+        data
+            Data object used for variable selection.
+        covs
+            Candidate covariates.
+        normalized_covs
+            If true, will normalize the covariates.
+        pre_selected_covs
+            Pre-selected covaraites, will always be in the selected list.
+        num_samples
+            Number of samples used for judging if a variable is significance.
+        laplace_threshold
+            When coefficients from the Laplace regression is above this value,
+            we consider it as the potential useful covariate.
+        power_range
+            Power range for the Laplace prior standard deviation.
+            Laplace prior standard deviation will go from `10**power_range[0]`
+            to `10**power_range[1]`.
+        power_step_size
+            Step size of the swiping across the power range.
+        inlier_pct
+            Trimming option inlier percentage. Default to 1.
+        alpha
+            Significance threshold. Default to 0.05.
+        beta_gprior_std
+            Loose beta Gaussian prior standard deviation. Default to 1.
+        bias_zero
+            If `True`, fit when specify the Gaussian prior it will be mean zero. Default to `False`.
+        use_re
+            A dictionary of use_re for each covariate. When `None` we have an uninformative prior
+            for the random effects variance. Default to `None`.
+
         """
 
         self.data = data
@@ -112,13 +121,20 @@ class CovFinder:
     ) -> MRBRT:
         """Create Gaussian or Laplace model.
 
-        Args:
-            covs (list[str]): A list of covariates need to be included in the model.
-            prior_type (str): Indicate if use ``Gaussian`` or ``Laplace`` model.
-            laplace_std (float): Standard deviation of the Laplace prior. Default to None.
+        Parameters
+        ----------
+        covs
+            A list of covariates need to be included in the model.
+        prior_type
+            Indicate if use ``Gaussian`` or ``Laplace`` model.
+        laplace_std
+            Standard deviation of the Laplace prior. Default to None.
 
-        Return:
-            MRBRT: Created model object.
+        Returns
+        -------
+        MRBRT
+            Created model object.
+
         """
         assert prior_type in [
             "Laplace",
@@ -168,11 +184,16 @@ class CovFinder:
     def fit_gaussian_model(self, covs: list[str]) -> MRBRT:
         """Fit Gaussian model.
 
-        Args:
-            covs (list[str]): A list of covariates need to be included in the model.
+        Parameters
+        ----------
+        covs
+            A list of covariates need to be included in the model.
 
-        Returns:
-            MRBRT: the fitted model object.
+        Returns
+        -------
+        MRBRT
+            the fitted model object.
+
         """
         gaussian_model = self.create_model(covs, prior_type="Gaussian")
         gaussian_model.fit_model(x0=np.zeros(gaussian_model.num_vars))
@@ -184,12 +205,18 @@ class CovFinder:
     def fit_laplace_model(self, covs: list[str], laplace_std: float) -> MRBRT:
         """Fit Laplace model.
 
-        Args:
-            covs (list[str]): A list of covariates need to be included in the model.
-            laplace_std (float): The Laplace prior std.
+        Parameters
+        ----------
+        covs
+            A list of covariates need to be included in the model.
+        laplace_std
+            The Laplace prior std.
 
-        Returns:
-            MRBRT: the fitted model object.
+        Returns
+        -------
+        MRBRT
+            the fitted model object.
+
         """
         laplace_model = self.create_model(
             covs, prior_type="Laplace", laplace_std=laplace_std
@@ -205,12 +232,16 @@ class CovFinder:
         """Summary the gaussian model.
         Return the mean standard deviation and the significance indicator of beta.
 
-        Args:
-            gaussian_model (MRBRT): Gaussian model object.
+        Parameters
+        ----------
+        gaussian_model
+            Gaussian model object.
 
-        Returns:
-            tuple[np.ndarray, np.ndarray, np.ndarray]:
-                Mean, standard deviation and indicator of the significance of beta solution.
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray, np.ndarray]
+            Mean, standard deviation and indicator of the significance of beta solution.
+
         """
         beta_samples = gaussian_model.lt.sample_beta(size=self.num_samples)
         beta_mean = gaussian_model.beta_soln
@@ -281,10 +312,15 @@ class CovFinder:
     ):
         """Update the beta Gaussian prior.
 
-        Args:
-            covs (list[str]): Name of the covariates.
-            mean (np.ndarray): Mean of the priors.
-            std (np.ndarray): Standard deviation of the priors.
+        Parameters
+        ----------
+        covs
+            Name of the covariates.
+        mean
+            Mean of the priors.
+        std
+            Standard deviation of the priors.
+
         """
         for i, cov in enumerate(covs):
             if cov not in self.all_covs:

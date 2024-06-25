@@ -59,97 +59,99 @@ class CovModel:
     ):
         """Constructor of the covariate model.
 
-        Args:
-            alt_cov (str | list{str}):
-                Main covariate name, when it is a list consists of two
-                covariates names, use the average integrand between defined by
-                the two covariates.
-            ref_cov (str | list{str} | None, optional):
-                Reference covariate name, will be interpreted differently in the
-                sub-classes.
-            name (str | None, optional):
-                Model name for easy access.
-            use_re (bool, optional):
-                If use the random effects.
-            use_re_mid_point (bool, optional):
-                If use the midpoint for the random effects.
-            use_spline(bool, optional):
-                If use splines.
-            use_spline_intercept(bool, optional):
-                If `True`, use full set of the spline bases, shouldn't include extra `intercept` in this case.
-            spline_knots_type (str, optional):
-                The method of how to place the knots, `'frequency'` place the
-                knots according to the data quantile and `'domain'` place the
-                knots according to the domain of the data.
-            spline_knots (np.ndarray, optional):
-                A numpy array between 0 and 1 contains the relative position of
-                the knots placement, with respect to either frequency or domain.
-            spline_degree (int, optional):
-                The degree of the spline.
-            spline_l_linear (bool, optional):
-                If use left linear tail.
-            spline_r_linear (bool, optional):
-                If use right linear tail.
-            prior_spline_derval_gaussian (np.ndarray, optional):
-                Gaussian prior for the derivative value of the spline.
-            prior_spline_derval_gaussian_domain (tuple[float, float], optional):
-                Domain for the Gaussian prior for the derivative value of the spline.
-            prior_spline_derval_uniform (np.ndarray, optional):
-                Uniform prior for the derivative value of the spline.
-            prior_spline_derval_uniform_domain (tuple[float, float], optional):
-                Domain for the uniform prior for the derivative value of the spline.
-            prior_spline_der2val_gaussian (np.ndarray, optional):
-                Gaussian prior for the second order derivative value of the spline.
-            prior_spline_der2val_gaussian_domain (tuple[float, float], optional):
-                Domain for the Gaussian prior for the second order derivative value of the spline.
-            prior_spline_der2val_uniform (np.ndarray, optional):
-                Uniform prior for the second order derivative value of the spline.
-            prior_spline_der2val_uniform_domain (tuple[float, float], optional):
-                Domain for the uniform prior for the second order derivative value of the spline.
-            prior_spline_funval_gaussian (np.ndarray, optional):
-                Gaussian prior for the function value of the spline.
-            prior_spline_funval_gaussian_domain (tuple[float, float], optional):
-                Domain for the Gaussian prior for the function value of the spline.
-            prior_spline_funval_uniform (np.ndarray, optional):
-                Uniform prior for the function value of the spline.
-            prior_spline_funval_uniform_domain (tuple[float, float], optional):
-                Domain for the uniform prior for the function value of the spline.
-            prior_spline_monotonicity (str | None, optional):
-                Spline shape prior, `'increasing'` indicates spline is
-                increasing, `'decreasing'` indicates spline is decreasing.
-            prior_spline_monotonicity_domain (tuple[float, float], optional):
-                Domain where spline monotonicity prior applies. Default to `(0.0, 1.0)`.
-            prior_spline_convexity_domain (tuple[float, float], optional):
-                Domain where spline convexity prior applies. Default to `(0.0, 1.0)`.
-            prior_spline_convexity (str | None, optional):
-                Spline shape prior, `'convex'` indicate if spline is convex and
-                `'concave'` indicate spline is concave.
-            prior_spline_num_constraint_points (int, optional):
-                Number of constraint points used in the the shape constraints
-                of the spline.
-            prior_spline_maxder_gaussian (numpy.ndarray, optional):
-                Gaussian prior on the highest derivative of the spline.
-                When it is a one dimensional array, the first element will be
-                the mean for all derivative and second element will be the sd.
-                When it is a two dimensional array, the first row will be the
-                mean and the second row will be the sd, the number of columns
-                should match the number of the intervals defined by the spline
-                knots.
-            prior_spline_maxder_uniform (numpy.ndarray, optional)
-                Uniform prior on the highest derivative of the spline.
-            prior_beta_gaussian (numpy.ndarray, optional):
-                Direct Gaussian prior for beta. It can be one dimensional or
-                two dimensional array like `prior_spline_maxder_gaussian`.
-            prior_beta_uniform (numpy.ndarray, optional):
-                Direct uniform prior for beta.
-            prior_beta_laplace (numpy.ndarray, optional):
-                Direct Laplace prior for beta.
-            prior_gamma_gaussian (numpy.ndarray, optional):
-                Direct Gaussian prior for gamma.
-            prior_gamma_uniform (numpy.ndarray, optional):
-                Direct uniform prior for gamma.
-            prior_gamma_laplace (numpy.ndarray, optional):
-                Direct Laplace prior for gamma.
+        Parameters
+        ----------
+        alt_cov
+            Main covariate name, when it is a list consists of two
+            covariates names, use the average integrand between defined by
+            the two covariates.
+        ref_cov
+            Reference covariate name, will be interpreted differently in the
+            sub-classes.
+        name
+            Model name for easy access.
+        use_re
+            If use the random effects.
+        use_re_mid_point
+            If use the midpoint for the random effects.
+        use_spline
+            If use splines.
+        use_spline_intercept
+            If `True`, use full set of the spline bases, shouldn't include extra `intercept` in this case.
+        spline_knots_type
+            The method of how to place the knots, `'frequency'` place the
+            knots according to the data quantile and `'domain'` place the
+            knots according to the domain of the data.
+        spline_knots
+            A numpy array between 0 and 1 contains the relative position of
+            the knots placement, with respect to either frequency or domain.
+        spline_degree
+            The degree of the spline.
+        spline_l_linear
+            If use left linear tail.
+        spline_r_linear
+            If use right linear tail.
+        prior_spline_derval_gaussian
+            Gaussian prior for the derivative value of the spline.
+        prior_spline_derval_gaussian_domain
+            Domain for the Gaussian prior for the derivative value of the spline.
+        prior_spline_derval_uniform
+            Uniform prior for the derivative value of the spline.
+        prior_spline_derval_uniform_domain
+            Domain for the uniform prior for the derivative value of the spline.
+        prior_spline_der2val_gaussian
+            Gaussian prior for the second order derivative value of the spline.
+        prior_spline_der2val_gaussian_domain
+            Domain for the Gaussian prior for the second order derivative value of the spline.
+        prior_spline_der2val_uniform
+            Uniform prior for the second order derivative value of the spline.
+        prior_spline_der2val_uniform_domain
+            Domain for the uniform prior for the second order derivative value of the spline.
+        prior_spline_funval_gaussian
+            Gaussian prior for the function value of the spline.
+        prior_spline_funval_gaussian_domain
+            Domain for the Gaussian prior for the function value of the spline.
+        prior_spline_funval_uniform
+            Uniform prior for the function value of the spline.
+        prior_spline_funval_uniform_domain
+            Domain for the uniform prior for the function value of the spline.
+        prior_spline_monotonicity
+            Spline shape prior, `'increasing'` indicates spline is
+            increasing, `'decreasing'` indicates spline is decreasing.
+        prior_spline_monotonicity_domain
+            Domain where spline monotonicity prior applies. Default to `(0.0, 1.0)`.
+        prior_spline_convexity_domain
+            Domain where spline convexity prior applies. Default to `(0.0, 1.0)`.
+        prior_spline_convexity
+            Spline shape prior, `'convex'` indicate if spline is convex and
+            `'concave'` indicate spline is concave.
+        prior_spline_num_constraint_points
+            Number of constraint points used in the the shape constraints
+            of the spline.
+        prior_spline_maxder_gaussian
+            Gaussian prior on the highest derivative of the spline.
+            When it is a one dimensional array, the first element will be
+            the mean for all derivative and second element will be the sd.
+            When it is a two dimensional array, the first row will be the
+            mean and the second row will be the sd, the number of columns
+            should match the number of the intervals defined by the spline
+            knots.
+        prior_spline_maxder_uniform
+            Uniform prior on the highest derivative of the spline.
+        prior_beta_gaussian
+            Direct Gaussian prior for beta. It can be one dimensional or
+            two dimensional array like `prior_spline_maxder_gaussian`.
+        prior_beta_uniform
+            Direct uniform prior for beta.
+        prior_beta_laplace
+            Direct Laplace prior for beta.
+        prior_gamma_gaussian
+            Direct Gaussian prior for gamma.
+        prior_gamma_uniform
+            Direct uniform prior for gamma.
+        prior_gamma_laplace
+            Direct Laplace prior for gamma.
+
         """
         self.covs = []
         self.alt_cov = utils.input_cols(alt_cov, append_to=self.covs)
@@ -439,13 +441,18 @@ class CovModel:
         self, data: MRData, spline_knots: np.ndarray = None
     ) -> xspline.XSpline:
         """Create spline given current spline parameters.
-        Args:
-            data (mrtool.MRData):
-                The data frame used for storing the data
-            spline_knots (np.ndarray, optional):
-                Spline knots, if ``None`` determined by frequency or domain.
-        Returns:
-            xspline.XSpline: The spline object.
+        Parameters
+        ----------
+        data
+            The data frame used for storing the data
+        spline_knots
+            Spline knots, if ``None`` determined by frequency or domain.
+
+        Returns
+        -------
+        xspline.XSpline
+            The spline object.
+
         """
         # extract covariate
         alt_cov = data.get_covs(self.alt_cov)
@@ -518,14 +525,18 @@ class CovModel:
 
         return spline
 
-    def create_design_mat(self, data):
+    def create_design_mat(self, data) -> tuple[np.ndarray, np.ndarray]:
         """Create design matrix.
-        Args:
-            data (mrtool.MRData):
-                The data frame used for storing the data
-        Returns:
-            tuple{numpy.ndarray, numpy.ndarray}:
-                Return the design matrix for linear cov or spline.
+        Parameters
+        ----------
+        data
+            The data frame used for storing the data
+
+        Returns
+        -------
+        tuple[numpy.ndarray, numpy.ndarray]
+            Return the design matrix for linear cov or spline.
+
         """
         alt_cov = data.get_covs(self.alt_cov)
         ref_cov = data.get_covs(self.ref_cov)
@@ -812,13 +823,16 @@ class LinearCovModel(CovModel):
     def create_z_mat(self, data):
         """Create design matrix for the random effects.
 
-        Args:
-            data (mrtool.MRData):
-                The data frame used for storing the data
+        Parameters
+        ----------
+        data
+            The data frame used for storing the data
 
-        Returns:
-            numpy.ndarray:
-                Design matrix for random effects.
+        Returns
+        -------
+        numpy.ndarray
+            Design matrix for random effects.
+
         """
         if not self.use_re:
             return np.array([]).reshape(data.num_obs, 0)
@@ -849,13 +863,16 @@ class LogCovModel(CovModel):
     def create_x_fun(self, data):
         """Create design functions for the fixed effects.
 
-        Args:
-            data (mrtool.MRData):
-                The data frame used for storing the data
+        Parameters
+        ----------
+        data
+            The data frame used for storing the data
 
-        Returns:
-            tuple{function, function}:
-                Design functions for fixed effects.
+        Returns
+        -------
+        tuple[Callable, Callable]
+            Design functions for fixed effects.
+
         """
         alt_mat, ref_mat = self.create_design_mat(data)
         add_one = not (self.use_spline and self.use_spline_intercept)
@@ -864,13 +881,16 @@ class LogCovModel(CovModel):
     def create_z_mat(self, data):
         """Create design matrix for the random effects.
 
-        Args:
-            data (mrtool.MRData):
-                The data frame used for storing the data
+        Parameters
+        ----------
+        data
+            The data frame used for storing the data
 
-        Returns:
-            numpy.ndarray:
-                Design matrix for random effects.
+        Returns
+        -------
+        numpy.ndarray
+            Design matrix for random effects.
+
         """
         if not self.use_re:
             return np.array([]).reshape(data.num_obs, 0)

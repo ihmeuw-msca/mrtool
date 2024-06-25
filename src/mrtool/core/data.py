@@ -124,8 +124,11 @@ class MRData:
     def _sort_data(self, index: np.ndarray):
         """Sort the object.
 
-        Args:
-            index (np.ndarray): Sorting index.
+        Parameters
+        ----------
+        index
+            Sorting index.
+
         """
         index = np.array(index)
         assert (
@@ -166,8 +169,11 @@ class MRData:
     def _remove_data(self, index: np.ndarray):
         """Remove the data point by index.
 
-        Args:
-            index (np.ndarray): Bool array, when ``True`` delete corresponding data.
+        Parameters
+        ----------
+        index
+            Bool array, when ``True`` delete corresponding data.
+
         """
         assert len(index) == self.num_obs
         assert all([isinstance(i, (bool, np.bool_)) for i in index])
@@ -183,11 +189,16 @@ class MRData:
     def _get_data(self, index: np.ndarray) -> "MRData":
         """Get the data point by index.
 
-        Args:
-            index (np.ndarray): Indices of the data we want to get.
+        Parameters
+        ----------
+        index
+            Indices of the data we want to get.
 
-        Returns:
-            MRData: data object contains the data from indices.
+        Returns
+        -------
+        MRData
+            data object contains the data from indices.
+
         """
         obs = self.obs[index].copy()
         obs_se = self.obs_se[index].copy()
@@ -315,12 +326,16 @@ class MRData:
     def has_covs(self, covs: list[str] | str) -> bool:
         """If the data has the provided covariates.
 
-        Args:
-            covs (list[str] | str):
-                list of covariate names or one covariate name.
+        Parameters
+        ----------
+        covs
+            list of covariate names or one covariate name.
 
-        Returns:
-            bool: If has covariates return `True`.
+        Returns
+        -------
+        bool
+            If has covariates return `True`.
+
         """
         covs = to_list(covs)
         if len(covs) == 0:
@@ -331,12 +346,16 @@ class MRData:
     def has_studies(self, studies: list[Any] | Any) -> bool:
         """If the data has provided study_id
 
-        Args:
-            studies list[Any] | Any:
-                list of studies or one study.
+        Parameters
+        ----------
+        studies
+            list of studies or one study.
 
-        Returns:
-            bool: If has studies return `True`.
+        Returns
+        -------
+        bool
+            If has studies return `True`.
+
         """
         studies = to_list(studies)
         if len(studies) == 0:
@@ -367,12 +386,16 @@ class MRData:
     def get_covs(self, covs: list[str] | str) -> np.ndarray:
         """Get covariate matrix.
 
-        Args:
-            covs (list[str] | str):
-                list of covariate names or one covariate name.
+        Parameters
+        ----------
+        covs
+            list of covariate names or one covariate name.
 
-        Returns:
-            np.ndarray: Covariates matrix, in the column fashion.
+        Returns
+        -------
+        np.ndarray
+            Covariates matrix, in the column fashion.
+
         """
         covs = to_list(covs)
         self._assert_has_covs(covs)
@@ -386,11 +409,16 @@ class MRData:
     def get_study_data(self, studies: list[Any] | Any) -> "MRData":
         """Get study specific data.
 
-        Args:
-            studies (list[Any] | Any): list of studies or  one study.
+        Parameters
+        ----------
+        studies
+            list of studies or  one study.
 
         Returns
-            MRData: Data object contains the study specific data.
+        -------
+        MRData
+            Data object contains the study specific data.
+
         """
         self._assert_has_studies(studies)
         studies = to_list(studies)

@@ -20,30 +20,32 @@ def plot_risk_function(
     write_file=False,
 ):
     """Plot predicted relative risk.
-    Args:
-        mrbrt (mrtool.MRBRT):
-            MRBeRT object.
-        pair (str):
-            risk_outcome pair. eg. 'redmeat_colorectal'
-        beta_samples (np.ndarray):
-            Beta samples generated using `sample_soln` function in MRBRT
-        gamma_samples (np.ndarray):
-            Gamma samples generated using `sample_soln` function in MRBRT
-        alt_cov_names (list[str], optional):
-            Name of the alternative exposures, if `None` use `['b_0', 'b_1']`.
-            Default to `None`.
-        ref_cov_names (list[str], optional):
-            Name of the reference exposures, if `None` use `['a_0', 'a_1']`.
-            Default to `None`.
-        continuous_variables (list):
-            list of continuous covariate names.
-        plot_note (str):
-            The notes intended to be written on the title.
-        plots_dir (str):
-            Directory where to save the plot.
-        write_file (bool):
-            Specify `True` if the plot is expected to be saved on disk.
-            If True, `plots_dir` should be specified too.
+    Parameters
+    ----------
+    mrbrt
+        MRBeRT object.
+    pair
+        risk_outcome pair. eg. 'redmeat_colorectal'
+    beta_samples
+        Beta samples generated using `sample_soln` function in MRBRT
+    gamma_samples
+        Gamma samples generated using `sample_soln` function in MRBRT
+    alt_cov_names
+        Name of the alternative exposures, if `None` use `['b_0', 'b_1']`.
+        Default to `None`.
+    ref_cov_names
+        Name of the reference exposures, if `None` use `['a_0', 'a_1']`.
+        Default to `None`.
+    continuous_variables
+        list of continuous covariate names.
+    plot_note
+        The notes intended to be written on the title.
+    plots_dir
+        Directory where to save the plot.
+    write_file
+        Specify `True` if the plot is expected to be saved on disk.
+        If True, `plots_dir` should be specified too.
+
     """
     data_df = mrbrt.data.to_df()
     sub = mrbrt.sub_models[0]
@@ -134,24 +136,26 @@ def plot_derivative_fit(
     write_file=False,
 ):
     """Plot fitted derivative.
-    Args:
-        mrbrt (mrtool.MRBRT):
-            MRBRT object.
-        pair (str):
-            risk_outcome pair. eg. 'redmeat_colorectal'
-        alt_cov_names (list[str], optional):
-            Name of the alternative exposures, if `None` use `['b_0', 'b_1']`.
-            Default to `None`.
-        ref_cov_names (list[str], optional):
-            Name of the reference exposures, if `None` use `['a_0', 'a_1']`.
-            Default to `None`.
-        plot_note (str, optional):
-            The notes intended to be written on the title.
-        plots_dir (str):
-            Directory where to save the plot.
-        write_file (bool):
-            Specify `True` if the plot is expected to be saved on disk.
-            If True, `plots_dir` should be specified too.
+    Parameters
+    ----------
+    mrbrt
+        MRBRT object.
+    pair
+        risk_outcome pair. eg. 'redmeat_colorectal'
+    alt_cov_names
+        Name of the alternative exposures, if `None` use `['b_0', 'b_1']`.
+        Default to `None`.
+    ref_cov_names
+        Name of the reference exposures, if `None` use `['a_0', 'a_1']`.
+        Default to `None`.
+    plot_note
+        The notes intended to be written on the title.
+    plots_dir
+        Directory where to save the plot.
+    write_file
+        Specify `True` if the plot is expected to be saved on disk.
+        If True, `plots_dir` should be specified too.
+
     """
     dose_variable = alt_cov_names[1]
     data_df = mrbrt.data.to_df()

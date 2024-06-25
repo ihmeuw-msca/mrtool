@@ -26,11 +26,15 @@ class MRBRT:
     ):
         """Constructor of MRBRT.
 
-        Args:
-            data (MRData): Data for meta-regression.
-            cov_models (list[CovModel]): A list of covariates models.
-            inlier_pct (float, optional):
-                A float number between 0 and 1 indicate the percentage of inliers.
+        Parameters
+        ----------
+        data
+            Data for meta-regression.
+        cov_models
+            A list of covariates models.
+        inlier_pct
+            A float number between 0 and 1 indicate the percentage of inliers.
+
         """
         self.data = data
         self.cov_models = cov_models
@@ -223,8 +227,10 @@ class MRBRT:
     def fit_model(self, **fit_options):
         """Fitting the model through limetr.
 
-        Args:
-            fit_options: please check fit arguments in limetr.
+        Parameters
+        ----------
+        fit_options
+            please check fit arguments in limetr.
 
         """
         if not all([cov_model.has_data() for cov_model in self.cov_models]):
@@ -340,18 +346,23 @@ class MRBRT:
     ) -> NDArray:
         """Create new prediction with existing solution.
 
-        Args:
-            data (MRData): MRData object contains the predict data.
-            predict_for_study (bool, optional):
-                If `True`, use the random effects information to prediction for specific
-                study. If the `study_id` in `data` do not contain in the fitting data, it
-                will assume the corresponding random effects equal to 0.
-            sort_by_data_id (bool, optional):
-                If `True`, will sort the final prediction as the order of the original
-                data frame that used to create the `data`. Default to False.
+        Parameters
+        ----------
+        data
+            MRData object contains the predict data.
+        predict_for_study
+            If `True`, use the random effects information to prediction for specific
+            study. If the `study_id` in `data` do not contain in the fitting data, it
+            will assume the corresponding random effects equal to 0.
+        sort_by_data_id
+            If `True`, will sort the final prediction as the order of the original
+            data frame that used to create the `data`. Default to False.
 
-        Returns:
-            NDArray: Predicted outcome array.
+        Returns
+        -------
+        NDArray
+            Predicted outcome array.
+
         """
         assert data.has_covs(
             self.cov_names
@@ -371,12 +382,16 @@ class MRBRT:
     def sample_soln(self, sample_size: int = 1) -> tuple[NDArray, NDArray]:
         """Sample solutions.
 
-        Args:
-            sample_size (int, optional): Number of samples.
+        Parameters
+        ----------
+        sample_size
+            Number of samples.
 
-        Return:
-            tuple[NDArray, NDArray]:
-                Return beta samples and gamma samples.
+        Returns
+        -------
+        tuple[NDArray, NDArray]
+            Return beta samples and gamma samples.
+
         """
         if self.lt is None:
             raise ValueError("Please fit the model first.")
@@ -398,18 +413,25 @@ class MRBRT:
     ) -> NDArray:
         """Create draws for the given data set.
 
-        Args:
-            data (MRData): MRData object contains predict data.
-            beta_samples (NDArray): Samples of beta.
-            gamma_samples (NDArray): Samples of gamma.
-            random_study (bool, optional):
-                If `True` the draws will include uncertainty from study heterogeneity.
-            sort_by_data_id (bool, optional):
-                If `True`, will sort the final prediction as the order of the original
-                data frame that used to create the `data`. Default to False.
+        Parameters
+        ----------
+        data
+            MRData object contains predict data.
+        beta_samples
+            Samples of beta.
+        gamma_samples
+            Samples of gamma.
+        random_study
+            If `True` the draws will include uncertainty from study heterogeneity.
+        sort_by_data_id
+            If `True`, will sort the final prediction as the order of the original
+            data frame that used to create the `data`. Default to False.
 
-        Returns:
-            NDArray: Returns outcome sample matrix.
+        Returns
+        -------
+        NDArray
+            Returns outcome sample matrix.
+
         """
         sample_size = beta_samples.shape[0]
         assert beta_samples.shape == (sample_size, self.num_x_vars)
@@ -457,13 +479,17 @@ class MRBeRT:
     ):
         """Constructor of `MRBeRT`
 
-        Args:
-            data (MRData): Data for meta-regression.
-            ensemble_cov_model (CovModel):
-                Covariates model which will be used with ensemble.
-            cov_models (list[CovModel] | None, optional):
-                Other covariate models, assume to be mutual exclusive with ensemble_cov_mdoel.
-            inlier_pct (float): A float number between 0 and 1 indicate the percentage of inliers.
+        Parameters
+        ----------
+        data
+            Data for meta-regression.
+        ensemble_cov_model
+            Covariates model which will be used with ensemble.
+        cov_models
+            Other covariate models, assume to be mutual exclusive with ensemble_cov_mdoel.
+        inlier_pct
+            A float number between 0 and 1 indicate the percentage of inliers.
+
         """
         self.data = data
         self.cov_models = cov_models if cov_models is not None else []
@@ -576,10 +602,12 @@ class MRBeRT:
     ) -> NDArray:
         """Create new prediction with existing solution.
 
-        Args:
-            return_avg (bool):
-                When it is `True`, the function will return an average prediction based on the score,
-                and when it is `False` the function will return a list of predictions from all groups.
+        Parameters
+        ----------
+        return_avg
+            When it is `True`, the function will return an average prediction based on the score,
+            and when it is `False` the function will return a list of predictions from all groups.
+
         """
         prediction = np.vstack(
             [

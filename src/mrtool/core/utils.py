@@ -13,14 +13,18 @@ import pandas as pd
 
 def get_cols(df, cols):
     """Return the columns of the given data frame.
-    Args:
-        df (pandas.DataFrame):
-            Given data frame.
-        cols (str | list{str} | None):
-            Given column name(s), if is `None`, will return a empty data frame.
-    Returns:
-        pandas.DataFrame | pandas.Series:
-            The data frame contains the columns.
+    Parameters
+    ----------
+    df
+        Given data frame.
+    cols
+        Given column name(s), if is `None`, will return a empty data frame.
+
+    Returns
+    -------
+    pandas.DataFrame | pandas.Series:
+        The data frame contains the columns.
+
     """
     assert isinstance(df, pd.DataFrame)
     if isinstance(cols, list):
@@ -36,12 +40,16 @@ def get_cols(df, cols):
 
 def is_cols(cols):
     """Check variable type fall into the column name category.
-    Args:
-        cols (str | list{str} | None):
-            Column names candidate.
-    Returns:
-        bool:
-            if `col` is either str, list{str} or None
+    Parameters
+    ----------
+    cols
+        Column names candidate.
+
+    Returns
+    -------
+    bool
+        if `col` is either str, list{str} or None
+
     """
     ok = isinstance(cols, (str, list)) or cols is None
     if isinstance(cols, list):
@@ -51,16 +59,20 @@ def is_cols(cols):
 
 def input_cols(cols, append_to=None, default=None):
     """Process the input column name.
-    Args:
-        cols (str | list{str} | None):
-            The input column name(s).
-        append_to (list{str} | None, optional):
-            A list keep track of all the column names.
-        default (str | list{str} | None, optional):
-            Default value when `cols` is `None`.
-    Returns:
-        str | list{str}:
-            The name of the column(s)
+    Parameters
+    ----------
+    cols
+        The input column name(s).
+    append_to
+        A list keep track of all the column names.
+    default
+        Default value when `cols` is `None`.
+
+    Returns
+    -------
+    str | list{str}
+        The name of the column(s)
+
     """
     assert is_cols(cols)
     assert is_cols(append_to)
@@ -82,13 +94,16 @@ def input_cols(cols, append_to=None, default=None):
 def combine_cols(cols):
     """Combine column names into one list of names.
 
-    Args:
-        cols (list{str | list{str}}):
-            A list of names of columns or list of column names.
+    Parameters
+    ----------
+    cols
+        A list of names of columns or list of column names.
 
-    Return:
-        list{str}:
-            Combined names of columns.
+    Returns
+    -------
+    list[str]
+        Combined names of columns.
+
     """
     combined_cols = []
     for col in cols:
@@ -102,12 +117,16 @@ def combine_cols(cols):
 
 def sizes_to_indices(sizes):
     """Converting sizes to corresponding indices.
-    Args:
-        sizes (numpy.dnarray):
-            An array consist of non-negative number.
-    Returns:
-        list{range}:
-            list the indices.
+    Parameters
+    ----------
+    sizes
+        An array consist of non-negative number.
+
+    Returns
+    -------
+    list[np.ndarray]
+        list the indices.
+
     """
     indices = []
     a = 0
@@ -123,18 +142,20 @@ def sizes_to_indices(sizes):
 def is_gaussian_prior(prior, size=None):
     """Check if variable satisfy Gaussian prior format
 
-    Args:
-        prior (numpy.ndarray):
-            Either one or two dimensional array, with first group refer to mean
-            and second group refer to standard deviation.
+    Parameters
+    ----------
+    prior
+        Either one or two dimensional array, with first group refer to mean
+        and second group refer to standard deviation.
 
-    Keyword Args:
-        size (int | None, optional):
-            Size the variable, prior related to.
+    size
+        Size the variable, prior related to.
 
-    Returns:
-        bool:
-            True if satisfy condition.
+    Returns
+    -------
+    bool
+        True if satisfy condition.
+
     """
     # check type
     ok = isinstance(prior, np.ndarray) or prior is None
@@ -154,18 +175,20 @@ is_laplace_prior = is_gaussian_prior
 def is_uniform_prior(prior, size=None):
     """Check if variable satisfy uniform prior format
 
-    Args:
-        prior (numpy.ndarray):
-            Either one or two dimensional array, with first group refer to lower
-            bound and second group refer to upper bound.
+    Parameters
+    ----------
+    prior
+        Either one or two dimensional array, with first group refer to lower
+        bound and second group refer to upper bound.
 
-    Keyword Args:
-        size (int | None, optional):
-            Size the variable, prior related to.
+    size
+        Size the variable, prior related to.
 
-    Returns:
-        bool:
-            True if satisfy condition.
+    Returns
+    -------
+    bool
+        True if satisfy condition.
+
     """
     # check type
     ok = isinstance(prior, np.ndarray) or prior is None
@@ -182,17 +205,20 @@ def is_uniform_prior(prior, size=None):
 def input_gaussian_prior(prior, size):
     """Process the input Gaussian prior
 
-    Args:
-        prior (numpy.ndarray):
-            Either one or two dimensional array, with first group refer to mean
-            and second group refer to standard deviation.
-        size (int, optional):
-            Size the variable, prior related to.
+    Parameters
+    ----------
+    prior
+        Either one or two dimensional array, with first group refer to mean
+        and second group refer to standard deviation.
+    size
+        Size the variable, prior related to.
 
-    Returns:
-        numpy.ndarray:
-            Prior after processing, with shape (2, size), with the first row
-            store the mean and second row store the standard deviation.
+    Returns
+    -------
+    numpy.ndarray
+        Prior after processing, with shape (2, size), with the first row
+        store the mean and second row store the standard deviation.
+
     """
     assert is_gaussian_prior(prior)
     if prior is None or prior.size == 0:
@@ -210,17 +236,20 @@ input_laplace_prior = input_gaussian_prior
 def input_uniform_prior(prior, size):
     """Process the input Gaussian prior
 
-    Args:
-        prior (numpy.ndarray):
-            Either one or two dimensional array, with first group refer to mean
-            and second group refer to standard deviation.
-        size (int, optional):
-            Size the variable, prior related to.
+    Parameters
+    ----------
+    prior
+        Either one or two dimensional array, with first group refer to mean
+        and second group refer to standard deviation.
+    size
+        Size the variable, prior related to.
 
-    Returns:
-        numpy.ndarray:
-            Prior after processing, with shape (2, size), with the first row
-            store the mean and second row store the standard deviation.
+    Returns
+    -------
+    numpy.ndarray
+        Prior after processing, with shape (2, size), with the first row
+        store the mean and second row store the standard deviation.
+
     """
     assert is_uniform_prior(prior)
     if prior is None or prior.size == 0:
@@ -235,19 +264,22 @@ def input_uniform_prior(prior, size):
 def avg_integral(mat, spline=None, use_spline_intercept=False):
     """Compute average integral.
 
-    Args:
-        mat (numpy.ndarray):
-            Matrix that contains the starting and ending points of the integral
-            or a single column represents the mid-points.
-        spline (xspline.XSpline | None, optional):
-            Spline integrate over with, when `None` treat the function as
-            linear.
-        use_spline_intercept (bool, optional):
-            If `True` use all bases from spline, otherwise remove the first bases.
+    Parameters
+    ----------
+    mat
+        Matrix that contains the starting and ending points of the integral
+        or a single column represents the mid-points.
+    spline
+        Spline integrate over with, when `None` treat the function as
+        linear.
+    use_spline_intercept
+        If `True` use all bases from spline, otherwise remove the first bases.
 
-    Returns:
-        numpy.ndarray:
-            Design matrix when spline is not `None`, otherwise the mid-points.
+    Returns
+    -------
+    numpy.ndarray
+        Design matrix when spline is not `None`, otherwise the mid-points.
+
     """
     assert mat.ndim == 2
     if mat.size == 0:
@@ -511,13 +543,17 @@ def empty_array():
 def to_list(obj: Any) -> list[Any]:
     """Convert objective to list of object.
 
-    Args:
-        obj (Any): Object need to be convert.
+    Parameters
+    ----------
+    obj
+        Object need to be convert.
 
-    Returns:
-        list[Any]:
-            If `obj` already is a list object, return `obj` itself,
-            otherwise wrap `obj` with a list and return it.
+    Returns
+    -------
+    list[Any]
+        If `obj` already is a list object, return `obj` itself,
+        otherwise wrap `obj` with a list and return it.
+
     """
     if isinstance(obj, list):
         return obj
@@ -528,11 +564,16 @@ def to_list(obj: Any) -> list[Any]:
 def is_numeric_array(array: np.ndarray) -> bool:
     """Check if an array is numeric.
 
-    Args:
-        array (np.ndarray): Array need to be checked.
+    Parameters
+    ----------
+    array
+        Array need to be checked.
 
-    Returns:
-        bool: True if the array is numeric.
+    Returns
+    -------
+    bool
+        True if the array is numeric.
+
     """
     numerical_dtype_kinds = {
         "b",  # boolean
@@ -553,16 +594,23 @@ def expand_array(
 ) -> np.ndarray:
     """Expand array when it is empty.
 
-    Args:
-        array (np.ndarray):
-            Target array. If array is empty, fill in the ``value``. And
-            When it is not empty assert the ``shape`` agrees and return the original array.
-        shape (tuple[int]): The expected shape of the array.
-        value (Any): The expected value in final array.
-        name (str): Variable name of the array (for error message).
+    Parameters
+    ----------
+    array
+        Target array. If array is empty, fill in the ``value``. And
+        When it is not empty assert the ``shape`` agrees and return the original array.
+    shape
+        The expected shape of the array.
+    value
+        The expected value in final array.
+    name
+        Variable name of the array (for error message).
 
-    Returns:
-        np.ndarray: Expanded array.
+    Returns
+    -------
+    np.ndarray
+        Expanded array.
+
     """
     array = np.array(array)
     if len(array) == 0:
