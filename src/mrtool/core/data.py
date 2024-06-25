@@ -12,6 +12,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 from .utils import empty_array, expand_array, is_numeric_array, to_list
 
@@ -20,11 +21,11 @@ from .utils import empty_array, expand_array, is_numeric_array, to_list
 class MRData:
     """Data for simple linear mixed effects model."""
 
-    obs: np.ndarray = field(default_factory=empty_array)
-    obs_se: np.ndarray = field(default_factory=empty_array)
-    covs: dict[str, np.ndarray] = field(default_factory=dict)
-    study_id: np.ndarray = field(default_factory=empty_array)
-    data_id: np.ndarray = field(default_factory=empty_array)
+    obs: NDArray = field(default_factory=empty_array)
+    obs_se: NDArray = field(default_factory=empty_array)
+    covs: dict[str, NDArray] = field(default_factory=dict)
+    study_id: NDArray = field(default_factory=empty_array)
+    data_id: NDArray = field(default_factory=empty_array)
     cov_scales: dict[str, float] = field(init=False, default_factory=dict)
 
     def __post_init__(self):
@@ -121,7 +122,7 @@ class MRData:
         )
         self._sort_by_study_id()
 
-    def _sort_data(self, index: np.ndarray):
+    def _sort_data(self, index: NDArray):
         """Sort the object.
 
         Parameters
@@ -166,7 +167,7 @@ class MRData:
                 index = index | cov_index
             self._remove_data(index)
 
-    def _remove_data(self, index: np.ndarray):
+    def _remove_data(self, index: NDArray):
         """Remove the data point by index.
 
         Parameters
@@ -186,7 +187,7 @@ class MRData:
         self.study_id = self.study_id[keep_index]
         self.data_id = self.data_id[keep_index]
 
-    def _get_data(self, index: np.ndarray) -> "MRData":
+    def _get_data(self, index: NDArray) -> "MRData":
         """Get the data point by index.
 
         Parameters
@@ -383,7 +384,7 @@ class MRData:
                 f"MRData object do not contain studies: {missing_studies}."
             )
 
-    def get_covs(self, covs: list[str] | str) -> np.ndarray:
+    def get_covs(self, covs: list[str] | str) -> NDArray:
         """Get covariate matrix.
 
         Parameters
@@ -393,7 +394,7 @@ class MRData:
 
         Returns
         -------
-        np.ndarray
+        NDArray
             Covariates matrix, in the column fashion.
 
         """

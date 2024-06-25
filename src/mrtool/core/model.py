@@ -7,6 +7,7 @@ Model module for mrtool package.
 """
 
 from copy import deepcopy
+from typing import Sequence
 
 import numpy as np
 import pandas as pd
@@ -22,7 +23,10 @@ class MRBRT:
     """MR-BRT Object"""
 
     def __init__(
-        self, data: MRData, cov_models: list[CovModel], inlier_pct: float = 1.0
+        self,
+        data: MRData,
+        cov_models: Sequence[CovModel],
+        inlier_pct: float = 1.0,
     ):
         """Constructor of MRBRT.
 
@@ -80,12 +84,12 @@ class MRBRT:
         )
 
         # place holder for the limetr objective
-        self.lt = None
-        self.beta_soln = None
-        self.gamma_soln = None
-        self.u_soln = None
-        self.w_soln = None
-        self.re_soln = None
+        self.lt: LimeTr
+        self.beta_soln: NDArray
+        self.gamma_soln: NDArray
+        self.u_soln: NDArray
+        self.w_soln: NDArray
+        self.re_soln: NDArray
 
     def attach_data(self, data=None):
         """Attach data to cov_model."""

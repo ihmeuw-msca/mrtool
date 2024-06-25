@@ -8,6 +8,7 @@ Covariates model for `mrtool`.
 
 import numpy as np
 import xspline
+from numpy.typing import NDArray
 
 from . import utils
 from .data import MRData
@@ -438,7 +439,7 @@ class CovModel:
             return True
 
     def create_spline(
-        self, data: MRData, spline_knots: np.ndarray = None
+        self, data: MRData, spline_knots: NDArray | None = None
     ) -> xspline.XSpline:
         """Create spline given current spline parameters.
         Parameters
@@ -525,7 +526,7 @@ class CovModel:
 
         return spline
 
-    def create_design_mat(self, data) -> tuple[np.ndarray, np.ndarray]:
+    def create_design_mat(self, data) -> tuple[NDArray, NDArray]:
         """Create design matrix.
         Parameters
         ----------
@@ -564,7 +565,7 @@ class CovModel:
             "Cannot use create_z_mat directly in CovModel class."
         )
 
-    def create_constraint_mat(self) -> tuple[np.ndarray, np.ndarray]:
+    def create_constraint_mat(self) -> tuple[NDArray, NDArray]:
         """Create constraint matrix.
         Returns:
             tuple{numpy.ndarray, numpy.ndarray}:
@@ -679,7 +680,7 @@ class CovModel:
 
         return c_mat, c_val
 
-    def create_regularization_mat(self) -> tuple[np.ndarray, np.ndarray]:
+    def create_regularization_mat(self) -> tuple[NDArray, NDArray]:
         """Create constraint matrix.
         Returns:
             tuple{numpy.ndarray, numpy.ndarray}:

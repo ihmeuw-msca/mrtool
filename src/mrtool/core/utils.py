@@ -9,6 +9,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 
 def get_cols(df, cols):
@@ -124,7 +125,7 @@ def sizes_to_indices(sizes):
 
     Returns
     -------
-    list[np.ndarray]
+    list[NDArray]
         list the indices.
 
     """
@@ -325,29 +326,29 @@ def avg_integral(mat, spline=None, use_spline_intercept=False):
 # random knots
 def sample_knots(
     num_knots: int,
-    knot_bounds: np.ndarray,
-    min_dist: float | np.ndarray,
+    knot_bounds: NDArray,
+    min_dist: float | NDArray,
     num_samples: int = 1,
-) -> np.ndarray:
+) -> NDArray:
     """Sample knot vectors given a set of rules.
 
     Parameters
     ----------
     num_knots : int
         Number of interior knots.
-    knot_bounds : np.ndarray, shape(2,) or shape(`num_knots`,2)
+    knot_bounds : NDArray, shape(2,) or shape(`num_knots`,2)
         Lower and upper bounds for knots. If shape(2,), boundary knots
         placed at `knot_bounds[0]` and `knot_bounds[1]`. If
         shape(`num_knots`,2), boundary knots placed at
         `knot_bounds[0, 0]` and `knot_bounds[-1, 1]`.
-    min_dist : float or np.ndarray, shape(`num_knots`+1,)
+    min_dist : float or NDArray, shape(`num_knots`+1,)
         Minimum distances between knots.
     num_samples : int, optional
         Number of knot vectors to sample. Default is 1.
 
     Returns
     -------
-    np.ndarray, shape(`num_samples`,`num_knots`+2)
+    NDArray, shape(`num_samples`,`num_knots`+2)
         Sampled knot vectors.
 
     """
@@ -380,7 +381,7 @@ def _check_nums(num_name: str, num_val: int) -> None:
         raise ValueError(f"{num_name} must be at least 1")
 
 
-def _check_knot_bounds(num_knots: int, knot_bounds: np.ndarray) -> np.ndarray:
+def _check_knot_bounds(num_knots: int, knot_bounds: NDArray) -> NDArray:
     """Check knot_bounds."""
     try:
         knot_bounds = np.asarray(knot_bounds, dtype=float)
@@ -399,7 +400,7 @@ def _check_knot_bounds(num_knots: int, knot_bounds: np.ndarray) -> np.ndarray:
     return knot_bounds
 
 
-def _check_min_dist(num_knots: int, min_dist: float | np.ndarray) -> np.ndarray:
+def _check_min_dist(num_knots: int, min_dist: float | NDArray) -> NDArray:
     """Check knot min_dist."""
     if np.isscalar(min_dist):
         min_dist = np.tile(min_dist, num_knots + 1)
@@ -415,8 +416,8 @@ def _check_min_dist(num_knots: int, min_dist: float | np.ndarray) -> np.ndarray:
 
 
 def _check_feasibility(
-    num_knots: int, knot_bounds: np.ndarray, min_dist: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
+    num_knots: int, knot_bounds: NDArray, min_dist: NDArray
+) -> tuple[NDArray, NDArray]:
     """Check knot feasibility and get left and right boundaries."""
     if np.sum(min_dist) > knot_bounds[-1, 1] - knot_bounds[0, 0]:
         raise ValueError("min_dist cannot exceed knot_bounds")
@@ -561,7 +562,7 @@ def to_list(obj: Any) -> list[Any]:
         return [obj]
 
 
-def is_numeric_array(array: np.ndarray) -> bool:
+def is_numeric_array(array: NDArray) -> bool:
     """Check if an array is numeric.
 
     Parameters
@@ -590,8 +591,8 @@ def is_numeric_array(array: np.ndarray) -> bool:
 
 
 def expand_array(
-    array: np.ndarray, shape: tuple[int], value: Any, name: str
-) -> np.ndarray:
+    array: NDArray, shape: tuple[int], value: Any, name: str
+) -> NDArray:
     """Expand array when it is empty.
 
     Parameters
@@ -608,7 +609,7 @@ def expand_array(
 
     Returns
     -------
-    np.ndarray
+    NDArray
         Expanded array.
 
     """
@@ -630,7 +631,7 @@ def expand_array(
 def ravel_dict(x: dict) -> dict:
     """Ravel dictionary."""
     assert all([isinstance(k, str) for k in x.keys()])
-    assert all([isinstance(v, np.ndarray) for v in x.values()])
+    assert all([isinstance(v, NDArray) for v in x.values()])
     new_x = {}
     for k, v in x.items():
         if v.size == 1:

@@ -30,7 +30,7 @@ class CovFinder:
         power_step_size: float = 0.5,
         inlier_pct: float = 1.0,
         alpha: float = 0.05,
-        beta_gprior: dict[str, np.ndarray] = None,
+        beta_gprior: dict[str, np.ndarray] | None = None,
         beta_gprior_std: float = 1.0,
         bias_zero: bool = False,
         use_re: dict | None = None,
@@ -106,7 +106,7 @@ class CovFinder:
         self.power_step_size = power_step_size
         self.powers = np.arange(*self.power_range, self.power_step_size)
 
-        self.num_covs = len(pre_selected_covs) + len(covs)
+        self.num_covs = len(self.all_covs)
         if len(covs) == 0:
             warnings.warn(
                 "There is no covariates to select, will return the pre-selected covariates."
@@ -117,7 +117,7 @@ class CovFinder:
         self,
         covs: list[str],
         prior_type: str = "Laplace",
-        laplace_std: float = None,
+        laplace_std: float | None = None,
     ) -> MRBRT:
         """Create Gaussian or Laplace model.
 
