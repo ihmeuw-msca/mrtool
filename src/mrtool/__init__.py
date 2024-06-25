@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-    mrtool
-    ~~~~~~
+mrtool
+~~~~~~
 
-    `mrtool` package.
+`mrtool` package.
 """
+
 from .core.data import MRData
 from .core.cov_model import CovModel, LinearCovModel, LogCovModel
 from .core.model import MRBRT, MRBeRT
