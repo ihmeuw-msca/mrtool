@@ -567,9 +567,11 @@ class CovModel:
 
     def create_constraint_mat(self) -> tuple[NDArray, NDArray]:
         """Create constraint matrix.
-        Returns:
-            tuple{numpy.ndarray, numpy.ndarray}:
-                Return linear constraints matrix and its uniform prior.
+        Returns
+        -------
+        tuple[NDArray, NDArray]
+            Return linear constraints matrix and its uniform prior.
+
         """
         # initialize the matrix and the value
         c_mat = np.array([]).reshape(0, self.num_x_vars)
@@ -682,9 +684,11 @@ class CovModel:
 
     def create_regularization_mat(self) -> tuple[NDArray, NDArray]:
         """Create constraint matrix.
-        Returns:
-            tuple{numpy.ndarray, numpy.ndarray}:
-                Return linear regularization matrix and its Gaussian prior.
+        Returns
+        -------
+        tuple[NDArray, NDArray]
+            Return linear regularization matrix and its Gaussian prior.
+
         """
         r_mat = np.array([]).reshape(0, self.num_x_vars)
         r_val = np.array([]).reshape(2, 0)
@@ -813,9 +817,6 @@ class CovModel:
 class LinearCovModel(CovModel):
     """Linear Covariates Model."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def create_x_fun(self, data: MRData):
         """Create design function for the fixed effects."""
         alt_mat, ref_mat = self.create_design_mat(data)
@@ -854,12 +855,6 @@ class LinearCovModel(CovModel):
 
 class LogCovModel(CovModel):
     """Log Covariates Model."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # if self.use_spline_intercept:
-        #     raise ValueError("LogCovModel does not support use_spline_intercept."
-        #                      "Please set it to False, or leave it as default.")
 
     def create_x_fun(self, data):
         """Create design functions for the fixed effects.
