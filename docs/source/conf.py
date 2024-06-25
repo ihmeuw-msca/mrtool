@@ -12,8 +12,8 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import mrtool
 
@@ -64,7 +64,7 @@ templates_path = ["_templates"]
 source_suffix = ".rst"
 master_doc = "index"
 
-# List of patterns, relative to source directory, that match files and
+# list of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []

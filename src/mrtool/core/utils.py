@@ -5,7 +5,8 @@ utils
 `utils` module of the `mrtool` package.
 """
 
-from typing import Union, List, Any, Tuple
+from typing import Any, Union
+
 import numpy as np
 import pandas as pd
 
@@ -106,7 +107,7 @@ def sizes_to_indices(sizes):
             An array consist of non-negative number.
     Returns:
         list{range}:
-            List the indices.
+            list the indices.
     """
     indices = []
     a = 0
@@ -385,7 +386,7 @@ def _check_min_dist(
 
 def _check_feasibility(
     num_knots: int, knot_bounds: np.ndarray, min_dist: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Check knot feasibility and get left and right boundaries."""
     if np.sum(min_dist) > knot_bounds[-1, 1] - knot_bounds[0, 0]:
         raise ValueError("min_dist cannot exceed knot_bounds")
@@ -509,14 +510,14 @@ def empty_array():
     return np.array(list())
 
 
-def to_list(obj: Any) -> List[Any]:
+def to_list(obj: Any) -> list[Any]:
     """Convert objective to list of object.
 
     Args:
         obj (Any): Object need to be convert.
 
     Returns:
-        List[Any]:
+        list[Any]:
             If `obj` already is a list object, return `obj` itself,
             otherwise wrap `obj` with a list and return it.
     """
@@ -550,7 +551,7 @@ def is_numeric_array(array: np.ndarray) -> bool:
 
 
 def expand_array(
-    array: np.ndarray, shape: Tuple[int], value: Any, name: str
+    array: np.ndarray, shape: tuple[int], value: Any, name: str
 ) -> np.ndarray:
     """Expand array when it is empty.
 
@@ -558,7 +559,7 @@ def expand_array(
         array (np.ndarray):
             Target array. If array is empty, fill in the ``value``. And
             When it is not empty assert the ``shape`` agrees and return the original array.
-        shape (Tuple[int]): The expected shape of the array.
+        shape (tuple[int]): The expected shape of the array.
         value (Any): The expected value in final array.
         name (str): Variable name of the array (for error message).
 

@@ -29,14 +29,14 @@ def plot_risk_function(
             Beta samples generated using `sample_soln` function in MRBRT
         gamma_samples (np.ndarray):
             Gamma samples generated using `sample_soln` function in MRBRT
-        alt_cov_names (List[str], optional):
+        alt_cov_names (list[str], optional):
             Name of the alternative exposures, if `None` use `['b_0', 'b_1']`.
             Default to `None`.
-        ref_cov_names (List[str], optional):
+        ref_cov_names (list[str], optional):
             Name of the reference exposures, if `None` use `['a_0', 'a_1']`.
             Default to `None`.
         continuous_variables (list):
-            List of continuous covariate names.
+            list of continuous covariate names.
         plot_note (str):
             The notes intended to be written on the title.
         plots_dir (str):
@@ -139,10 +139,10 @@ def plot_derivative_fit(
             MRBRT object.
         pair (str):
             risk_outcome pair. eg. 'redmeat_colorectal'
-        alt_cov_names (List[str], optional):
+        alt_cov_names (list[str], optional):
             Name of the alternative exposures, if `None` use `['b_0', 'b_1']`.
             Default to `None`.
-        ref_cov_names (List[str], optional):
+        ref_cov_names (list[str], optional):
             Name of the reference exposures, if `None` use `['a_0', 'a_1']`.
             Default to `None`.
         plot_note (str, optional):

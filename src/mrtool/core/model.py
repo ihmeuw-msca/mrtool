@@ -7,7 +7,7 @@ Model module for mrtool package.
 """
 
 from copy import deepcopy
-from typing import List, Tuple, Union
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -23,13 +23,13 @@ class MRBRT:
     """MR-BRT Object"""
 
     def __init__(
-        self, data: MRData, cov_models: List[CovModel], inlier_pct: float = 1.0
+        self, data: MRData, cov_models: list[CovModel], inlier_pct: float = 1.0
     ):
         """Constructor of MRBRT.
 
         Args:
             data (MRData): Data for meta-regression.
-            cov_models (List[CovModel]): A list of covariates models.
+            cov_models (list[CovModel]): A list of covariates models.
             inlier_pct (float, optional):
                 A float number between 0 and 1 indicate the percentage of inliers.
         """
@@ -369,14 +369,14 @@ class MRBRT:
 
         return prediction
 
-    def sample_soln(self, sample_size: int = 1) -> Tuple[NDArray, NDArray]:
+    def sample_soln(self, sample_size: int = 1) -> tuple[NDArray, NDArray]:
         """Sample solutions.
 
         Args:
             sample_size (int, optional): Number of samples.
 
         Return:
-            Tuple[NDArray, NDArray]:
+            tuple[NDArray, NDArray]:
                 Return beta samples and gamma samples.
         """
         if self.lt is None:
@@ -437,7 +437,7 @@ class MRBRT:
 
         return y_samples.T
 
-    def summary(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def summary(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Return the summary data frame."""
         fe = pd.DataFrame(utils.ravel_dict(self.fe_soln), index=[0])
         re_var = pd.DataFrame(utils.ravel_dict(self.re_var_soln), index=[0])
@@ -453,7 +453,7 @@ class MRBeRT:
         data: MRData,
         ensemble_cov_model: CovModel,
         ensemble_knots: NDArray,
-        cov_models: Union[List[CovModel], None] = None,
+        cov_models: Union[list[CovModel], None] = None,
         inlier_pct: float = 1.0,
     ):
         """Constructor of `MRBeRT`
@@ -462,7 +462,7 @@ class MRBeRT:
             data (MRData): Data for meta-regression.
             ensemble_cov_model (CovModel):
                 Covariates model which will be used with ensemble.
-            cov_models (Union[List[CovModel], None], optional):
+            cov_models (Union[list[CovModel], None], optional):
                 Other covariate models, assume to be mutual exclusive with ensemble_cov_mdoel.
             inlier_pct (float): A float number between 0 and 1 indicate the percentage of inliers.
         """
@@ -547,7 +547,7 @@ class MRBeRT:
 
     def sample_soln(
         self, sample_size: int = 1
-    ) -> Tuple[List[NDArray], List[NDArray]]:
+    ) -> tuple[list[NDArray], list[NDArray]]:
         """Sample solution."""
         sample_sizes = np.random.multinomial(sample_size, self.weights)
 
@@ -601,8 +601,8 @@ class MRBeRT:
     def create_draws(
         self,
         data: MRData,
-        beta_samples: List[NDArray],
-        gamma_samples: List[NDArray],
+        beta_samples: list[NDArray],
+        gamma_samples: list[NDArray],
         random_study: bool = True,
         sort_by_data_id: bool = False,
     ) -> NDArray:
@@ -640,7 +640,7 @@ class MRBeRT:
 
         return y_samples
 
-    def summary(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def summary(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Create summary data frame."""
         summary_list = [sub_model.summary() for sub_model in self.sub_models]
         fe = pd.concat([summary_list[i][0] for i in range(self.num_sub_models)])

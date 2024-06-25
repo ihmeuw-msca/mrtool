@@ -6,8 +6,6 @@ cov_model
 Covariates model for `mrtool`.
 """
 
-from typing import Tuple
-
 import numpy as np
 import xspline
 
@@ -94,34 +92,34 @@ class CovModel:
                 If use right linear tail.
             prior_spline_derval_gaussian (np.ndarray, optional):
                 Gaussian prior for the derivative value of the spline.
-            prior_spline_derval_gaussian_domain (Tuple[float, float], optional):
+            prior_spline_derval_gaussian_domain (tuple[float, float], optional):
                 Domain for the Gaussian prior for the derivative value of the spline.
             prior_spline_derval_uniform (np.ndarray, optional):
                 Uniform prior for the derivative value of the spline.
-            prior_spline_derval_uniform_domain (Tuple[float, float], optional):
+            prior_spline_derval_uniform_domain (tuple[float, float], optional):
                 Domain for the uniform prior for the derivative value of the spline.
             prior_spline_der2val_gaussian (np.ndarray, optional):
                 Gaussian prior for the second order derivative value of the spline.
-            prior_spline_der2val_gaussian_domain (Tuple[float, float], optional):
+            prior_spline_der2val_gaussian_domain (tuple[float, float], optional):
                 Domain for the Gaussian prior for the second order derivative value of the spline.
             prior_spline_der2val_uniform (np.ndarray, optional):
                 Uniform prior for the second order derivative value of the spline.
-            prior_spline_der2val_uniform_domain (Tuple[float, float], optional):
+            prior_spline_der2val_uniform_domain (tuple[float, float], optional):
                 Domain for the uniform prior for the second order derivative value of the spline.
             prior_spline_funval_gaussian (np.ndarray, optional):
                 Gaussian prior for the function value of the spline.
-            prior_spline_funval_gaussian_domain (Tuple[float, float], optional):
+            prior_spline_funval_gaussian_domain (tuple[float, float], optional):
                 Domain for the Gaussian prior for the function value of the spline.
             prior_spline_funval_uniform (np.ndarray, optional):
                 Uniform prior for the function value of the spline.
-            prior_spline_funval_uniform_domain (Tuple[float, float], optional):
+            prior_spline_funval_uniform_domain (tuple[float, float], optional):
                 Domain for the uniform prior for the function value of the spline.
             prior_spline_monotonicity (str | None, optional):
                 Spline shape prior, `'increasing'` indicates spline is
                 increasing, `'decreasing'` indicates spline is decreasing.
-            prior_spline_monotonicity_domain (Tuple[float, float], optional):
+            prior_spline_monotonicity_domain (tuple[float, float], optional):
                 Domain where spline monotonicity prior applies. Default to `(0.0, 1.0)`.
-            prior_spline_convexity_domain (Tuple[float, float], optional):
+            prior_spline_convexity_domain (tuple[float, float], optional):
                 Domain where spline convexity prior applies. Default to `(0.0, 1.0)`.
             prior_spline_convexity (str | None, optional):
                 Spline shape prior, `'convex'` indicate if spline is convex and
@@ -555,7 +553,7 @@ class CovModel:
             "Cannot use create_z_mat directly in CovModel class."
         )
 
-    def create_constraint_mat(self) -> Tuple[np.ndarray, np.ndarray]:
+    def create_constraint_mat(self) -> tuple[np.ndarray, np.ndarray]:
         """Create constraint matrix.
         Returns:
             tuple{numpy.ndarray, numpy.ndarray}:
@@ -670,7 +668,7 @@ class CovModel:
 
         return c_mat, c_val
 
-    def create_regularization_mat(self) -> Tuple[np.ndarray, np.ndarray]:
+    def create_regularization_mat(self) -> tuple[np.ndarray, np.ndarray]:
         """Create constraint matrix.
         Returns:
             tuple{numpy.ndarray, numpy.ndarray}:

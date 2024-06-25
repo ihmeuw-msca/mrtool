@@ -6,12 +6,14 @@ data
 `data` module for `mrtool` package.
 """
 
-from typing import Dict, List, Union, Any
 import warnings
 from dataclasses import dataclass, field
+from typing import Any, Union
+
 import numpy as np
 import pandas as pd
-from .utils import empty_array, to_list, is_numeric_array, expand_array
+
+from .utils import empty_array, expand_array, is_numeric_array, to_list
 
 
 @dataclass
@@ -20,10 +22,10 @@ class MRData:
 
     obs: np.ndarray = field(default_factory=empty_array)
     obs_se: np.ndarray = field(default_factory=empty_array)
-    covs: Dict[str, np.ndarray] = field(default_factory=dict)
+    covs: dict[str, np.ndarray] = field(default_factory=dict)
     study_id: np.ndarray = field(default_factory=empty_array)
     data_id: np.ndarray = field(default_factory=empty_array)
-    cov_scales: Dict[str, float] = field(init=False, default_factory=dict)
+    cov_scales: dict[str, float] = field(init=False, default_factory=dict)
 
     def __post_init__(self):
         self._check_attr_type()
@@ -207,7 +209,7 @@ class MRData:
             raise ValueError("MRData object is empty.")
 
     def is_cov_normalized(
-        self, covs: Union[List[str], str, None] = None
+        self, covs: Union[list[str], str, None] = None
     ) -> bool:
         """Return true when covariates are normalized."""
         if covs is None:
@@ -237,7 +239,7 @@ class MRData:
         data: pd.DataFrame,
         col_obs: Union[str, None] = None,
         col_obs_se: Union[str, None] = None,
-        col_covs: Union[List[str], None] = None,
+        col_covs: Union[list[str], None] = None,
         col_study_id: Union[str, None] = None,
         col_data_id: Union[str, None] = None,
     ):
@@ -273,7 +275,7 @@ class MRData:
         data,
         var_obs: Union[str, None] = None,
         var_obs_se: Union[str, None] = None,
-        var_covs: Union[List[str], None] = None,
+        var_covs: Union[list[str], None] = None,
         coord_study_id: Union[str, None] = None,
     ):
         """Load data from xarray."""
@@ -312,12 +314,12 @@ class MRData:
 
         return df
 
-    def has_covs(self, covs: Union[List[str], str]) -> bool:
+    def has_covs(self, covs: Union[list[str], str]) -> bool:
         """If the data has the provided covariates.
 
         Args:
-            covs (Union[List[str], str]):
-                List of covariate names or one covariate name.
+            covs (Union[list[str], str]):
+                list of covariate names or one covariate name.
 
         Returns:
             bool: If has covariates return `True`.
@@ -328,12 +330,12 @@ class MRData:
         else:
             return all([cov in self.covs for cov in covs])
 
-    def has_studies(self, studies: Union[List[Any], Any]) -> bool:
+    def has_studies(self, studies: Union[list[Any], Any]) -> bool:
         """If the data has provided study_id
 
         Args:
-            studies Union[List[Any], Any]:
-                List of studies or one study.
+            studies Union[list[Any], Any]:
+                list of studies or one study.
 
         Returns:
             bool: If has studies return `True`.
@@ -344,7 +346,7 @@ class MRData:
         else:
             return all([study in self.studies for study in studies])
 
-    def _assert_has_covs(self, covs: Union[List[str], str]):
+    def _assert_has_covs(self, covs: Union[list[str], str]):
         """Assert has covariates otherwise raise ValueError."""
         if not self.has_covs(covs):
             covs = to_list(covs)
@@ -353,7 +355,7 @@ class MRData:
                 f"MRData object do not contain covariates: {missing_covs}."
             )
 
-    def _assert_has_studies(self, studies: Union[List[Any], Any]):
+    def _assert_has_studies(self, studies: Union[list[Any], Any]):
         """Assert has studies otherwise raise ValueError."""
         if not self.has_studies(studies):
             studies = to_list(studies)
@@ -364,12 +366,12 @@ class MRData:
                 f"MRData object do not contain studies: {missing_studies}."
             )
 
-    def get_covs(self, covs: Union[List[str], str]) -> np.ndarray:
+    def get_covs(self, covs: Union[list[str], str]) -> np.ndarray:
         """Get covariate matrix.
 
         Args:
-            covs (Union[List[str], str]):
-                List of covariate names or one covariate name.
+            covs (Union[list[str], str]):
+                list of covariate names or one covariate name.
 
         Returns:
             np.ndarray: Covariates matrix, in the column fashion.
@@ -383,11 +385,11 @@ class MRData:
                 [self.covs[cov_names][:, None] for cov_names in covs]
             )
 
-    def get_study_data(self, studies: Union[List[Any], Any]) -> "MRData":
+    def get_study_data(self, studies: Union[list[Any], Any]) -> "MRData":
         """Get study specific data.
 
         Args:
-            studies (Union[List[Any], Any]): List of studies or  one study.
+            studies (Union[list[Any], Any]): list of studies or  one study.
 
         Returns
             MRData: Data object contains the study specific data.
@@ -397,7 +399,7 @@ class MRData:
         index = np.array([study in studies for study in self.study_id])
         return self._get_data(index)
 
-    def normalize_covs(self, covs: Union[List[str], str, None] = None):
+    def normalize_covs(self, covs: Union[list[str], str, None] = None):
         """Normalize covariates by the largest absolute value for each covariate."""
         if covs is None:
             covs = list(self.covs.keys())
