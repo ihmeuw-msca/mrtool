@@ -5,7 +5,7 @@ utils
 `utils` module of the `mrtool` package.
 """
 
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -294,7 +294,7 @@ def avg_integral(mat, spline=None, use_spline_intercept=False):
 def sample_knots(
     num_knots: int,
     knot_bounds: np.ndarray,
-    min_dist: Union[float, np.ndarray],
+    min_dist: float | np.ndarray,
     num_samples: int = 1,
 ) -> np.ndarray:
     """Sample knot vectors given a set of rules.
@@ -367,9 +367,7 @@ def _check_knot_bounds(num_knots: int, knot_bounds: np.ndarray) -> np.ndarray:
     return knot_bounds
 
 
-def _check_min_dist(
-    num_knots: int, min_dist: Union[float, np.ndarray]
-) -> np.ndarray:
+def _check_min_dist(num_knots: int, min_dist: float | np.ndarray) -> np.ndarray:
     """Check knot min_dist."""
     if np.isscalar(min_dist):
         min_dist = np.tile(min_dist, num_knots + 1)

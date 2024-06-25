@@ -6,7 +6,6 @@ Cov Finder
 
 import warnings
 from copy import deepcopy
-from typing import Union
 
 import numpy as np
 
@@ -23,7 +22,7 @@ class CovFinder:
         self,
         data: MRData,
         covs: list[str],
-        pre_selected_covs: Union[list[str], None] = None,
+        pre_selected_covs: list[str] | None = None,
         normalized_covs: bool = True,
         num_samples: int = 1000,
         laplace_threshold: float = 1e-5,
@@ -34,7 +33,7 @@ class CovFinder:
         beta_gprior: dict[str, np.ndarray] = None,
         beta_gprior_std: float = 1.0,
         bias_zero: bool = False,
-        use_re: Union[dict, None] = None,
+        use_re: dict | None = None,
     ):
         """Covariate Finder.
 
@@ -59,7 +58,7 @@ class CovFinder:
             beta_gprior_std (float, optional): Loose beta Gaussian prior standard deviation. Default to 1.
             bias_zero (bool, optional):
                 If `True`, fit when specify the Gaussian prior it will be mean zero. Default to `False`.
-            use_re (Union[dict, None], optional):
+            use_re (dict | None, optional):
                 A dictionary of use_re for each covariate. When `None` we have an uninformative prior
                 for the random effects variance. Default to `None`.
         """

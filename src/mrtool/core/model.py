@@ -7,7 +7,6 @@ Model module for mrtool package.
 """
 
 from copy import deepcopy
-from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -453,7 +452,7 @@ class MRBeRT:
         data: MRData,
         ensemble_cov_model: CovModel,
         ensemble_knots: NDArray,
-        cov_models: Union[list[CovModel], None] = None,
+        cov_models: list[CovModel] | None = None,
         inlier_pct: float = 1.0,
     ):
         """Constructor of `MRBeRT`
@@ -462,7 +461,7 @@ class MRBeRT:
             data (MRData): Data for meta-regression.
             ensemble_cov_model (CovModel):
                 Covariates model which will be used with ensemble.
-            cov_models (Union[list[CovModel], None], optional):
+            cov_models (list[CovModel] | None, optional):
                 Other covariate models, assume to be mutual exclusive with ensemble_cov_mdoel.
             inlier_pct (float): A float number between 0 and 1 indicate the percentage of inliers.
         """
