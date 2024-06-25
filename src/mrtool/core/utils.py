@@ -1,29 +1,34 @@
 # -*- coding: utf-8 -*-
 """
-    utils
-    ~~~~~
-    `utils` module of the `mrtool` package.
+utils
+~~~~~
+`utils` module of the `mrtool` package.
 """
-from typing import Union, List, Any, Tuple
+
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
 
 def get_cols(df, cols):
     """Return the columns of the given data frame.
-    Args:
-        df (pandas.DataFrame):
-            Given data frame.
-        cols (str | list{str} | None):
-            Given column name(s), if is `None`, will return a empty data frame.
-    Returns:
-        pandas.DataFrame | pandas.Series:
-            The data frame contains the columns.
+    Parameters
+    ----------
+    df
+        Given data frame.
+    cols
+        Given column name(s), if is `None`, will return a empty data frame.
+
+    Returns
+    -------
+    pandas.DataFrame | pandas.Series:
+        The data frame contains the columns.
+
     """
     assert isinstance(df, pd.DataFrame)
     if isinstance(cols, list):
-        assert all([isinstance(col, str) and col in df
-                    for col in cols])
+        assert all([isinstance(col, str) and col in df for col in cols])
     else:
         assert (cols is None) or (isinstance(cols, str) and cols in df)
 
@@ -35,32 +40,39 @@ def get_cols(df, cols):
 
 def is_cols(cols):
     """Check variable type fall into the column name category.
-    Args:
-        cols (str | list{str} | None):
-            Column names candidate.
-    Returns:
-        bool:
-            if `col` is either str, list{str} or None
+    Parameters
+    ----------
+    cols
+        Column names candidate.
+
+    Returns
+    -------
+    bool
+        if `col` is either str, list{str} or None
+
     """
     ok = isinstance(cols, (str, list)) or cols is None
     if isinstance(cols, list):
-        ok = ok and all([isinstance(col, str)
-                         for col in cols])
+        ok = ok and all([isinstance(col, str) for col in cols])
     return ok
 
 
 def input_cols(cols, append_to=None, default=None):
     """Process the input column name.
-    Args:
-        cols (str | list{str} | None):
-            The input column name(s).
-        append_to (list{str} | None, optional):
-            A list keep track of all the column names.
-        default (str | list{str} | None, optional):
-            Default value when `cols` is `None`.
-    Returns:
-        str | list{str}:
-            The name of the column(s)
+    Parameters
+    ----------
+    cols
+        The input column name(s).
+    append_to
+        A list keep track of all the column names.
+    default
+        Default value when `cols` is `None`.
+
+    Returns
+    -------
+    str | list{str}
+        The name of the column(s)
+
     """
     assert is_cols(cols)
     assert is_cols(append_to)
@@ -82,13 +94,16 @@ def input_cols(cols, append_to=None, default=None):
 def combine_cols(cols):
     """Combine column names into one list of names.
 
-    Args:
-        cols (list{str | list{str}}):
-            A list of names of columns or list of column names.
+    Parameters
+    ----------
+    cols
+        A list of names of columns or list of column names.
 
-    Return:
-        list{str}:
-            Combined names of columns.
+    Returns
+    -------
+    list[str]
+        Combined names of columns.
+
     """
     combined_cols = []
     for col in cols:
@@ -102,12 +117,16 @@ def combine_cols(cols):
 
 def sizes_to_indices(sizes):
     """Converting sizes to corresponding indices.
-    Args:
-        sizes (numpy.dnarray):
-            An array consist of non-negative number.
-    Returns:
-        list{range}:
-            List the indices.
+    Parameters
+    ----------
+    sizes
+        An array consist of non-negative number.
+
+    Returns
+    -------
+    list[np.ndarray]
+        list the indices.
+
     """
     indices = []
     a = 0
@@ -123,18 +142,20 @@ def sizes_to_indices(sizes):
 def is_gaussian_prior(prior, size=None):
     """Check if variable satisfy Gaussian prior format
 
-    Args:
-        prior (numpy.ndarray):
-            Either one or two dimensional array, with first group refer to mean
-            and second group refer to standard deviation.
+    Parameters
+    ----------
+    prior
+        Either one or two dimensional array, with first group refer to mean
+        and second group refer to standard deviation.
 
-    Keyword Args:
-        size (int | None, optional):
-            Size the variable, prior related to.
+    size
+        Size the variable, prior related to.
 
-    Returns:
-        bool:
-            True if satisfy condition.
+    Returns
+    -------
+    bool
+        True if satisfy condition.
+
     """
     # check type
     ok = isinstance(prior, np.ndarray) or prior is None
@@ -147,23 +168,27 @@ def is_gaussian_prior(prior, size=None):
         ok = ok and np.all(prior[1] > 0.0)
     return ok
 
+
 is_laplace_prior = is_gaussian_prior
+
 
 def is_uniform_prior(prior, size=None):
     """Check if variable satisfy uniform prior format
 
-    Args:
-        prior (numpy.ndarray):
-            Either one or two dimensional array, with first group refer to lower
-            bound and second group refer to upper bound.
+    Parameters
+    ----------
+    prior
+        Either one or two dimensional array, with first group refer to lower
+        bound and second group refer to upper bound.
 
-    Keyword Args:
-        size (int | None, optional):
-            Size the variable, prior related to.
+    size
+        Size the variable, prior related to.
 
-    Returns:
-        bool:
-            True if satisfy condition.
+    Returns
+    -------
+    bool
+        True if satisfy condition.
+
     """
     # check type
     ok = isinstance(prior, np.ndarray) or prior is None
@@ -180,47 +205,55 @@ def is_uniform_prior(prior, size=None):
 def input_gaussian_prior(prior, size):
     """Process the input Gaussian prior
 
-    Args:
-        prior (numpy.ndarray):
-            Either one or two dimensional array, with first group refer to mean
-            and second group refer to standard deviation.
-        size (int, optional):
-            Size the variable, prior related to.
+    Parameters
+    ----------
+    prior
+        Either one or two dimensional array, with first group refer to mean
+        and second group refer to standard deviation.
+    size
+        Size the variable, prior related to.
 
-    Returns:
-        numpy.ndarray:
-            Prior after processing, with shape (2, size), with the first row
-            store the mean and second row store the standard deviation.
+    Returns
+    -------
+    numpy.ndarray
+        Prior after processing, with shape (2, size), with the first row
+        store the mean and second row store the standard deviation.
+
     """
     assert is_gaussian_prior(prior)
     if prior is None or prior.size == 0:
-        return np.array([[0.0]*size, [np.inf]*size])
+        return np.array([[0.0] * size, [np.inf] * size])
     elif prior.ndim == 1:
         return np.repeat(prior[:, None], size, axis=1)
     else:
         assert prior.shape[1] == size
         return prior
 
+
 input_laplace_prior = input_gaussian_prior
+
 
 def input_uniform_prior(prior, size):
     """Process the input Gaussian prior
 
-    Args:
-        prior (numpy.ndarray):
-            Either one or two dimensional array, with first group refer to mean
-            and second group refer to standard deviation.
-        size (int, optional):
-            Size the variable, prior related to.
+    Parameters
+    ----------
+    prior
+        Either one or two dimensional array, with first group refer to mean
+        and second group refer to standard deviation.
+    size
+        Size the variable, prior related to.
 
-    Returns:
-        numpy.ndarray:
-            Prior after processing, with shape (2, size), with the first row
-            store the mean and second row store the standard deviation.
+    Returns
+    -------
+    numpy.ndarray
+        Prior after processing, with shape (2, size), with the first row
+        store the mean and second row store the standard deviation.
+
     """
     assert is_uniform_prior(prior)
     if prior is None or prior.size == 0:
-        return np.array([[-np.inf]*size, [np.inf]*size])
+        return np.array([[-np.inf] * size, [np.inf] * size])
     elif prior.ndim == 1:
         return np.repeat(prior[:, None], size, axis=1)
     else:
@@ -231,19 +264,22 @@ def input_uniform_prior(prior, size):
 def avg_integral(mat, spline=None, use_spline_intercept=False):
     """Compute average integral.
 
-    Args:
-        mat (numpy.ndarray):
-            Matrix that contains the starting and ending points of the integral
-            or a single column represents the mid-points.
-        spline (xspline.XSpline | None, optional):
-            Spline integrate over with, when `None` treat the function as
-            linear.
-        use_spline_intercept (bool, optional):
-            If `True` use all bases from spline, otherwise remove the first bases.
+    Parameters
+    ----------
+    mat
+        Matrix that contains the starting and ending points of the integral
+        or a single column represents the mid-points.
+    spline
+        Spline integrate over with, when `None` treat the function as
+        linear.
+    use_spline_intercept
+        If `True` use all bases from spline, otherwise remove the first bases.
 
-    Returns:
-        numpy.ndarray:
-            Design matrix when spline is not `None`, otherwise the mid-points.
+    Returns
+    -------
+    numpy.ndarray
+        Design matrix when spline is not `None`, otherwise the mid-points.
+
     """
     assert mat.ndim == 2
     if mat.size == 0:
@@ -252,8 +288,13 @@ def avg_integral(mat, spline=None, use_spline_intercept=False):
     index = 0 if use_spline_intercept else 1
 
     if mat.shape[1] == 1:
-        return mat if spline is None else spline.design_mat(
-            mat.ravel(), l_extra=True, r_extra=True)[:, index:]
+        return (
+            mat
+            if spline is None
+            else spline.design_mat(mat.ravel(), l_extra=True, r_extra=True)[
+                :, index:
+            ]
+        )
     else:
         if spline is None:
             return mat.mean(axis=1)[:, None]
@@ -261,28 +302,33 @@ def avg_integral(mat, spline=None, use_spline_intercept=False):
             x0 = mat[:, 0]
             x1 = mat[:, 1]
             dx = x1 - x0
-            val_idx = (dx == 0.0)
-            int_idx = (dx != 0.0)
+            val_idx = dx == 0.0
+            int_idx = dx != 0.0
 
             mat = np.zeros((dx.size, spline.num_spline_bases))
 
             if np.any(val_idx):
-                mat[val_idx, :] = spline.design_mat(x0[val_idx],
-                                                    l_extra=True,
-                                                    r_extra=True)
+                mat[val_idx, :] = spline.design_mat(
+                    x0[val_idx], l_extra=True, r_extra=True
+                )
             if np.any(int_idx):
-                mat[int_idx, :] = spline.design_imat(
-                    x0[int_idx], x1[int_idx], 1,
-                    l_extra=True,
-                    r_extra=True)/(dx[int_idx][:, None])
+                mat[int_idx, :] = (
+                    spline.design_imat(
+                        x0[int_idx], x1[int_idx], 1, l_extra=True, r_extra=True
+                    )
+                    / (dx[int_idx][:, None])
+                )
 
             return mat[:, index:]
 
 
 # random knots
-def sample_knots(num_knots: int, knot_bounds: np.ndarray,
-                 min_dist: Union[float, np.ndarray],
-                 num_samples: int = 1) -> np.ndarray:
+def sample_knots(
+    num_knots: int,
+    knot_bounds: np.ndarray,
+    min_dist: float | np.ndarray,
+    num_samples: int = 1,
+) -> np.ndarray:
     """Sample knot vectors given a set of rules.
 
     Parameters
@@ -306,12 +352,13 @@ def sample_knots(num_knots: int, knot_bounds: np.ndarray,
 
     """
     # Check input
-    _check_nums('num_knots', num_knots)
-    _check_nums('num_samples', num_samples)
+    _check_nums("num_knots", num_knots)
+    _check_nums("num_samples", num_samples)
     knot_bounds = _check_knot_bounds(num_knots, knot_bounds)
     min_dist = _check_min_dist(num_knots, min_dist)
-    left_bounds, right_bounds = _check_feasibility(num_knots, knot_bounds,
-                                                   min_dist)
+    left_bounds, right_bounds = _check_feasibility(
+        num_knots, knot_bounds, min_dist
+    )
 
     # Sample knots
     knots = np.zeros((num_samples, num_knots + 2))
@@ -320,7 +367,7 @@ def sample_knots(num_knots: int, knot_bounds: np.ndarray,
     for ii in range(num_knots):
         left_bound = np.maximum(left_bounds[ii], knots[:, ii] + min_dist[ii])
         if np.any(left_bound > right_bounds[ii]):
-            raise ValueError('empty sampling interval')
+            raise ValueError("empty sampling interval")
         knots[:, ii + 1] = np.random.uniform(left_bound, right_bounds[ii])
     return knots
 
@@ -338,53 +385,55 @@ def _check_knot_bounds(num_knots: int, knot_bounds: np.ndarray) -> np.ndarray:
     try:
         knot_bounds = np.asarray(knot_bounds, dtype=float)
     except Exception as error:
-        raise TypeError('knot_bounds must be an array') from error
+        raise TypeError("knot_bounds must be an array") from error
     if knot_bounds.shape != (num_knots, 2):
         if knot_bounds.shape == (2,):
             knot_bounds = np.tile(knot_bounds, (num_knots, 1))
         else:
-            msg = 'knot_bounds must have shape(2,) or (num_knots,2)'
+            msg = "knot_bounds must have shape(2,) or (num_knots,2)"
             raise ValueError(msg)
-    bounds_sorted = np.all(np.diff(knot_bounds, axis=1) > 0.)
-    neighbors_sorted = np.all(np.diff(knot_bounds, axis=0) >= 0.)
+    bounds_sorted = np.all(np.diff(knot_bounds, axis=1) > 0.0)
+    neighbors_sorted = np.all(np.diff(knot_bounds, axis=0) >= 0.0)
     if not (bounds_sorted and neighbors_sorted):
-        raise ValueError('knot_bounds must be sorted')
+        raise ValueError("knot_bounds must be sorted")
     return knot_bounds
 
 
-def _check_min_dist(num_knots: int,
-                    min_dist: Union[float, np.ndarray]) -> np.ndarray:
+def _check_min_dist(num_knots: int, min_dist: float | np.ndarray) -> np.ndarray:
     """Check knot min_dist."""
     if np.isscalar(min_dist):
         min_dist = np.tile(min_dist, num_knots + 1)
     try:
         min_dist = np.asarray(min_dist, dtype=float)
     except Exception as error:
-        raise TypeError('min_dist must be a float or array') from error
+        raise TypeError("min_dist must be a float or array") from error
     if min_dist.shape != (num_knots + 1,):
-        raise ValueError('min_dist must have shape(num_knots+1,)')
-    if np.any(min_dist < 0.):
-        raise ValueError('min_dist must be positive')
+        raise ValueError("min_dist must have shape(num_knots+1,)")
+    if np.any(min_dist < 0.0):
+        raise ValueError("min_dist must be positive")
     return min_dist
 
 
-def _check_feasibility(num_knots: int, knot_bounds: np.ndarray,
-                       min_dist: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def _check_feasibility(
+    num_knots: int, knot_bounds: np.ndarray, min_dist: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """Check knot feasibility and get left and right boundaries."""
     if np.sum(min_dist) > knot_bounds[-1, 1] - knot_bounds[0, 0]:
-        raise ValueError('min_dist cannot exceed knot_bounds')
+        raise ValueError("min_dist cannot exceed knot_bounds")
     left_bounds = np.zeros(num_knots)
     left_bounds[0] = knot_bounds[0, 0] + min_dist[0]
     for ii in range(1, num_knots):
-        left_bounds[ii] = np.maximum(knot_bounds[ii, 0],
-                                     left_bounds[ii - 1] + min_dist[ii])
+        left_bounds[ii] = np.maximum(
+            knot_bounds[ii, 0], left_bounds[ii - 1] + min_dist[ii]
+        )
     right_bounds = np.zeros(num_knots)
     right_bounds[-1] = knot_bounds[-1, 1] - min_dist[-1]
     for ii in range(-2, -(num_knots + 1), -1):
-        right_bounds[ii] = np.minimum(knot_bounds[ii, 1],
-                                      right_bounds[ii + 1] - min_dist[ii])
+        right_bounds[ii] = np.minimum(
+            knot_bounds[ii, 1], right_bounds[ii + 1] - min_dist[ii]
+        )
     if np.any(left_bounds > right_bounds):
-        raise ValueError('knot_bounds and min_dist not feasible')
+        raise ValueError("knot_bounds and min_dist not feasible")
     return left_bounds, right_bounds
 
 
@@ -394,18 +443,18 @@ def nonlinear_trans(score, slope=6.0, quantile=0.7):
     if score_max == score_min:
         return np.ones(len(score))
     else:
-        weight = (score - score_min)/(score_max - score_min)
+        weight = (score - score_min) / (score_max - score_min)
 
     sorted_weight = np.sort(weight)
-    x = sorted_weight[int(0.8*weight.size)]
+    x = sorted_weight[int(0.8 * weight.size)]
     y = 1.0 - x
 
     # calculate the transformation coefficient
     c = np.zeros(4)
-    c[1] = slope*x**2/quantile
-    c[0] = quantile*np.exp(c[1]/x)
-    c[3] = slope*y**2/(1.0 - quantile)
-    c[2] = (1.0 - quantile)*np.exp(c[3]/y)
+    c[1] = slope * x**2 / quantile
+    c[0] = quantile * np.exp(c[1] / x)
+    c[3] = slope * y**2 / (1.0 - quantile)
+    c[2] = (1.0 - quantile) * np.exp(c[3] / y)
 
     weight_trans = np.zeros(weight.size)
 
@@ -414,14 +463,15 @@ def nonlinear_trans(score, slope=6.0, quantile=0.7):
         if w == 0.0:
             weight_trans[i] = 0.0
         elif w < x:
-            weight_trans[i] = c[0]*np.exp(-c[1]/w)
+            weight_trans[i] = c[0] * np.exp(-c[1] / w)
         elif w < 1.0:
-            weight_trans[i] = 1.0 - c[2]*np.exp(-c[3]/(1.0 - w))
+            weight_trans[i] = 1.0 - c[2] * np.exp(-c[3] / (1.0 - w))
         else:
             weight_trans[i] = 1.0
 
-    weight_trans = (weight_trans - np.min(weight_trans))/\
-        (np.max(weight_trans) - np.min(weight_trans))
+    weight_trans = (weight_trans - np.min(weight_trans)) / (
+        np.max(weight_trans) - np.min(weight_trans)
+    )
 
     return weight_trans
 
@@ -441,6 +491,7 @@ def mat_to_fun(alt_mat, ref_mat=None):
             mat = alt_mat
         else:
             mat = alt_mat - ref_mat
+
         def fun(x, mat=mat):
             return mat.dot(x)
 
@@ -448,6 +499,7 @@ def mat_to_fun(alt_mat, ref_mat=None):
             return mat
 
     return fun, jac_fun
+
 
 def mat_to_log_fun(alt_mat, ref_mat=None, add_one=True):
     alt_mat = np.array(alt_mat)
@@ -462,21 +514,24 @@ def mat_to_log_fun(alt_mat, ref_mat=None, add_one=True):
         jac_fun = None
     else:
         if ref_mat is None or ref_mat.size == 0:
+
             def fun(beta):
                 alt_val = np.abs(shift + alt_mat.dot(beta))
                 return np.log(alt_val)
 
             def jac_fun(beta):
-                return alt_mat/(shift + alt_mat.dot(beta)[:, None])
+                return alt_mat / (shift + alt_mat.dot(beta)[:, None])
         else:
+
             def fun(beta):
                 alt_val = np.abs(shift + alt_mat.dot(beta))
                 ref_val = np.abs(shift + ref_mat.dot(beta))
                 return np.log(alt_val) - np.log(ref_val)
 
             def jac_fun(beta):
-                return alt_mat/(shift + alt_mat.dot(beta)[:, None]) - \
-                       ref_mat/(shift + ref_mat.dot(beta)[:, None])
+                return alt_mat / (
+                    shift + alt_mat.dot(beta)[:, None]
+                ) - ref_mat / (shift + ref_mat.dot(beta)[:, None])
 
     return fun, jac_fun
 
@@ -484,16 +539,21 @@ def mat_to_log_fun(alt_mat, ref_mat=None, add_one=True):
 def empty_array():
     return np.array(list())
 
-def to_list(obj: Any) -> List[Any]:
+
+def to_list(obj: Any) -> list[Any]:
     """Convert objective to list of object.
 
-    Args:
-        obj (Any): Object need to be convert.
+    Parameters
+    ----------
+    obj
+        Object need to be convert.
 
-    Returns:
-        List[Any]:
-            If `obj` already is a list object, return `obj` itself,
-            otherwise wrap `obj` with a list and return it.
+    Returns
+    -------
+    list[Any]
+        If `obj` already is a list object, return `obj` itself,
+        otherwise wrap `obj` with a list and return it.
+
     """
     if isinstance(obj, list):
         return obj
@@ -504,17 +564,24 @@ def to_list(obj: Any) -> List[Any]:
 def is_numeric_array(array: np.ndarray) -> bool:
     """Check if an array is numeric.
 
-    Args:
-        array (np.ndarray): Array need to be checked.
+    Parameters
+    ----------
+    array
+        Array need to be checked.
 
-    Returns:
-        bool: True if the array is numeric.
+    Returns
+    -------
+    bool
+        True if the array is numeric.
+
     """
-    numerical_dtype_kinds = {'b',  # boolean
-                             'u',  # unsigned integer
-                             'i',  # signed integer
-                             'f',  # floats
-                             'c'}  # complex
+    numerical_dtype_kinds = {
+        "b",  # boolean
+        "u",  # unsigned integer
+        "i",  # signed integer
+        "f",  # floats
+        "c",
+    }  # complex
     try:
         return array.dtype.kind in numerical_dtype_kinds
     except AttributeError:
@@ -522,28 +589,36 @@ def is_numeric_array(array: np.ndarray) -> bool:
         return np.asarray(array).dtype.kind in numerical_dtype_kinds
 
 
-def expand_array(array: np.ndarray,
-                 shape: Tuple[int],
-                 value: Any,
-                 name: str) -> np.ndarray:
+def expand_array(
+    array: np.ndarray, shape: tuple[int], value: Any, name: str
+) -> np.ndarray:
     """Expand array when it is empty.
 
-    Args:
-        array (np.ndarray):
-            Target array. If array is empty, fill in the ``value``. And
-            When it is not empty assert the ``shape`` agrees and return the original array.
-        shape (Tuple[int]): The expected shape of the array.
-        value (Any): The expected value in final array.
-        name (str): Variable name of the array (for error message).
+    Parameters
+    ----------
+    array
+        Target array. If array is empty, fill in the ``value``. And
+        When it is not empty assert the ``shape`` agrees and return the original array.
+    shape
+        The expected shape of the array.
+    value
+        The expected value in final array.
+    name
+        Variable name of the array (for error message).
 
-    Returns:
-        np.ndarray: Expanded array.
+    Returns
+    -------
+    np.ndarray
+        Expanded array.
+
     """
     array = np.array(array)
     if len(array) == 0:
-        if hasattr(value, '__iter__') and not isinstance(value, str):
+        if hasattr(value, "__iter__") and not isinstance(value, str):
             value = np.array(value)
-            assert value.shape == shape, f"{name}, alternative value inconsistent shape."
+            assert (
+                value.shape == shape
+            ), f"{name}, alternative value inconsistent shape."
             array = value
         else:
             array = np.full(shape, value)
@@ -553,8 +628,7 @@ def expand_array(array: np.ndarray,
 
 
 def ravel_dict(x: dict) -> dict:
-    """Ravel dictionary.
-    """
+    """Ravel dictionary."""
     assert all([isinstance(k, str) for k in x.keys()])
     assert all([isinstance(v, np.ndarray) for v in x.values()])
     new_x = {}
@@ -563,5 +637,5 @@ def ravel_dict(x: dict) -> dict:
             new_x[k] = v
         else:
             for i in range(v.size):
-                new_x[f'{k}_{i}'] = v[i]
+                new_x[f"{k}_{i}"] = v[i]
     return new_x
