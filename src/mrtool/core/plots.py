@@ -3,6 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
 from mrtool import MRData
 
 
@@ -71,9 +72,9 @@ def plot_risk_function(
     pred_data = MRData()
     pred_data.load_df(pred_df, col_covs=col_covs)
 
-    y_draws = mrbrt.create_draws(
-        pred_data, beta_samples, gamma_samples, random_study=True
-    )
+    # y_draws = mrbrt.create_draws(
+    #     pred_data, beta_samples, gamma_samples, random_study=True
+    # )
     y_draws_fe = mrbrt.create_draws(
         pred_data, beta_samples, gamma_samples, random_study=False
     )

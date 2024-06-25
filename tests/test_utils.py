@@ -8,6 +8,7 @@ Test `utils` module of `sfma` package.
 import numpy as np
 import pandas as pd
 import pytest
+
 from mrtool import utils
 
 
@@ -62,13 +63,6 @@ def test_input_cols_append_to(cols, full_cols):
         assert "col0" in full_cols and "col2" in full_cols
         if isinstance(cols, list):
             assert "col1" in full_cols
-
-
-def test_sizes_to_indices(sizes, indices):
-    my_indices = utils.sizes_to_indices(sizes)
-    assert all(
-        [np.allclose(my_indices[i], indices[i]) for i in range(len(sizes))]
-    )
 
 
 @pytest.mark.parametrize("sizes", [np.array([1, 2, 3])])

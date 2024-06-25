@@ -12,7 +12,7 @@ license = { file = "LICENSE" }
 authors = [
     { name = "IHME Math Sciences", email = "ihme.math.sciences@gmail.com" },
 ]
-dependencies = ["numpy", "pandas", "scipy", "xspline<0.1.0", "xarray", "limetr<0.1.0"]
+dependencies = ["numpy", "pandas", "scipy", "xspline<0.1.0", "xarray", "limetr<0.1.0", "matplotlib"]
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-mock"]
