@@ -91,7 +91,7 @@ class MRData:
         assert isinstance(self.covs, dict)
         for cov in self.covs.values():
             assert isinstance(cov, np.ndarray)
-            assert is_numeric_array(cov)
+            # assert is_numeric_array(cov)
 
     def _get_cov_scales(self):
         """Compute the covariate scale."""
@@ -103,6 +103,7 @@ class MRData:
             self.cov_scales = {
                 cov_name: np.max(np.abs(cov))
                 for cov_name, cov in self.covs.items()
+                if is_numeric_array(cov)
             }
             zero_covs = [
                 cov_name
@@ -159,12 +160,13 @@ class MRData:
         if not self.is_empty():
             index = np.full(self.num_obs, False)
             for cov_name, cov in self.covs.items():
-                cov_index = np.isnan(cov)
-                if cov_index.any():
-                    warnings.warn(
-                        f"There are {cov_index.sum()} nans in covaraite {cov_name}."
-                    )
-                index = index | cov_index
+                if is_numeric_array(cov):
+                    cov_index = np.isnan(cov)
+                    if cov_index.any():
+                        warnings.warn(
+                            f"There are {cov_index.sum()} nans in covaraite {cov_name}."
+                        )
+                    index = index | cov_index
             self._remove_data(index)
 
     def _remove_data(self, index: NDArray):

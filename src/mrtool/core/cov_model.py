@@ -7,6 +7,7 @@ Covariates model for `mrtool`.
 """
 
 import numpy as np
+import pandas as pd
 import xspline
 from numpy.typing import NDArray
 
@@ -451,7 +452,7 @@ class CovModel:
 
         Returns
         -------
-        xspline.XSpline
+        XSpline
             The spline object.
 
         """
@@ -535,7 +536,7 @@ class CovModel:
 
         Returns
         -------
-        tuple[numpy.ndarray, numpy.ndarray]
+        tuple[NDArray, NDArray]
             Return the design matrix for linear cov or spline.
 
         """
@@ -832,7 +833,7 @@ class LinearCovModel(CovModel):
 
         Returns
         -------
-        numpy.ndarray
+        NDArray
             Design matrix for random effects.
 
         """
@@ -884,7 +885,7 @@ class LogCovModel(CovModel):
 
         Returns
         -------
-        numpy.ndarray
+        NDArray
             Design matrix for random effects.
 
         """
@@ -929,3 +930,110 @@ class LogCovModel(CovModel):
     @property
     def num_z_vars(self):
         return int(self.use_re)
+
+
+class CatCovModel(CovModel):
+    """Categorical covariate model.
+
+    TODO: Add order prior.
+    """
+
+    def __init__(
+        self,
+        alt_cov,
+        name=None,
+        ref_cov=None,
+        ref_cat=None,
+        use_re=False,
+        prior_beta_gaussian=None,
+        prior_beta_uniform=None,
+        prior_beta_laplace=None,
+        prior_gamma_gaussian=None,
+        prior_gamma_uniform=None,
+        prior_gamma_laplace=None,
+    ) -> None:
+        super().__init__(
+            alt_cov=alt_cov,
+            name=name,
+            ref_cov=ref_cov,
+            use_re=use_re,
+            prior_beta_gaussian=prior_beta_gaussian,
+            prior_beta_uniform=prior_beta_uniform,
+            prior_beta_laplace=prior_beta_laplace,
+            prior_gamma_gaussian=prior_gamma_gaussian,
+            prior_gamma_uniform=prior_gamma_uniform,
+            prior_gamma_laplace=prior_gamma_laplace,
+        )
+        self.ref_cat = ref_cat
+        if len(self.alt_cov) != 1:
+            raise ValueError("alt_cov should be a single column.")
+        if len(self.ref_cov) > 1:
+            raise ValueError("ref_cov should be nothing or a single column.")
+
+        self.cats: pd.Series
+
+    def attach_data(self, data: MRData) -> None:
+        """Attach data and parse the categories. Number of variables will be
+        determined here and priors will be processed here as well.
+
+        """
+        alt_cov = data.get_covs(self.alt_cov)
+        ref_cov = data.get_covs(self.ref_cov)
+        self.cats = pd.Series(
+            np.unique(np.hstack([alt_cov, ref_cov])),
+            name="cats",
+        )
+        self._process_priors()
+
+    def has_data(self) -> bool:
+        """Return if the data has been attached and categories has been parsed."""
+        return hasattr(self, "cats")
+
+    def encode(self, x: NDArray) -> NDArray:
+        """Encode the provided categories into dummy variables."""
+        col = pd.merge(pd.Series(x, name="cats"), self.cats.reset_index())[
+            "index"
+        ]
+        mat = np.zeros((len(x), self.num_x_vars))
+        mat[range(len(x)), col] = 1.0
+        return mat
+
+    def create_design_mat(self, data: MRData) -> tuple[NDArray, NDArray]:
+        """Create design matrix for alternative and reference categories."""
+        alt_cov = data.get_covs(self.alt_cov).ravel()
+        ref_cov = data.get_covs(self.ref_cov).ravel()
+
+        alt_mat = self.encode(alt_cov)
+        if ref_cov.size == 0:
+            ref_mat = np.zeros((len(alt_cov), self.num_x_vars))
+        else:
+            ref_mat = self.encode(ref_cov)
+        return alt_mat, ref_mat
+
+    def create_constraint_mat(self) -> tuple[NDArray, NDArray]:
+        """TODO: Create constraint matrix from order priors."""
+        return np.empty((0, self.num_x_vars)), np.empty((2, 0))
+
+    @property
+    def num_x_vars(self) -> int:
+        """Number of the fixed effects. Returns 0 if data is not attached
+        otherwise it will return the number of categories.
+
+        """
+        if not hasattr(self, "cats"):
+            return 0
+        return len(self.cats)
+
+    @property
+    def num_z_vars(self) -> int:
+        """Number of the random effects. Currently it is the same with the
+        number of the fixed effects, but this is to be discussed.
+        TODO: Overwrite the number of random effects.
+
+        """
+        return self.num_x_vars
+
+    @property
+    def num_constraints(self) -> int:
+        """TODO: Overwrite the number of constraints."""
+        return 0
