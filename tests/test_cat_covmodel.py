@@ -29,7 +29,7 @@ def data():
 
 
 def test_init():
-    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat")
+    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A")
     assert covmodel.alt_cov == ["alt_cat"]
     assert covmodel.ref_cov == ["ref_cat"]
 
@@ -41,18 +41,43 @@ def test_init():
         CatCovModel(alt_cov=["a", "b"])
 
     with pytest.raises(ValueError):
-        CatCovModel(alt_cov="a", ref_cov=["a", "b"])
+        CatCovModel(alt_cov="a", ref_cov=["a", "b"], ref_cat="A")
 
 
 def test_attach_data(data):
-    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat")
+    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A")
     assert not hasattr(covmodel, "cats")
     covmodel.attach_data(data)
     assert covmodel.cats.to_list() == ["A", "B", "C", "D"]
 
 
+def test_ref_cov(data):
+    with pytest.raises(ValueError):
+        covmodel = CatCovModel(
+            alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="E"
+        )
+        covmodel.attach_data(data)
+
+    with pytest.raises(ValueError):
+        covmodel = CatCovModel(alt_cov="alt_cat", ref_cat="A")
+
+    covmodel = CatCovModel(alt_cov="alt_cat")
+    covmodel.attach_data(data)
+    assert covmodel.ref_cat is None
+
+    with pytest.warns():
+        covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat")
+    assert covmodel.ref_cat is None
+    covmodel.attach_data(data)
+    assert covmodel.ref_cat == "A"
+
+    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="B")
+    covmodel.attach_data(data)
+    assert covmodel.ref_cat == "B"
+
+
 def test_has_data(data):
-    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat")
+    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A")
     assert not covmodel.has_data()
 
     covmodel.attach_data(data)
@@ -60,7 +85,7 @@ def test_has_data(data):
 
 
 def test_encode(data):
-    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat")
+    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A")
     covmodel.attach_data(data)
 
     mat = covmodel.encode(["A", "B", "C", "C"])
@@ -77,8 +102,16 @@ def test_encode(data):
     assert np.allclose(mat, true_mat)
 
 
+def test_encode_fail(data):
+    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A")
+    covmodel.attach_data(data)
+
+    with pytest.raises(ValueError):
+        covmodel.encode(["A", "B", "C", "E"])
+
+
 def test_create_design_mat(data):
-    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat")
+    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A")
     covmodel.attach_data(data)
 
     alt_mat, ref_mat = covmodel.create_design_mat(data)

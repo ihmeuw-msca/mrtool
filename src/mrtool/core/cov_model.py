@@ -6,6 +6,8 @@ cov_model
 Covariates model for `mrtool`.
 """
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import xspline
@@ -972,21 +974,40 @@ class CatCovModel(CovModel):
             raise ValueError("alt_cov should be a single column.")
         if len(self.ref_cov) > 1:
             raise ValueError("ref_cov should be nothing or a single column.")
+        if len(self.ref_cov) == 1 and self.ref_cat is None:
+            warnings.warn(
+                "ref_cat is not provided for a comparison covmodel, it will be "
+                "inferenced as the most common categories when attaching data."
+            )
+        if len(self.ref_cov) == 0 and self.ref_cat is not None:
+            raise ValueError(
+                "Cannot set ref_cat when this is not a comparison model."
+            )
 
         self.cats: pd.Series
 
     def attach_data(self, data: MRData) -> None:
         """Attach data and parse the categories. Number of variables will be
-        determined here and priors will be processed here as well.
+        determined here and priors will be processed and if ref_cov is not set
+        before, and this is a comparison model, ref_cov will be inferred as the
+        most common category.
 
         """
         alt_cov = data.get_covs(self.alt_cov)
         ref_cov = data.get_covs(self.ref_cov)
-        self.cats = pd.Series(
-            np.unique(np.hstack([alt_cov, ref_cov])),
-            name="cats",
+        unique_cats, counts = np.unique(
+            np.hstack([alt_cov, ref_cov]), return_counts=True
         )
+        self.cats = pd.Series(unique_cats, name="cats")
         self._process_priors()
+
+        if len(self.ref_cov) == 1:
+            if self.ref_cat is None:
+                self.ref_cat = unique_cats[counts.argmax()]
+            if self.ref_cat not in unique_cats:
+                raise ValueError(
+                    f"ref_cat {self.ref_cat} is not in the categories."
+                )
 
     def has_data(self) -> bool:
         """Return if the data has been attached and categories has been parsed."""
@@ -994,9 +1015,11 @@ class CatCovModel(CovModel):
 
     def encode(self, x: NDArray) -> NDArray:
         """Encode the provided categories into dummy variables."""
-        col = pd.merge(pd.Series(x, name="cats"), self.cats.reset_index())[
-            "index"
-        ]
+        col = pd.merge(
+            pd.Series(x, name="cats"), self.cats.reset_index(), how="left"
+        )["index"]
+        if np.isnan(col).any():
+            raise ValueError("Categories not found")
         mat = np.zeros((len(x), self.num_x_vars))
         mat[range(len(x)), col] = 1.0
         return mat
