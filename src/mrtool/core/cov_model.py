@@ -953,6 +953,8 @@ class CatCovModel(CovModel):
         prior_gamma_uniform=None,
         prior_gamma_laplace=None,
     ) -> None:
+        self.ref_cat = ref_cat
+        self.use_re_intercept = use_re_intercept
         super().__init__(
             alt_cov=alt_cov,
             name=name,
@@ -965,8 +967,7 @@ class CatCovModel(CovModel):
             prior_gamma_uniform=prior_gamma_uniform,
             prior_gamma_laplace=prior_gamma_laplace,
         )
-        self.ref_cat = ref_cat
-        self.use_re_intercept = use_re_intercept
+
         if len(self.alt_cov) != 1:
             raise ValueError("alt_cov should be a single column.")
         if len(self.ref_cov) > 1:
