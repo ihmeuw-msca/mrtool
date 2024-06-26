@@ -945,6 +945,7 @@ class CatCovModel(CovModel):
         ref_cov=None,
         ref_cat=None,
         use_re=False,
+        use_re_intercept=False,
         prior_beta_gaussian=None,
         prior_beta_uniform=None,
         prior_beta_laplace=None,
@@ -965,6 +966,7 @@ class CatCovModel(CovModel):
             prior_gamma_laplace=prior_gamma_laplace,
         )
         self.ref_cat = ref_cat
+        self.use_re_intercept = use_re_intercept
         if len(self.alt_cov) != 1:
             raise ValueError("alt_cov should be a single column.")
         if len(self.ref_cov) > 1:
@@ -1026,11 +1028,13 @@ class CatCovModel(CovModel):
 
     @property
     def num_z_vars(self) -> int:
-        """Number of the random effects. Currently it is the same with the
-        number of the fixed effects, but this is to be discussed.
-        TODO: Overwrite the number of random effects.
+        """Number of the random effects. When use_re_intercept is set to True,
+        it will use a single intercept random effect. Otherwise, it will use
+        each category will have its own random effect.
 
         """
+        if self.use_re_intercept:
+            return 1
         return self.num_x_vars
 
     @property
