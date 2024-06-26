@@ -6,6 +6,7 @@ cov_model
 Covariates model for `mrtool`.
 """
 
+import itertools
 import warnings
 
 import numpy as np
@@ -947,7 +948,8 @@ class CatCovModel(CovModel):
         ref_cov=None,
         ref_cat=None,
         use_re=False,
-        use_re_intercept=False,
+        use_re_intercept=True,
+        prior_order=None,
         prior_beta_gaussian=None,
         prior_beta_uniform=None,
         prior_beta_laplace=None,
@@ -957,6 +959,13 @@ class CatCovModel(CovModel):
     ) -> None:
         self.ref_cat = ref_cat
         self.use_re_intercept = use_re_intercept
+        if prior_order is not None:
+            prior_order_raw, prior_order = prior_order, []
+            for prior in prior_order_raw:
+                prior_order.extend(list(zip(prior, prior[1:])))
+            prior_order = list(set(prior_order))
+            prior_order.sort()
+        self.prior_order = prior_order
         super().__init__(
             alt_cov=alt_cov,
             name=name,
@@ -1008,6 +1017,17 @@ class CatCovModel(CovModel):
                 raise ValueError(
                     f"ref_cat {self.ref_cat} is not in the categories."
                 )
+
+        # TODO: set the uniform prior for ref_cat to zero
+
+        if self.prior_order is not None:
+            for cat in set(
+                list(itertools.chain.from_iterable(self.prior_order))
+            ):
+                if cat not in unique_cats:
+                    raise ValueError(
+                        f"Order prior category {cat} is not in the categories."
+                    )
 
     def has_data(self) -> bool:
         """Return if the data has been attached and categories has been parsed."""

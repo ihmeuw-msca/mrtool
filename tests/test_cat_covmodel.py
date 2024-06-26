@@ -139,3 +139,31 @@ def test_create_design_mat(data):
             ]
         ),
     )
+
+
+def test_order_prior(data):
+    covmodel = CatCovModel(
+        alt_cov="alt_cat",
+        ref_cov="ref_cat",
+        ref_cat="A",
+        prior_order=[["A", "B"], ["B", "C"]],
+    )
+    covmodel.attach_data(data)
+    assert covmodel.prior_order == [("A", "B"), ("B", "C")]
+
+    covmodel = CatCovModel(
+        alt_cov="alt_cat",
+        ref_cov="ref_cat",
+        ref_cat="A",
+        prior_order=[["A", "B", "C"], ["B", "C"]],
+    )
+    assert covmodel.prior_order == [("A", "B"), ("B", "C")]
+
+    with pytest.raises(ValueError):
+        covmodel = CatCovModel(
+            alt_cov="alt_cat",
+            ref_cov="ref_cat",
+            ref_cat="A",
+            prior_order=[["A", "B"], ["B", "C", "E"]],
+        )
+        covmodel.attach_data(data)
