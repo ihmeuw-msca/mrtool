@@ -936,10 +936,7 @@ class LogCovModel(CovModel):
 
 
 class CatCovModel(CovModel):
-    """Categorical covariate model.
-
-    TODO: Add order prior.
-    """
+    """Categorical covariate model."""
 
     def __init__(
         self,
@@ -1018,7 +1015,27 @@ class CatCovModel(CovModel):
                     f"ref_cat {self.ref_cat} is not in the categories."
                 )
 
-        # TODO: set the uniform prior for ref_cat to zero
+        if self.ref_cat is not None:
+            ref_index = dict(zip(self.cats, self.cats.index))[self.ref_cat]
+            ref_beta_uprior = self.prior_beta_uniform[:, ref_index]
+            if not (
+                np.isinf(ref_beta_uprior).all()
+                or np.allclose(ref_beta_uprior, 0.0)
+            ):
+                warnings.warn(
+                    f"Reset ref_cat beta uniform prior from {ref_beta_uprior} to (0, 0)"
+                )
+            self.prior_beta_uniform[:, ref_index] = 0.0
+            if not self.use_re_intercept:
+                ref_gamma_uprior = self.prior_gamma_uniform[:, ref_index]
+                if not (
+                    np.isinf(ref_gamma_uprior[1]).all()
+                    or np.allclose(ref_gamma_uprior, 0.0)
+                ):
+                    warnings.warn(
+                        f"Reset ref_cat gamma uniform prior from {ref_gamma_uprior} to (0, 0)"
+                    )
+                self.prior_gamma_uniform[:, ref_index] = 0.0
 
         if self.prior_order is not None:
             for cat in set(

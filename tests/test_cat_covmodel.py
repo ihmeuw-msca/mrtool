@@ -64,6 +64,14 @@ def test_ref_cov(data):
     covmodel = CatCovModel(alt_cov="alt_cat")
     covmodel.attach_data(data)
     assert covmodel.ref_cat is None
+    assert np.isinf(covmodel.prior_beta_uniform).all()
+
+    covmodel = CatCovModel(alt_cov="alt_cat", use_re_intercept=False)
+    covmodel.attach_data(data)
+    assert covmodel.ref_cat is None
+    assert np.isinf(covmodel.prior_beta_uniform).all()
+    assert np.allclose(covmodel.prior_gamma_uniform[0], 0.0)
+    assert np.isposinf(covmodel.prior_gamma_uniform[1]).all()
 
     with pytest.warns():
         covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat")
@@ -71,9 +79,22 @@ def test_ref_cov(data):
     covmodel.attach_data(data)
     assert covmodel.ref_cat == "A"
 
-    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="B")
+    covmodel = CatCovModel(
+        alt_cov="alt_cat",
+        ref_cov="ref_cat",
+        ref_cat="B",
+        use_re_intercept=False,
+    )
     covmodel.attach_data(data)
     assert covmodel.ref_cat == "B"
+    my_beta_uprior = np.array(
+        [[-np.inf, 0.0, -np.inf, -np.inf], [np.inf, 0.0, np.inf, np.inf]]
+    )
+    my_gamma_uprior = np.array(
+        [[0.0, 0.0, 0.0, 0.0], [np.inf, 0.0, np.inf, np.inf]]
+    )
+    assert np.allclose(covmodel.prior_beta_uniform, my_beta_uprior)
+    assert np.allclose(covmodel.prior_gamma_uniform, my_gamma_uprior)
 
 
 def test_has_data(data):
