@@ -1026,7 +1026,7 @@ class CatCovModel(CovModel):
                     f"Reset ref_cat beta uniform prior from {ref_beta_uprior} to (0, 0)"
                 )
             self.prior_beta_uniform[:, ref_index] = 0.0
-            if not self.use_re_intercept:
+            if self.use_re and (not self.use_re_intercept):
                 ref_gamma_uprior = self.prior_gamma_uniform[:, ref_index]
                 if not (
                     np.isinf(ref_gamma_uprior[1]).all()
@@ -1068,14 +1068,32 @@ class CatCovModel(CovModel):
 
         alt_mat = self.encode(alt_cov)
         if ref_cov.size == 0:
-            ref_mat = np.zeros((len(alt_cov), self.num_x_vars))
+            ref_mat = np.empty((len(alt_cov), 0))
         else:
             ref_mat = self.encode(ref_cov)
         return alt_mat, ref_mat
 
     def create_constraint_mat(self) -> tuple[NDArray, NDArray]:
-        """TODO: Create constraint matrix from order priors."""
-        return np.empty((0, self.num_x_vars)), np.empty((2, 0))
+        c_mat, c_val = super().create_constraint_mat()
+        if not self.prior_order:
+            return c_mat, c_val
+
+        c_val = np.hstack(
+            [
+                c_val,
+                np.repeat(
+                    np.array([[-np.inf], [0.0]]), len(self.prior_order), axis=1
+                ),
+            ]
+        )
+
+        mats = []
+        for alt_cat, ref_cat in self.prior_order:
+            alt_mat = self.encode([alt_cat])
+            ref_mat = self.encode([ref_cat])
+            mats.append(alt_mat - ref_mat)
+        c_mat = np.vstack([c_mat] + mats)
+        return c_mat, c_val
 
     @property
     def num_x_vars(self) -> int:
@@ -1094,11 +1112,15 @@ class CatCovModel(CovModel):
         each category will have its own random effect.
 
         """
+        if not self.use_re:
+            return 0
         if self.use_re_intercept:
             return 1
         return self.num_x_vars
 
     @property
     def num_constraints(self) -> int:
-        """TODO: Overwrite the number of constraints."""
-        return 0
+        num = super().num_constraints
+        if self.prior_order:
+            num += len(self.prior_order)
+        return num

@@ -66,7 +66,9 @@ def test_ref_cov(data):
     assert covmodel.ref_cat is None
     assert np.isinf(covmodel.prior_beta_uniform).all()
 
-    covmodel = CatCovModel(alt_cov="alt_cat", use_re_intercept=False)
+    covmodel = CatCovModel(
+        alt_cov="alt_cat", use_re=True, use_re_intercept=False
+    )
     covmodel.attach_data(data)
     assert covmodel.ref_cat is None
     assert np.isinf(covmodel.prior_beta_uniform).all()
@@ -83,6 +85,7 @@ def test_ref_cov(data):
         alt_cov="alt_cat",
         ref_cov="ref_cat",
         ref_cat="B",
+        use_re=True,
         use_re_intercept=False,
     )
     covmodel.attach_data(data)
@@ -188,3 +191,73 @@ def test_order_prior(data):
             prior_order=[["A", "B"], ["B", "C", "E"]],
         )
         covmodel.attach_data(data)
+
+
+def test_num_x_vars(data):
+    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A")
+    assert covmodel.num_x_vars == 0
+    covmodel.attach_data(data)
+    assert covmodel.num_x_vars == 4
+
+
+def test_num_z_vars(data):
+    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A")
+    assert covmodel.num_z_vars == 0
+
+    covmodel = CatCovModel(
+        alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A", use_re=True
+    )
+    assert covmodel.num_z_vars == 1
+
+    covmodel = CatCovModel(
+        alt_cov="alt_cat",
+        ref_cov="ref_cat",
+        ref_cat="A",
+        use_re=True,
+        use_re_intercept=False,
+    )
+    assert covmodel.num_z_vars == 0
+    covmodel.attach_data(data)
+    assert covmodel.num_z_vars == 4
+
+
+def test_num_constraints(data):
+    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A")
+    assert covmodel.num_constraints == 0
+    covmodel = CatCovModel(
+        alt_cov="alt_cat",
+        ref_cov="ref_cat",
+        ref_cat="A",
+        prior_order=[["A", "B", "C"]],
+    )
+    assert covmodel.num_constraints == 2
+
+
+def test_create_constraint_mat(data):
+    covmodel = CatCovModel(
+        alt_cov="alt_cat",
+        ref_cov="ref_cat",
+        ref_cat="A",
+        prior_order=[["A", "B", "C"]],
+    )
+    covmodel.attach_data(data)
+    c_mat, c_val = covmodel.create_constraint_mat()
+    assert np.allclose(
+        c_mat,
+        np.array(
+            [
+                [1.0, -1.0, 0.0, 0.0],
+                [0.0, 1.0, -1.0, 0.0],
+            ]
+        ),
+    )
+
+    assert np.allclose(
+        c_val,
+        np.array(
+            [
+                [-np.inf, -np.inf],
+                [0.0, 0.0],
+            ]
+        ),
+    )
