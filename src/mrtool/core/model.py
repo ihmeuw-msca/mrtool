@@ -51,6 +51,15 @@ class MRBRT:
             self.cov_names.extend(cov_model.covs)
         self.num_covs = len(self.cov_names)
 
+        # place holder for the limetr objective
+        self.lt: LimeTr
+        self.beta_soln: NDArray
+        self.gamma_soln: NDArray
+        self.u_soln: NDArray
+        self.w_soln: NDArray
+        self.re_soln: NDArray
+
+    def _infer_shape(self) -> None:
         # add random effects
         if not any([cov_model.use_re for cov_model in self.cov_models]):
             self.cov_models[0].use_re = True
@@ -82,14 +91,6 @@ class MRBRT:
         self.num_regularizations = sum(
             [cov_model.num_regularizations for cov_model in self.cov_models]
         )
-
-        # place holder for the limetr objective
-        self.lt: LimeTr
-        self.beta_soln: NDArray
-        self.gamma_soln: NDArray
-        self.u_soln: NDArray
-        self.w_soln: NDArray
-        self.re_soln: NDArray
 
     def attach_data(self, data=None):
         """Attach data to cov_model."""
@@ -239,6 +240,7 @@ class MRBRT:
         """
         if not all([cov_model.has_data() for cov_model in self.cov_models]):
             self.attach_data()
+        self._infer_shape()
 
         # dimensions
         n = self.data.study_sizes
