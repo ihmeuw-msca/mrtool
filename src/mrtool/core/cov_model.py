@@ -8,6 +8,7 @@ Covariates model for `mrtool`.
 
 import itertools
 import warnings
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -1124,3 +1125,40 @@ class CatCovModel(CovModel):
         if self.prior_order:
             num += len(self.prior_order)
         return num
+
+    def create_z_mat(self, data: MRData) -> NDArray:
+        if not self.use_re:
+            return np.empty((data.num_obs, 0))
+
+        if self.use_re_intercept:
+            alt_mat = np.ones((data.num_obs, 1))
+            ref_mat = np.empty((data.num_obs, 0))
+        else:
+            alt_mat, ref_mat = self.create_design_mat(data)
+
+        z_mat = alt_mat if ref_mat.size == 0 else alt_mat - ref_mat
+        return z_mat
+
+
+class LinearCatCovModel(CatCovModel):
+    def create_x_fun(self, data: MRData) -> Callable:
+        alt_mat, ref_mat = self.create_design_mat(data)
+        return utils.mat_to_fun(alt_mat, ref_mat=ref_mat)
+
+
+class LogCatCovModel(CatCovModel):
+    def attach_data(self, data: MRData) -> None:
+        super().attach_data(data)
+
+        # add positive constraints to each category
+        # Currently we hard-code the offset value
+        offset = 1e-6
+        shift = 0.0 if self.ref_cat is None else 1.0
+        lb = -shift + offset
+
+        self.prior_beta_uniform = np.maximum(lb, self.prior_beta_uniform)
+
+    def create_x_fun(self, data: MRData) -> Callable:
+        alt_mat, ref_mat = self.create_design_mat(data)
+        add_one = self.ref_cat is not None
+        return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat, add_one=add_one)

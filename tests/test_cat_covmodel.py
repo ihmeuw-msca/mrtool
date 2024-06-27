@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mrtool.core.cov_model import CatCovModel
+from mrtool.core.cov_model import CatCovModel, LinearCatCovModel, LogCatCovModel
 from mrtool.core.data import MRData
 
 
@@ -261,3 +261,108 @@ def test_create_constraint_mat(data):
             ]
         ),
     )
+
+
+def test_z_mat(data):
+    covmodel = CatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A")
+    covmodel.attach_data(data)
+    z_mat = covmodel.create_z_mat(data)
+    assert z_mat.shape == (data.num_obs, 0)
+
+    covmodel = CatCovModel(
+        alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A", use_re=True
+    )
+    covmodel.attach_data(data)
+    z_mat = covmodel.create_z_mat(data)
+    assert np.allclose(z_mat, np.ones((data.num_obs, 1)))
+
+    covmodel = CatCovModel(
+        alt_cov="alt_cat",
+        ref_cov="ref_cat",
+        ref_cat="A",
+        use_re=True,
+        use_re_intercept=False,
+    )
+    covmodel.attach_data(data)
+    z_mat = covmodel.create_z_mat(data)
+    assert np.allclose(
+        z_mat,
+        np.array(
+            [
+                [0.0, 0.0, 0.0, 0.0],
+                [1.0, -1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, -1.0],
+            ]
+        ),
+    )
+
+
+def test_linearcatcovmodel_create_x_fun(data):
+    np.random.seed(0)
+
+    x = np.random.randn(3)
+    covmodel = LinearCatCovModel(alt_cov="alt_cat")
+    covmodel.attach_data(data)
+    x_fun, jac_fun = covmodel.create_x_fun(data)
+    x_mat = np.array(
+        [
+            [1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+    )
+    assert np.allclose(x_fun(x), x_mat @ x)
+    assert np.allclose(jac_fun(x), x_mat)
+
+    x = np.random.randn(4)
+    covmodel = LinearCatCovModel(
+        alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A"
+    )
+    covmodel.attach_data(data)
+    x_fun, jac_fun = covmodel.create_x_fun(data)
+    x_mat = np.array(
+        [
+            [0.0, 0.0, 0.0, 0.0],
+            [1.0, -1.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, -1.0],
+        ]
+    )
+    assert np.allclose(x_fun(x), x_mat @ x)
+    assert np.allclose(jac_fun(x), x_mat)
+
+
+def test_logcatcovmodel_attach_data(data):
+    covmodel = LogCatCovModel(alt_cov="alt_cat")
+    covmodel.attach_data(data)
+    assert np.allclose(
+        covmodel.prior_beta_uniform,
+        np.repeat(np.array([[1e-6], [np.inf]]), 3, axis=1),
+    )
+
+    covmodel = LogCatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A")
+    covmodel.attach_data(data)
+    assert np.allclose(
+        covmodel.prior_beta_uniform,
+        np.array([[0.0] + [-1 + 1e-6] * 3, [0.0] + [np.inf] * 3]),
+    )
+
+
+def test_logcatcovmodel_create_x_fun(data):
+    np.random.seed(0)
+
+    x = np.random.rand(3)
+    covmodel = LogCatCovModel(alt_cov="alt_cat")
+    covmodel.attach_data(data)
+    x_fun, _ = covmodel.create_x_fun(data)
+    x_vec = np.log(x[[0, 0, 1, 2]])
+    assert np.allclose(x_fun(x), x_vec)
+
+    x = np.random.rand(4)
+    covmodel = LogCatCovModel(alt_cov="alt_cat", ref_cov="ref_cat", ref_cat="A")
+    covmodel.attach_data(data)
+    x_fun, _ = covmodel.create_x_fun(data)
+    x_vec = np.log(1.0 + x[[0, 0, 1, 2]]) - np.log(1 + x[[0, 1, 1, 3]])
+    assert np.allclose(x_fun(x), x_vec)
