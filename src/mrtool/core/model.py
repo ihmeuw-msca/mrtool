@@ -523,6 +523,7 @@ class MRBeRT:
 
         self.weights = np.ones(self.num_sub_models) / self.num_sub_models
 
+    def _infer_shape(self) -> None:
         # inherent the dimension variable
         self.num_x_vars = self.sub_models[0].num_x_vars
         self.num_z_vars = self.sub_models[0].num_z_vars
@@ -541,6 +542,8 @@ class MRBeRT:
         """Fitting the model through limetr."""
         for sub_model in self.sub_models:
             sub_model.fit_model(**fit_options)
+
+        self._infer_shape()
 
         self.score_model(
             scores_weights=scores_weights, slopes=slopes, quantiles=quantiles
