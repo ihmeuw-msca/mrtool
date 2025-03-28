@@ -1027,16 +1027,6 @@ class CatCovModel(CovModel):
                     f"Reset ref_cat beta uniform prior from {ref_beta_uprior} to (0, 0)"
                 )
             self.prior_beta_uniform[:, ref_index] = 0.0
-            if self.use_re and (not self.use_re_intercept):
-                ref_gamma_uprior = self.prior_gamma_uniform[:, ref_index]
-                if not (
-                    np.isinf(ref_gamma_uprior[1]).all()
-                    or np.allclose(ref_gamma_uprior, 0.0)
-                ):
-                    warnings.warn(
-                        f"Reset ref_cat gamma uniform prior from {ref_gamma_uprior} to (0, 0)"
-                    )
-                self.prior_gamma_uniform[:, ref_index] = 0.0
 
         if self.prior_order is not None:
             for cat in set(
