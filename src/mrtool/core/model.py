@@ -577,7 +577,21 @@ class MRBeRT:
             )
 
         weights = np.prod(weights, axis=0)
-        self.weights = weights / np.sum(weights)
+        # Assign weight of 0 to any submodels with non-convergent trimming step
+        is_converged = np.array([
+            (np.isclose(sub_model.w_soln, 0.0) | np.isclose(sub_model.w_soln, 1.0)
+            ).all()
+            for sub_model in self.sub_models
+            ])
+        weights = weights * is_converged.astype(float)
+
+        sum_weights = np.sum(weights)
+        if sum_weights > 0:
+            self.weights = weights / sum_weights
+        else:
+            print("WARNING: Zero converged submodels found. Setting all weights to 0.")
+            self.weights = weights
+
 
     def sample_soln(
         self, sample_size: int = 1
