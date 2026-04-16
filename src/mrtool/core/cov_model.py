@@ -254,33 +254,102 @@ class CovModel:
     def _check_inputs(self):
         """Check the attributes."""
         assert utils.is_cols(self.alt_cov)
+        if not utils.is_cols(self.alt_cov):
+            raise TypeError(f"{self.alt_cov} is of type {type(self.alt_cov)}, expected list of strings")
+        
         assert utils.is_cols(self.ref_cov)
+        if not utils.is_cols(self.ref_cov):
+            raise TypeError(f"{self.ref_cov} is of type {type(self.alt_cov)}, expected list of strings")
+            
         assert isinstance(self.name, str) or self.name is None
+        if not isinstance(self.name, str) or self.name is None:
+            raise TypeError(f"{self.name} is of type {type(self.name)}, expected str or None")
+
         if isinstance(self.alt_cov, list):
             assert len(self.alt_cov) <= 2
+        if isinstance(self.alt_cov, list) and len(self.alt_cov) > 2:
+            raise ValueError(f"alt_cov has len {len(self.alt_cov)}, expected len <= 2")
+
         if isinstance(self.ref_cov, list):
             assert len(self.ref_cov) <= 2
+        if isinstance(self.ref_cov, list) and len(self.ref_cov) > 2:
+            raise ValueError(f"ref_cov has len {len(self.ref_cov)}, expected len <= 2")
+        
         assert isinstance(self.use_re, bool)
+        if not isinstance(self.use_re, bool):
+            raise TypeError(f"use_re has type {type(self.use_re)}, expected bool")
+        
         assert isinstance(self.use_spline, bool)
+        if not isinstance(self.use_spline, bool):
+            raise TypeError(f"use_spline has type {type(self.use_spline)}, expected bool")
+
 
         # spline specific
         assert self.spline is None or isinstance(self.spline, xspline.XSpline)
+        if self.spline is not None and not isinstance(self.spline, xspline.XSpline):
+            raise TypeError(f"spline has type {type(self.spline)}, expected XSpline")
+
         assert self.spline_knots_type in ["frequency", "domain"]
+        if self.spline_knots_type not in ["frequency", "domain"]:
+            raise ValueError(f"spline_knots_type is {self.spline_knots_type}, expected 'frequency' or 'domain'")
+
         assert isinstance(self.spline_knots_template, np.ndarray)
+        if not isinstance(self.spline_knots_template, np.ndarray):
+            raise TypeError(f"spline_knots_template has type {type(self.spline_knots_template)}, expected ndarray")
+
         assert np.min(self.spline_knots_template) >= 0.0
         assert np.max(self.spline_knots_template) <= 1.0
+        if np.any((self.spline_knots_template < 0) | (self.spline_knots_template > 1)):
+            raise ValueError("expected all spline_knots_template entries to be within [0, 1]")
+
         assert isinstance(self.spline_degree, int)
+        if not isinstance(self.spline_degree, int):
+            raise TypeError(f"spline_degree has type {type(self.spline_degree)}, expected int")
+
         assert self.spline_degree >= 0
+        if self.spline_degree < 0:
+            raise ValueError(f"spine_degree must be >= 0")
+        
         assert isinstance(self.spline_l_linear, bool)
+        if not isinstance(self.spline_l_linear, bool):
+            raise TypeError(f"spline_l_linear has type {type(self.spline_l_linear)}, expected bool")
+
         assert isinstance(self.spline_r_linear, bool)
+        if not isinstance(self.spline_r_linear, bool):
+            raise TypeError(f"spline_r_linear has type {type(self.spline_r_linear)}, expected bool")
+
         assert len(self.prior_spline_monotonicity_domain_template) == 2
+        if len(self.prior_spline_monotonicity_domain_template) != 2:
+            raise ValueError(f"len(prior_spline_monotonicity_domain_tempplate) is {len(self.prior_spline_monotonicity_domain_template)}, expected len of 2")
+        
         assert len(self.prior_spline_convexity_domain_template) == 2
+        if len(self.prior_spline_convexity_domain_template) != 2:
+            raise ValueError(f"len(prior_spline_convexity_domain_template) is {len(self.prior_spline_convexity_domain_template)}, expected len of 2")
+
         assert len(self.prior_spline_derval_uniform_domain_template) == 2
+        if len(self.prior_spline_derval_uniform_domain_template) != 2:
+            raise ValueError(f"len(prior_spline_derval_uniform_domain_template) is {len(self.prior_spline_derval_uniform_domain_template)}, expected len of 2")
+
         assert len(self.prior_spline_der2val_uniform_domain_template) == 2
+        if len(self.prior_spline_monotonicity_domain_template) != 2:
+            raise ValueError(f"len(prior_spline_monotonicity_domain_tempplate) is {len(self.prior_spline_monotonicity_domain_tempplate)}, expected len of 2")
+
         assert len(self.prior_spline_funval_uniform_domain_template) == 2
+        if len(self.prior_spline_monotonicity_domain_template) != 2:
+            raise ValueError(f"len(prior_spline_monotonicity_domain_tempplate) is {len(self.prior_spline_monotonicity_domain_tempplate)}, expected len of 2")
+
         assert len(self.prior_spline_derval_gaussian_domain_template) == 2
+        if len(self.prior_spline_monotonicity_domain_template) != 2:
+            raise ValueError(f"len(prior_spline_monotonicity_domain_tempplate) is {len(self.prior_spline_monotonicity_domain_tempplate)}, expected len of 2")
+
         assert len(self.prior_spline_der2val_gaussian_domain_template) == 2
+        if len(self.prior_spline_monotonicity_domain_template) != 2:
+            raise ValueError(f"len(prior_spline_monotonicity_domain_tempplate) is {len(self.prior_spline_monotonicity_domain_tempplate)}, expected len of 2")
+
         assert len(self.prior_spline_funval_gaussian_domain_template) == 2
+        if len(self.prior_spline_monotonicity_domain_template) != 2:
+            raise ValueError(f"len(prior_spline_monotonicity_domain_tempplate) is {len(self.prior_spline_monotonicity_domain_tempplate)}, expected len of 2")
+
 
         assert (
             np.diff(self.prior_spline_monotonicity_domain_template) >= 0.0
