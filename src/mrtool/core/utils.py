@@ -27,11 +27,18 @@ def get_cols(df, cols):
         The data frame contains the columns.
 
     """
-    assert isinstance(df, pd.DataFrame)
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"df must be a DataFrame, got {type(df).__name__}.")
     if isinstance(cols, list):
-        assert all([isinstance(col, str) and col in df for col in cols])
+        if not all(isinstance(col, str) and col in df for col in cols):
+            raise ValueError(
+                "All elements of cols must be strings present in df."
+            )
     else:
-        assert (cols is None) or (isinstance(cols, str) and cols in df)
+        if not ((cols is None) or (isinstance(cols, str) and cols in df)):
+            raise ValueError(
+                "cols must be None or a string column name present in df."
+            )
 
     if cols is None:
         return df[[]]
@@ -75,9 +82,12 @@ def input_cols(cols, append_to=None, default=None):
         The name of the column(s)
 
     """
-    assert is_cols(cols)
-    assert is_cols(append_to)
-    assert is_cols(default)
+    if not is_cols(cols):
+        raise TypeError("cols must be a str, list of str, or None.")
+    if not is_cols(append_to):
+        raise TypeError("append_to must be a str, list of str, or None.")
+    if not is_cols(default):
+        raise TypeError("default must be a str, list of str, or None.")
     default = [] if default is None else default
     cols = default if cols is None else cols
 
@@ -221,13 +231,17 @@ def input_gaussian_prior(prior, size):
         store the mean and second row store the standard deviation.
 
     """
-    assert is_gaussian_prior(prior)
+    if not is_gaussian_prior(prior):
+        raise ValueError("prior is not a valid gaussian prior.")
     if prior is None or prior.size == 0:
         return np.array([[0.0] * size, [np.inf] * size])
     elif prior.ndim == 1:
         return np.repeat(prior[:, None], size, axis=1)
     else:
-        assert prior.shape[1] == size
+        if prior.shape[1] != size:
+            raise ValueError(
+                f"prior has {prior.shape[1]} columns, expected {size}."
+            )
         return prior
 
 
@@ -252,13 +266,17 @@ def input_uniform_prior(prior, size):
         store the mean and second row store the standard deviation.
 
     """
-    assert is_uniform_prior(prior)
+    if not is_uniform_prior(prior):
+        raise ValueError("prior is not a valid uniform prior")
     if prior is None or prior.size == 0:
         return np.array([[-np.inf] * size, [np.inf] * size])
     elif prior.ndim == 1:
         return np.repeat(prior[:, None], size, axis=1)
     else:
-        assert prior.shape[1] == size
+        if prior.shape[1] != size:
+            raise ValueError(
+                f"prior has {prior.shape[1]} columns, expected {size}."
+            )
         return prior
 
 
@@ -282,7 +300,8 @@ def avg_integral(mat, spline=None, use_spline_intercept=False):
         Design matrix when spline is not `None`, otherwise the mid-points.
 
     """
-    assert mat.ndim == 2
+    if mat.ndim != 2:
+        raise ValueError(f"mat must be 2-dimensional, got {mat.ndim}.")
     if mat.size == 0:
         return mat.reshape(mat.shape[0], 0)
 
@@ -479,10 +498,14 @@ def nonlinear_trans(score, slope=6.0, quantile=0.7):
 
 def mat_to_fun(alt_mat, ref_mat=None):
     alt_mat = np.array(alt_mat)
-    assert alt_mat.ndim == 2
+    if alt_mat.ndim != 2:
+        raise ValueError(f"alt_mat must be 2-dimensional, got {alt_mat.ndim}.")
     if ref_mat is not None:
         ref_mat = np.array(ref_mat)
-        assert ref_mat.ndim == 2
+        if ref_mat.ndim != 2:
+            raise ValueError(
+                f"ref_mat must be 2-dimensional, got {ref_mat.ndim}."
+            )
 
     if alt_mat.size == 0:
         fun = None
@@ -505,10 +528,14 @@ def mat_to_fun(alt_mat, ref_mat=None):
 def mat_to_log_fun(alt_mat, ref_mat=None, add_one=True):
     alt_mat = np.array(alt_mat)
     shift = 1.0 if add_one else 0.0
-    assert alt_mat.ndim == 2
+    if alt_mat.ndim != 2:
+        raise ValueError(f"alt_mat must be 2-dimensional, got {alt_mat.ndim}.")
     if ref_mat is not None:
         ref_mat = np.array(ref_mat)
-        assert ref_mat.ndim == 2
+        if ref_mat.ndim != 2:
+            raise ValueError(
+                f"ref_mat must be 2-dimensional, got {ref_mat.ndim}."
+            )
 
     if alt_mat.size == 0:
         fun = None
@@ -617,21 +644,25 @@ def expand_array(
     if len(array) == 0:
         if hasattr(value, "__iter__") and not isinstance(value, str):
             value = np.array(value)
-            assert (
-                value.shape == shape
-            ), f"{name}, alternative value inconsistent shape."
+            if value.shape != shape:
+                raise ValueError(
+                    f"{name}, alternative value inconsistent shape."
+                )
             array = value
         else:
             array = np.full(shape, value)
     else:
-        assert array.shape == shape, f"{name}, inconsistent shape."
+        if array.shape != shape:
+            raise ValueError(f"{name}, inconsistent shape.")
     return array
 
 
 def ravel_dict(x: dict) -> dict:
     """Ravel dictionary."""
-    assert all([isinstance(k, str) for k in x.keys()])
-    assert all([isinstance(v, NDArray) for v in x.values()])
+    if not all(isinstance(k, str) for k in x.keys()):
+        raise TypeError("All keys in dict must be strings.")
+    if not all(isinstance(v, NDArray) for v in x.values()):
+        raise TypeError("All values in dict must be NDArray.")
     new_x = {}
     for k, v in x.items():
         if v.size == 1:
