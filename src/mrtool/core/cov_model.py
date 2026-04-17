@@ -8,12 +8,13 @@ Covariates model for `mrtool`.
 
 import itertools
 import warnings
+from collections.abc import Callable, Sequence
 from typing import Callable
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import xspline
-from numpy.typing import NDArray
 
 from . import utils
 from .data import MRData
@@ -24,45 +25,45 @@ class CovModel:
 
     def __init__(
         self,
-        alt_cov,
-        name=None,
-        ref_cov=None,
-        use_re=False,
-        use_re_mid_point=False,
-        use_spline=False,
-        use_spline_intercept=False,
-        spline_knots_type="frequency",
-        spline_knots=np.linspace(0.0, 1.0, 4),
-        spline_degree=3,
-        spline_l_linear=False,
-        spline_r_linear=False,
-        prior_spline_derval_gaussian=None,
-        prior_spline_derval_gaussian_domain=(0.0, 1.0),
-        prior_spline_derval_uniform=None,
-        prior_spline_derval_uniform_domain=(0.0, 1.0),
-        prior_spline_der2val_gaussian=None,
-        prior_spline_der2val_gaussian_domain=(0.0, 1.0),
-        prior_spline_der2val_uniform=None,
-        prior_spline_der2val_uniform_domain=(0.0, 1.0),
-        prior_spline_funval_gaussian=None,
-        prior_spline_funval_gaussian_domain=(0.0, 1.0),
-        prior_spline_funval_uniform=None,
-        prior_spline_funval_uniform_domain=(0.0, 1.0),
-        prior_spline_monotonicity=None,
-        prior_spline_monotonicity_domain=(0.0, 1.0),
-        prior_spline_convexity=None,
-        prior_spline_convexity_domain=(0.0, 1.0),
-        prior_spline_num_constraint_points=20,
-        prior_spline_maxder_gaussian=None,
-        prior_spline_maxder_uniform=None,
-        prior_spline_normalization=None,
-        prior_beta_gaussian=None,
-        prior_beta_uniform=None,
-        prior_beta_laplace=None,
-        prior_gamma_gaussian=None,
-        prior_gamma_uniform=None,
-        prior_gamma_laplace=None,
-    ):
+        alt_cov: str | list[str],
+        name: str | None = None,
+        ref_cov: str | list[str] | None = None,
+        use_re: bool = False,
+        use_re_mid_point: bool = False,
+        use_spline: bool = False,
+        use_spline_intercept: bool = False,
+        spline_knots_type: str = "frequency",
+        spline_knots: Sequence[float] = np.linspace(0.0, 1.0, 4),
+        spline_degree: int = 3,
+        spline_l_linear: bool = False,
+        spline_r_linear: bool = False,
+        prior_spline_derval_gaussian: npt.NDArray | None = None,
+        prior_spline_derval_gaussian_domain: tuple[float, float] = (0.0, 1.0),
+        prior_spline_derval_uniform: npt.NDArray | None = None,
+        prior_spline_derval_uniform_domain: tuple[float, float] = (0.0, 1.0),
+        prior_spline_der2val_gaussian: npt.NDArray | None = None,
+        prior_spline_der2val_gaussian_domain: tuple[float, float] = (0.0, 1.0),
+        prior_spline_der2val_uniform: npt.NDArray | None = None,
+        prior_spline_der2val_uniform_domain: tuple[float, float] = (0.0, 1.0),
+        prior_spline_funval_gaussian: npt.NDArray | None = None,
+        prior_spline_funval_gaussian_domain: tuple[float, float] = (0.0, 1.0),
+        prior_spline_funval_uniform: npt.NDArray | None = None,
+        prior_spline_funval_uniform_domain: tuple[float, float] = (0.0, 1.0),
+        prior_spline_monotonicity: str | None = None,
+        prior_spline_monotonicity_domain: tuple[float, float] = (0.0, 1.0),
+        prior_spline_convexity: str | None = None,
+        prior_spline_convexity_domain: tuple[float, float] = (0.0, 1.0),
+        prior_spline_num_constraint_points: int = 20,
+        prior_spline_maxder_gaussian: npt.NDArray | None = None,
+        prior_spline_maxder_uniform: npt.NDArray | None = None,
+        prior_spline_normalization: Sequence[float] = None,
+        prior_beta_gaussian: npt.NDArray | None = None,
+        prior_beta_uniform: npt.NDArray | None = None,
+        prior_beta_laplace: npt.NDArray | None = None,
+        prior_gamma_gaussian: npt.NDArray | None = None,
+        prior_gamma_uniform: npt.NDArray | None = None,
+        prior_gamma_laplace: npt.NDArray | None = None,
+    ) -> None:
         """Constructor of the covariate model.
 
         Parameters
@@ -428,7 +429,7 @@ class CovModel:
             self.prior_gamma_laplace, self.num_z_vars
         )
 
-    def attach_data(self, data: MRData):
+    def attach_data(self, data: MRData) -> None:
         """Attach data."""
         if self.use_spline:
             self.spline = self.create_spline(
@@ -436,7 +437,7 @@ class CovModel:
             )
             self.spline_knots = self.spline.knots
 
-    def has_data(self):
+    def has_data(self) -> bool:
         """Return ``True`` if there is one data object attached."""
         if self.use_spline:
             return self.spline is not None
@@ -444,7 +445,7 @@ class CovModel:
             return True
 
     def create_spline(
-        self, data: MRData, spline_knots: NDArray | None = None
+        self, data: MRData, spline_knots: npt.NDArray | None = None
     ) -> xspline.XSpline:
         """Create spline given current spline parameters.
         Parameters
@@ -531,7 +532,9 @@ class CovModel:
 
         return spline
 
-    def create_design_mat(self, data) -> tuple[NDArray, NDArray]:
+    def create_design_mat(
+        self, data: MRData
+    ) -> tuple[npt.NDArray, npt.NDArray]:
         """Create design matrix.
         Parameters
         ----------
@@ -570,7 +573,7 @@ class CovModel:
             "Cannot use create_z_mat directly in CovModel class."
         )
 
-    def create_constraint_mat(self) -> tuple[NDArray, NDArray]:
+    def create_constraint_mat(self) -> tuple[npt.NDArray, npt.NDArray]:
         """Create constraint matrix.
         Returns
         -------
@@ -687,7 +690,7 @@ class CovModel:
 
         return c_mat, c_val
 
-    def create_regularization_mat(self) -> tuple[NDArray, NDArray]:
+    def create_regularization_mat(self) -> tuple[npt.NDArray, npt.NDArray]:
         """Create constraint matrix.
         Returns
         -------
@@ -755,7 +758,7 @@ class CovModel:
         return r_mat, r_val
 
     @property
-    def num_x_vars(self):
+    def num_x_vars(self) -> int:
         if self.use_spline:
             num_interior_knots = len(self.spline_knots_template) - (
                 self.spline_l_linear + self.spline_r_linear
@@ -771,7 +774,7 @@ class CovModel:
         return n
 
     @property
-    def num_z_vars(self):
+    def num_z_vars(self) -> int:
         if self.use_re:
             if self.use_re_mid_point:
                 return 1 + self.use_spline_intercept
@@ -781,7 +784,7 @@ class CovModel:
             return 0
 
     @property
-    def num_constraints(self):
+    def num_constraints(self) -> int:
         if not self.use_spline:
             return 0
         else:
@@ -802,7 +805,7 @@ class CovModel:
             return num_c
 
     @property
-    def num_regularizations(self):
+    def num_regularizations(self) -> int:
         if not self.use_spline:
             return 0
         else:
@@ -822,12 +825,12 @@ class CovModel:
 class LinearCovModel(CovModel):
     """Linear Covariates Model."""
 
-    def create_x_fun(self, data: MRData):
+    def create_x_fun(self, data: MRData) -> tuple[Callable, Callable]:
         """Create design function for the fixed effects."""
         alt_mat, ref_mat = self.create_design_mat(data)
         return utils.mat_to_fun(alt_mat, ref_mat=ref_mat)
 
-    def create_z_mat(self, data):
+    def create_z_mat(self, data: MRData) -> npt.NDArray:
         """Create design matrix for the random effects.
 
         Parameters
@@ -861,7 +864,7 @@ class LinearCovModel(CovModel):
 class LogCovModel(CovModel):
     """Log Covariates Model."""
 
-    def create_x_fun(self, data):
+    def create_x_fun(self, data: MRData) -> tuple[Callable, Callable]:
         """Create design functions for the fixed effects.
 
         Parameters
@@ -879,7 +882,7 @@ class LogCovModel(CovModel):
         add_one = not (self.use_spline and self.use_spline_intercept)
         return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat, add_one=add_one)
 
-    def create_z_mat(self, data):
+    def create_z_mat(self, data: MRData) -> npt.NDArray:
         """Create design matrix for the random effects.
 
         Parameters
@@ -904,7 +907,9 @@ class LogCovModel(CovModel):
         else:
             return alt_mat - ref_mat
 
-    def create_constraint_mat(self, threshold=1e-6):
+    def create_constraint_mat(
+        self, threshold: float = 1e-6
+    ) -> tuple[npt.NDArray, npt.NDArray]:
         """Create constraint matrix.
         Overwrite the super class, adding non-negative constraints.
         """
@@ -925,14 +930,14 @@ class LogCovModel(CovModel):
         return c_mat, c_val
 
     @property
-    def num_constraints(self):
+    def num_constraints(self) -> int:
         num_c = super().num_constraints
         if self.use_spline:
             num_c += self.prior_spline_num_constraint_points
         return num_c
 
     @property
-    def num_z_vars(self):
+    def num_z_vars(self) -> int:
         return int(self.use_re)
 
 
@@ -941,19 +946,19 @@ class CatCovModel(CovModel):
 
     def __init__(
         self,
-        alt_cov,
-        name=None,
-        ref_cov=None,
-        ref_cat=None,
-        use_re=False,
-        use_re_intercept=True,
-        prior_order=None,
-        prior_beta_gaussian=None,
-        prior_beta_uniform=None,
-        prior_beta_laplace=None,
-        prior_gamma_gaussian=None,
-        prior_gamma_uniform=None,
-        prior_gamma_laplace=None,
+        alt_cov: str | list[str],
+        name: str | None = None,
+        ref_cov: str | list[str] | None = None,
+        ref_cat=None,  # TODO: str perhaps?
+        use_re: bool = False,
+        use_re_intercept: bool = True,
+        prior_order: list[str] = None,  # TODO: double check
+        prior_beta_gaussian: npt.NDArray | None = None,
+        prior_beta_uniform: npt.NDArray | None = None,
+        prior_beta_laplace: npt.NDArray | None = None,
+        prior_gamma_gaussian: npt.NDArray | None = None,
+        prior_gamma_uniform: npt.NDArray | None = None,
+        prior_gamma_laplace: npt.NDArray | None = None,
     ) -> None:
         self.ref_cat = ref_cat
         self.use_re_intercept = use_re_intercept
@@ -1051,7 +1056,7 @@ class CatCovModel(CovModel):
         """Return if the data has been attached and categories has been parsed."""
         return hasattr(self, "cats")
 
-    def encode(self, x: NDArray) -> NDArray:
+    def encode(self, x: npt.NDArray) -> npt.NDArray:
         """Encode the provided categories into dummy variables."""
         col = pd.merge(
             pd.Series(x, name="cats"), self.cats.reset_index(), how="left"
@@ -1062,7 +1067,9 @@ class CatCovModel(CovModel):
         mat[range(len(x)), col] = 1.0
         return mat
 
-    def create_design_mat(self, data: MRData) -> tuple[NDArray, NDArray]:
+    def create_design_mat(
+        self, data: MRData
+    ) -> tuple[npt.NDArray, npt.NDArray]:
         """Create design matrix for alternative and reference categories."""
         alt_cov = data.get_covs(self.alt_cov).ravel()
         ref_cov = data.get_covs(self.ref_cov).ravel()
@@ -1074,7 +1081,7 @@ class CatCovModel(CovModel):
             ref_mat = self.encode(ref_cov)
         return alt_mat, ref_mat
 
-    def create_constraint_mat(self) -> tuple[NDArray, NDArray]:
+    def create_constraint_mat(self) -> tuple[npt.NDArray, npt.NDArray]:
         c_mat, c_val = super().create_constraint_mat()
         if not self.prior_order:
             return c_mat, c_val
@@ -1126,7 +1133,7 @@ class CatCovModel(CovModel):
             num += len(self.prior_order)
         return num
 
-    def create_z_mat(self, data: MRData) -> NDArray:
+    def create_z_mat(self, data: MRData) -> npt.NDArray:
         if not self.use_re:
             return np.empty((data.num_obs, 0))
 
@@ -1141,7 +1148,7 @@ class CatCovModel(CovModel):
 
 
 class LinearCatCovModel(CatCovModel):
-    def create_x_fun(self, data: MRData) -> Callable:
+    def create_x_fun(self, data: MRData) -> tuple[Callable, Callable]:
         alt_mat, ref_mat = self.create_design_mat(data)
         return utils.mat_to_fun(alt_mat, ref_mat=ref_mat)
 
@@ -1158,7 +1165,7 @@ class LogCatCovModel(CatCovModel):
 
         self.prior_beta_uniform = np.maximum(lb, self.prior_beta_uniform)
 
-    def create_x_fun(self, data: MRData) -> Callable:
+    def create_x_fun(self, data: MRData) -> tuple[Callable, Callable]:
         alt_mat, ref_mat = self.create_design_mat(data)
         add_one = self.ref_cat is not None
         return utils.mat_to_log_fun(alt_mat, ref_mat=ref_mat, add_one=add_one)
