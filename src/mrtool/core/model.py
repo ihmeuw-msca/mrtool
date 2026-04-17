@@ -101,12 +101,24 @@ class MRBRT:
 
     def check_input(self):
         """Check the input type of the attributes."""
-        assert isinstance(self.data, MRData)
-        assert isinstance(self.cov_models, list)
-        assert all(
-            [isinstance(cov_model, CovModel) for cov_model in self.cov_models]
-        )
-        assert (self.inlier_pct >= 0.0) and (self.inlier_pct <= 1.0)
+        if not isinstance(self.data, MRData):
+            raise TypeError(
+                f"data must be a MRData instance, got {type(self.data).__name__}."
+            )
+        if not isinstance(self.cov_models, list):
+            raise TypeError(
+                f"cov_models must be a list, got {type(self.cov_models).__name__}."
+            )
+        if not all(
+            isinstance(cov_model, CovModel) for cov_model in self.cov_models
+        ):
+            raise TypeError(
+                "All elements of cov_models must be CovModel instances."
+            )
+        if not (0.0 <= self.inlier_pct <= 1.0):
+            raise ValueError(
+                f"inlier_pct must be between 0 and 1, got {self.inlier_pct}."
+            )
 
     def get_cov_model(self, name: str) -> CovModel:
         """Choose covariate model with name."""
@@ -121,9 +133,10 @@ class MRBRT:
             if cov_model_name == name
         ]
         num_matching_index = len(matching_index)
-        assert (
-            num_matching_index == 1
-        ), f"Number of matching index is {num_matching_index}."
+        if num_matching_index != 1:
+            raise ValueError(
+                f"Number of matching index is {num_matching_index}."
+            )
         return matching_index[0]
 
     def create_x_fun(self, data=None):
@@ -370,9 +383,10 @@ class MRBRT:
             Predicted outcome array.
 
         """
-        assert data.has_covs(
-            self.cov_names
-        ), "Prediction data do not have covariates used for fitting."
+        if not data.has_covs(self.cov_names):
+            raise ValueError(
+                "Prediction data do not have covariates used for fitting."
+            )
         x_fun, _ = self.create_x_fun(data=data)
         prediction = x_fun(self.beta_soln)
         if predict_for_study:
@@ -440,8 +454,16 @@ class MRBRT:
 
         """
         sample_size = beta_samples.shape[0]
-        assert beta_samples.shape == (sample_size, self.num_x_vars)
-        assert gamma_samples.shape == (sample_size, self.num_z_vars)
+        if beta_samples.shape != (sample_size, self.num_x_vars):
+            raise ValueError(
+                f"beta_samples has shape {beta_samples.shape}, "
+                f"expected ({sample_size}, {self.num_x_vars})."
+            )
+        if gamma_samples.shape != (sample_size, self.num_z_vars):
+            raise ValueError(
+                f"gamma_samples has shape {gamma_samples.shape}, "
+                f"expected ({sample_size}, {self.num_z_vars})."
+            )
 
         x_fun, x_jac_fun = self.create_x_fun(data=data)
         z_mat = self.create_z_mat(data=data)
@@ -501,8 +523,13 @@ class MRBeRT:
         self.cov_models = cov_models if cov_models is not None else []
         self.inlier_pct = inlier_pct
 
-        assert isinstance(ensemble_cov_model, CovModel)
-        assert ensemble_cov_model.use_spline
+        if not isinstance(ensemble_cov_model, CovModel):
+            raise TypeError(
+                f"ensemble_cov_model must be a CovModel instance, "
+                f"got {type(ensemble_cov_model).__name__}."
+            )
+        if not ensemble_cov_model.use_spline:
+            raise ValueError("ensemble_cov_model must use a spline.")
 
         cov_model_tmp = ensemble_cov_model
         self.ensemble_cov_model_name = cov_model_tmp.name
@@ -649,14 +676,18 @@ class MRBeRT:
             sub_beta_samples.shape[0] for sub_beta_samples in beta_samples
         ]
         for i in range(self.num_sub_models):
-            assert beta_samples[i].shape == (
-                sample_sizes[i],
-                self.sub_models[0].num_x_vars,
-            )
-            assert gamma_samples[i].shape == (
-                sample_sizes[i],
-                self.sub_models[0].num_z_vars,
-            )
+            expected_beta = (sample_sizes[i], self.sub_models[0].num_x_vars)
+            if beta_samples[i].shape != expected_beta:
+                raise ValueError(
+                    f"beta_samples[{i}] has shape {beta_samples[i].shape}, "
+                    f"expected {expected_beta}."
+                )
+            expected_gamma = (sample_sizes[i], self.sub_models[0].num_z_vars)
+            if gamma_samples[i].shape != expected_gamma:
+                raise ValueError(
+                    f"gamma_samples[{i}] has shape {gamma_samples[i].shape}, "
+                    f"expected {expected_gamma}."
+                )
 
         y_samples = []
         for i in range(self.num_sub_models):

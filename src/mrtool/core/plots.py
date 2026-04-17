@@ -117,7 +117,8 @@ def plot_risk_function(
 
     # save plot
     if write_file:
-        assert plots_dir is not None, "plots_dir is not specified!"
+        if plots_dir is None:
+            raise ValueError("plots_dir is not specified")
         outfile = os.path.join(plots_dir, f"{pair}_risk_function.pdf")
         plt.savefig(outfile, bbox_inches="tight")
         print(f"Risk function plot saved at {outfile}")
@@ -273,7 +274,8 @@ def plot_derivative_fit(
         plt.title(plot_note)
     # save plot
     if write_file:
-        assert plots_dir is not None, "plots_dir is not specified!"
+        if plots_dir is None:
+            raise ValueError("plots_dir is not specified")
         outfile = os.path.join(plots_dir, f"{pair}_derivative_fit.pdf")
         plt.savefig(outfile, bbox_inches="tight")
         print(f"Derivative fit plot saved at {outfile}")
