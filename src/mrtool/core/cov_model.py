@@ -255,17 +255,17 @@ class CovModel:
         """Check the attributes."""
         if not utils.is_cols(self.alt_cov):
             raise TypeError(
-                f"alt_cov is of type {type(self.alt_cov)}, expected list of strings"
+                f"alt_cov is of type {type(self.alt_cov).__name__}, expected list of strings"
             )
 
         if not utils.is_cols(self.ref_cov):
             raise TypeError(
-                f"ref_cov is of type {type(self.ref_cov)}, expected list of strings"
+                f"ref_cov is of type {type(self.ref_cov).__name__}, expected list of strings"
             )
 
         if not isinstance(self.name, str) and self.name is not None:
             raise TypeError(
-                f"name is of type {type(self.name)}, expected str or None"
+                f"name is of type {type(self.name).__name__}, expected str or None"
             )
 
         if isinstance(self.alt_cov, list) and len(self.alt_cov) > 2:
@@ -280,12 +280,12 @@ class CovModel:
 
         if not isinstance(self.use_re, bool):
             raise TypeError(
-                f"use_re has type {type(self.use_re)}, expected bool"
+                f"use_re has type {type(self.use_re).__name__}, expected bool"
             )
 
         if not isinstance(self.use_spline, bool):
             raise TypeError(
-                f"use_spline has type {type(self.use_spline)}, expected bool"
+                f"use_spline has type {type(self.use_spline).__name__}, expected bool"
             )
 
         # spline specific
@@ -293,7 +293,7 @@ class CovModel:
             self.spline, xspline.XSpline
         ):
             raise TypeError(
-                f"spline has type {type(self.spline)}, expected XSpline"
+                f"spline has type {type(self.spline).__name__}, expected XSpline"
             )
 
         if self.spline_knots_type not in ["frequency", "domain"]:
@@ -303,7 +303,7 @@ class CovModel:
 
         if not isinstance(self.spline_knots_template, np.ndarray):
             raise TypeError(
-                f"spline_knots_template has type {type(self.spline_knots_template)}, expected ndarray"
+                f"spline_knots_template has type {type(self.spline_knots_template).__name__}, expected ndarray"
             )
 
         if np.any(
@@ -316,7 +316,7 @@ class CovModel:
 
         if not isinstance(self.spline_degree, int):
             raise TypeError(
-                f"spline_degree has type {type(self.spline_degree)}, expected int"
+                f"spline_degree has type {type(self.spline_degree).__name__}, expected int"
             )
 
         if self.spline_degree < 0:
@@ -326,12 +326,12 @@ class CovModel:
 
         if not isinstance(self.spline_l_linear, bool):
             raise TypeError(
-                f"spline_l_linear has type {type(self.spline_l_linear)}, expected bool"
+                f"spline_l_linear has type {type(self.spline_l_linear).__name__}, expected bool"
             )
 
         if not isinstance(self.spline_r_linear, bool):
             raise TypeError(
-                f"spline_r_linear has type {type(self.spline_r_linear)}, expected bool"
+                f"spline_r_linear has type {type(self.spline_r_linear).__name__}, expected bool"
             )
 
         # domain template length and ordering checks
@@ -373,7 +373,7 @@ class CovModel:
         if not isinstance(self.prior_spline_num_constraint_points, int):
             raise TypeError(
                 f"prior_spline_num_constraint_points has type "
-                f"{type(self.prior_spline_num_constraint_points)}, expected int"
+                f"{type(self.prior_spline_num_constraint_points).__name__}, expected int"
             )
         if self.prior_spline_num_constraint_points <= 0:
             raise ValueError(
