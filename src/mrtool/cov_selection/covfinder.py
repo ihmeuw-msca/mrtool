@@ -77,15 +77,17 @@ class CovFinder:
         self.pre_selected_covs = (
             [] if pre_selected_covs is None else pre_selected_covs
         )
-        assert (
-            len(set(self.pre_selected_covs) & set(self.covs)) == 0
-        ), "covs and pre_selected_covs should be mutually exclusive."
+        if len(set(self.pre_selected_covs) & set(self.covs)) != 0:
+            raise ValueError(
+                "covs and pre_selected_covs should be mutually exclusive."
+            )
         self.normalize_covs = normalized_covs
         self.inlier_pct = inlier_pct
         self.beta_gprior_std = beta_gprior_std
-        assert (
-            self.beta_gprior_std > 0.0
-        ), f"beta_gprior_std={self.beta_gprior_std} has to be positive."
+        if self.beta_gprior_std <= 0.0:
+            raise ValueError(
+                f"beta_gprior_std={self.beta_gprior_std} has to be positive."
+            )
         self.bias_zero = bias_zero
         self.alpha = alpha
         if self.normalize_covs:
@@ -136,14 +138,14 @@ class CovFinder:
             Created model object.
 
         """
-        assert prior_type in [
-            "Laplace",
-            "Gaussian",
-        ], "Prior type can only 'Laplace' or 'Gaussian'."
-        if prior_type == "Laplace":
-            assert (
-                laplace_std is not None
-            ), "Use Laplace prior must provide standard deviation."
+        if prior_type not in ("Laplace", "Gaussian"):
+            raise ValueError(
+                f"prior_type must be 'Laplace' or 'Gaussian', got '{prior_type}'."
+            )
+        if prior_type == "Laplace" and laplace_std is None:
+            raise ValueError(
+                "Use Laplace prior must provide standard deviation."
+            )
 
         if prior_type == "Laplace":
             cov_models = [
@@ -345,10 +347,14 @@ class CovFinder:
     def is_significance(
         var_samples: np.ndarray, var_type: str = "beta", alpha: float = 0.05
     ) -> np.ndarray:
-        assert var_type == "beta", "Only support variable type beta."
-        assert (
-            0.0 < alpha < 1.0
-        ), "Significance threshold has to be between 0 and 1."
+        if var_type != "beta":
+            raise ValueError(
+                f"Only support variable type beta, got '{var_type}'."
+            )
+        if not (0.0 < alpha < 1.0):
+            raise ValueError(
+                f"Significance threshold has to be between 0 and 1, got {alpha}."
+            )
         var_uis = np.quantile(
             var_samples, (0.5 * alpha, 1 - 0.5 * alpha), axis=0
         )
