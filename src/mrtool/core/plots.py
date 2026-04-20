@@ -1,24 +1,27 @@
 import os
+from collections.abc import Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
+from model import MRBRT
 
 from mrtool import MRData
 
 
 def plot_risk_function(
-    mrbrt,
-    pair,
-    beta_samples,
-    gamma_samples,
-    alt_cov_names=None,
-    ref_cov_names=None,
-    continuous_variables=[],
-    plot_note=None,
-    plots_dir=None,
-    write_file=False,
-):
+    mrbrt: MRBRT,
+    pair: str,
+    beta_samples: npt.NDArray,
+    gamma_samples: npt.NDArray,
+    alt_cov_names: list[str] | None = None,
+    ref_cov_names: list[str] | None = None,
+    continuous_variables: list = [],
+    plot_note: str | None = None,
+    plots_dir: str | None = None,
+    write_file: bool = False,
+) -> None:
     """Plot predicted relative risk.
     Parameters
     ----------
@@ -127,14 +130,14 @@ def plot_risk_function(
 
 
 def plot_derivative_fit(
-    mrbrt,
-    pair,
-    alt_cov_names=None,
-    ref_cov_names=None,
-    plot_note=None,
-    plots_dir=None,
-    write_file=False,
-):
+    mrbrt: MRBRT,
+    pair: str,
+    alt_cov_names: list[str] | None = None,
+    ref_cov_names: list[str] | None = None,
+    plot_note: str | None = None,
+    plots_dir: str | None = None,
+    write_file: bool = False,
+) -> None:
     """Plot fitted derivative.
     Parameters
     ----------
@@ -282,7 +285,7 @@ def plot_derivative_fit(
     plt.close()
 
 
-def get_rr_data(x, spline, beta):
+def get_rr_data(x: Sequence, spline: npt.NDArray, beta: Sequence[float]):
     """get RR from model
     x: exposure on the x-axis
     spline: spline of sub model
