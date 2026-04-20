@@ -44,14 +44,15 @@ class MRData:
             np.arange(self.num_points),
             "data_id",
         )
-        assert (
-            len(np.unique(self.data_id)) == self.num_points
-        ), "data_id must be unique for each data point."
+        if len(np.unique(self.data_id)) != self.num_points:
+            raise ValueError("data_id must be unique for each data point.")
         self.covs.update({"intercept": np.ones(self.num_points)})
         for cov_name, cov in self.covs.items():
-            assert (
-                len(cov) == self.num_points
-            ), f"covs[{cov_name}], inconsistent shape."
+            if len(cov) != self.num_points:
+                raise ValueError(
+                    f"covs[{cov_name!r}] has length {len(cov)}, "
+                    f"expected {self.num_points}"
+                )
 
         self._remove_nan_in_covs()
         self._get_study_structure()
@@ -82,16 +83,35 @@ class MRData:
 
     def _check_attr_type(self):
         """Check the type of the attributes."""
-        assert isinstance(self.obs, np.ndarray)
-        assert is_numeric_array(self.obs)
-        assert isinstance(self.obs_se, np.ndarray)
-        assert is_numeric_array(self.obs_se)
-        assert isinstance(self.study_id, np.ndarray)
-        assert isinstance(self.data_id, np.ndarray)
-        assert isinstance(self.covs, dict)
-        for cov in self.covs.values():
-            assert isinstance(cov, np.ndarray)
-            # assert is_numeric_array(cov)
+        if not isinstance(self.obs, np.ndarray):
+            raise TypeError(
+                f"obs has type {type(self.obs).__name__}, expected ndarray"
+            )
+        if not is_numeric_array(self.obs):
+            raise TypeError("obs must be a numeric array")
+        if not isinstance(self.obs_se, np.ndarray):
+            raise TypeError(
+                f"obs_se has type {type(self.obs_se).__name__}, expected ndarray"
+            )
+        if not is_numeric_array(self.obs_se):
+            raise TypeError("obs_se must be a numeric array")
+        if not isinstance(self.study_id, np.ndarray):
+            raise TypeError(
+                f"study_id has type {type(self.study_id).__name__}, expected ndarray"
+            )
+        if not isinstance(self.data_id, np.ndarray):
+            raise TypeError(
+                f"data_id has type {type(self.data_id).__name__}, expected ndarray"
+            )
+        if not isinstance(self.covs, dict):
+            raise TypeError(
+                f"covs has type {type(self.covs).__name__}, expected dict"
+            )
+        for cov_name, cov in self.covs.items():
+            if not isinstance(cov, np.ndarray):
+                raise TypeError(
+                    f"covs[{cov_name!r}] has type {type(cov).__name__}, expected ndarray"
+                )
 
     def _get_cov_scales(self):
         """Compute the covariate scale."""
@@ -133,9 +153,8 @@ class MRData:
 
         """
         index = np.array(index)
-        assert (
-            np.sort(index) == np.arange(self.num_obs)
-        ).all(), "Sorting index must go from 0 to num_obs - 1."
+        if not (np.sort(index) == np.arange(self.num_obs)).all():
+            raise ValueError("Sorting index must go from 0 to num_obs - 1.")
         self.obs = self.obs[index]
         self.obs_se = self.obs_se[index]
         for cov_name, cov in self.covs.items():
@@ -178,8 +197,12 @@ class MRData:
             Bool array, when ``True`` delete corresponding data.
 
         """
-        assert len(index) == self.num_obs
-        assert all([isinstance(i, (bool, np.bool_)) for i in index])
+        if len(index) != self.num_obs:
+            raise ValueError(
+                f"index has length {len(index)}, expected {self.num_obs}"
+            )
+        if not all(isinstance(i, (bool, np.bool_)) for i in index):
+            raise TypeError("index must contain only bool values")
 
         keep_index = ~index
         self.obs = self.obs[keep_index]
@@ -228,7 +251,7 @@ class MRData:
             covs = list(self.covs.keys())
         else:
             covs = to_list(covs)
-            assert self.has_covs(covs)
+            self._assert_has_covs(covs)
         ok = not self.is_empty()
         for cov_name in covs:
             ok = ok and (
