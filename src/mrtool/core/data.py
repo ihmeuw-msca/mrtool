@@ -30,7 +30,7 @@ class MRData:
     data_id: NDArray = field(default_factory=empty_array)
     cov_scales: dict[str, float] = field(init=False, default_factory=dict)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self._check_attr_type()
 
         self.obs = expand_array(self.obs, (self.num_points,), np.nan, "obs")
