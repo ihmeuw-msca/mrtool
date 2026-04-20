@@ -263,7 +263,7 @@ class CovModel:
                 f"ref_cov is of type {type(self.ref_cov).__name__}, expected list of strings"
             )
 
-        if not isinstance(self.name, str) and self.name is not None:
+        if not self.name is not None and isinstance(self.name, str):
             raise TypeError(
                 f"name is of type {type(self.name).__name__}, expected str or None"
             )
