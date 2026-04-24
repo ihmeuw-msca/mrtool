@@ -8,6 +8,7 @@ import warnings
 from copy import deepcopy
 
 import numpy as np
+import numpy.typing as npt
 
 from mrtool import MRBRT, LinearCovModel, MRData
 
@@ -30,7 +31,7 @@ class CovFinder:
         power_step_size: float = 0.5,
         inlier_pct: float = 1.0,
         alpha: float = 0.05,
-        beta_gprior: dict[str, np.ndarray] | None = None,
+        beta_gprior: dict[str, npt.NDArray] | None = None,
         beta_gprior_std: float = 1.0,
         bias_zero: bool = False,
         use_re: dict | None = None,
@@ -77,15 +78,15 @@ class CovFinder:
         self.pre_selected_covs = (
             [] if pre_selected_covs is None else pre_selected_covs
         )
-        assert (
-            len(set(self.pre_selected_covs) & set(self.covs)) == 0
-        ), "covs and pre_selected_covs should be mutually exclusive."
+        assert len(set(self.pre_selected_covs) & set(self.covs)) == 0, (
+            "covs and pre_selected_covs should be mutually exclusive."
+        )
         self.normalize_covs = normalized_covs
         self.inlier_pct = inlier_pct
         self.beta_gprior_std = beta_gprior_std
-        assert (
-            self.beta_gprior_std > 0.0
-        ), f"beta_gprior_std={self.beta_gprior_std} has to be positive."
+        assert self.beta_gprior_std > 0.0, (
+            f"beta_gprior_std={self.beta_gprior_std} has to be positive."
+        )
         self.bias_zero = bias_zero
         self.alpha = alpha
         if self.normalize_covs:
@@ -141,9 +142,9 @@ class CovFinder:
             "Gaussian",
         ], "Prior type can only 'Laplace' or 'Gaussian'."
         if prior_type == "Laplace":
-            assert (
-                laplace_std is not None
-            ), "Use Laplace prior must provide standard deviation."
+            assert laplace_std is not None, (
+                "Use Laplace prior must provide standard deviation."
+            )
 
         if prior_type == "Laplace":
             cov_models = [
@@ -230,7 +231,7 @@ class CovFinder:
 
     def summary_gaussian_model(
         self, gaussian_model: MRBRT
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """Summary the gaussian model.
         Return the mean standard deviation and the significance indicator of beta.
 
@@ -241,7 +242,7 @@ class CovFinder:
 
         Returns
         -------
-        tuple[np.ndarray, np.ndarray, np.ndarray]
+        tuple[npt.NDArray, npt.NDArray, npt.NDArray]
             Mean, standard deviation and indicator of the significance of beta solution.
 
         """
@@ -261,7 +262,9 @@ class CovFinder:
             beta_std.fill(self.beta_gprior_std)
             self.update_beta_gprior(self.pre_selected_covs, beta_mean, beta_std)
 
-    def select_covs_by_laplace(self, laplace_std: float, verbose: bool = False):
+    def select_covs_by_laplace(
+        self, laplace_std: float, verbose: bool = False
+    ) -> None:
         # fit laplace model and select the potential additional covariates
         laplace_model = self.fit_laplace_model(self.all_covs, laplace_std)
         additional_covs = []
@@ -310,8 +313,8 @@ class CovFinder:
             self.stop = True
 
     def update_beta_gprior(
-        self, covs: list[str], mean: np.ndarray, std: np.ndarray
-    ):
+        self, covs: list[str], mean: npt.NDArray, std: npt.NDArray
+    ) -> None:
         """Update the beta Gaussian prior.
 
         Parameters
@@ -343,12 +346,12 @@ class CovFinder:
 
     @staticmethod
     def is_significance(
-        var_samples: np.ndarray, var_type: str = "beta", alpha: float = 0.05
-    ) -> np.ndarray:
+        var_samples: npt.NDArray, var_type: str = "beta", alpha: float = 0.05
+    ) -> npt.NDArray:
         assert var_type == "beta", "Only support variable type beta."
-        assert (
-            0.0 < alpha < 1.0
-        ), "Significance threshold has to be between 0 and 1."
+        assert 0.0 < alpha < 1.0, (
+            "Significance threshold has to be between 0 and 1."
+        )
         var_uis = np.quantile(
             var_samples, (0.5 * alpha, 1 - 0.5 * alpha), axis=0
         )
