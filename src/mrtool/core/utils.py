@@ -5,14 +5,17 @@ utils
 `utils` module of the `mrtool` package.
 """
 
+from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
-from numpy.typing import NDArray
 
 
-def get_cols(df, cols):
+def get_cols(
+    df: pd.DataFrame, cols: list[str] | None
+) -> pd.DataFrame | pd.Series:
     """Return the columns of the given data frame.
     Parameters
     ----------
@@ -39,7 +42,7 @@ def get_cols(df, cols):
         return df[cols]
 
 
-def is_cols(cols):
+def is_cols(cols: str | list[str]) -> bool:
     """Check variable type fall into the column name category.
     Parameters
     ----------
@@ -58,7 +61,11 @@ def is_cols(cols):
     return ok
 
 
-def input_cols(cols, append_to=None, default=None):
+def input_cols(
+    cols: str | list[str],
+    append_to: str | list[str] | None = None,
+    default: str | list[str] | None = None,
+) -> str | list[str]:
     """Process the input column name.
     Parameters
     ----------
@@ -92,7 +99,7 @@ def input_cols(cols, append_to=None, default=None):
     return cols
 
 
-def combine_cols(cols):
+def combine_cols(cols: str | list[str]) -> list[str]:
     """Combine column names into one list of names.
 
     Parameters
@@ -116,7 +123,7 @@ def combine_cols(cols):
     return combined_cols
 
 
-def sizes_to_indices(sizes):
+def sizes_to_indices(sizes: Sequence[int]) -> list[npt.NDArray]:
     """Converting sizes to corresponding indices.
     Parameters
     ----------
@@ -125,7 +132,7 @@ def sizes_to_indices(sizes):
 
     Returns
     -------
-    list[NDArray]
+    list[npt.NDArray]
         list the indices.
 
     """
@@ -140,7 +147,7 @@ def sizes_to_indices(sizes):
     return indices
 
 
-def is_gaussian_prior(prior, size=None):
+def is_gaussian_prior(prior: npt.NDArray | None, size: int | None = None):
     """Check if variable satisfy Gaussian prior format
 
     Parameters
@@ -173,7 +180,7 @@ def is_gaussian_prior(prior, size=None):
 is_laplace_prior = is_gaussian_prior
 
 
-def is_uniform_prior(prior, size=None):
+def is_uniform_prior(prior: npt.NDArray | None, size: int = None):
     """Check if variable satisfy uniform prior format
 
     Parameters
@@ -203,7 +210,7 @@ def is_uniform_prior(prior, size=None):
     return ok
 
 
-def input_gaussian_prior(prior, size):
+def input_gaussian_prior(prior: npt.NDArray | None, size: int) -> npt.NDArray:
     """Process the input Gaussian prior
 
     Parameters
@@ -234,7 +241,7 @@ def input_gaussian_prior(prior, size):
 input_laplace_prior = input_gaussian_prior
 
 
-def input_uniform_prior(prior, size):
+def input_uniform_prior(prior: npt.NDArray, size: int) -> npt.NDArray:
     """Process the input Gaussian prior
 
     Parameters
@@ -262,7 +269,11 @@ def input_uniform_prior(prior, size):
         return prior
 
 
-def avg_integral(mat, spline=None, use_spline_intercept=False):
+def avg_integral(
+    mat: npt.NDArray,
+    spline: npt.NDArray | None = None,
+    use_spline_intercept: bool = False,
+):
     """Compute average integral.
 
     Parameters
@@ -326,29 +337,29 @@ def avg_integral(mat, spline=None, use_spline_intercept=False):
 # random knots
 def sample_knots(
     num_knots: int,
-    knot_bounds: NDArray,
-    min_dist: float | NDArray,
+    knot_bounds: npt.NDArray,
+    min_dist: float | npt.NDArray,
     num_samples: int = 1,
-) -> NDArray:
+) -> npt.NDArray:
     """Sample knot vectors given a set of rules.
 
     Parameters
     ----------
     num_knots : int
         Number of interior knots.
-    knot_bounds : NDArray, shape(2,) or shape(`num_knots`,2)
+    knot_bounds : npt.NDArray, shape(2,) or shape(`num_knots`,2)
         Lower and upper bounds for knots. If shape(2,), boundary knots
         placed at `knot_bounds[0]` and `knot_bounds[1]`. If
         shape(`num_knots`,2), boundary knots placed at
         `knot_bounds[0, 0]` and `knot_bounds[-1, 1]`.
-    min_dist : float or NDArray, shape(`num_knots`+1,)
+    min_dist : float or npt.NDArray, shape(`num_knots`+1,)
         Minimum distances between knots.
     num_samples : int, optional
         Number of knot vectors to sample. Default is 1.
 
     Returns
     -------
-    NDArray, shape(`num_samples`,`num_knots`+2)
+    npt.NDArray, shape(`num_samples`,`num_knots`+2)
         Sampled knot vectors.
 
     """
@@ -381,7 +392,7 @@ def _check_nums(num_name: str, num_val: int) -> None:
         raise ValueError(f"{num_name} must be at least 1")
 
 
-def _check_knot_bounds(num_knots: int, knot_bounds: NDArray) -> NDArray:
+def _check_knot_bounds(num_knots: int, knot_bounds: npt.NDArray) -> npt.NDArray:
     """Check knot_bounds."""
     try:
         knot_bounds = np.asarray(knot_bounds, dtype=float)
@@ -400,7 +411,9 @@ def _check_knot_bounds(num_knots: int, knot_bounds: NDArray) -> NDArray:
     return knot_bounds
 
 
-def _check_min_dist(num_knots: int, min_dist: float | NDArray) -> NDArray:
+def _check_min_dist(
+    num_knots: int, min_dist: float | npt.NDArray
+) -> npt.NDArray:
     """Check knot min_dist."""
     if np.isscalar(min_dist):
         min_dist = np.tile(min_dist, num_knots + 1)
@@ -416,8 +429,8 @@ def _check_min_dist(num_knots: int, min_dist: float | NDArray) -> NDArray:
 
 
 def _check_feasibility(
-    num_knots: int, knot_bounds: NDArray, min_dist: NDArray
-) -> tuple[NDArray, NDArray]:
+    num_knots: int, knot_bounds: npt.NDArray, min_dist: npt.NDArray
+) -> tuple[npt.NDArray, npt.NDArray]:
     """Check knot feasibility and get left and right boundaries."""
     if np.sum(min_dist) > knot_bounds[-1, 1] - knot_bounds[0, 0]:
         raise ValueError("min_dist cannot exceed knot_bounds")
@@ -438,7 +451,9 @@ def _check_feasibility(
     return left_bounds, right_bounds
 
 
-def nonlinear_trans(score, slope=6.0, quantile=0.7):
+def nonlinear_trans(
+    score: Sequence[float], slope: float = 6.0, quantile: float = 0.7
+):
     score_min = np.min(score)
     score_max = np.max(score)
     if score_max == score_min:
@@ -477,7 +492,9 @@ def nonlinear_trans(score, slope=6.0, quantile=0.7):
     return weight_trans
 
 
-def mat_to_fun(alt_mat, ref_mat=None):
+def mat_to_fun(
+    alt_mat: Sequence[float], ref_mat: Sequence[float] | None = None
+):
     alt_mat = np.array(alt_mat)
     assert alt_mat.ndim == 2
     if ref_mat is not None:
@@ -502,7 +519,11 @@ def mat_to_fun(alt_mat, ref_mat=None):
     return fun, jac_fun
 
 
-def mat_to_log_fun(alt_mat, ref_mat=None, add_one=True):
+def mat_to_log_fun(
+    alt_mat: Sequence[float],
+    ref_mat: Sequence[float] | None = None,
+    add_one: bool = True,
+):
     alt_mat = np.array(alt_mat)
     shift = 1.0 if add_one else 0.0
     assert alt_mat.ndim == 2
@@ -562,7 +583,7 @@ def to_list(obj: Any) -> list[Any]:
         return [obj]
 
 
-def is_numeric_array(array: NDArray) -> bool:
+def is_numeric_array(array: npt.NDArray) -> bool:
     """Check if an array is numeric.
 
     Parameters
@@ -591,8 +612,8 @@ def is_numeric_array(array: NDArray) -> bool:
 
 
 def expand_array(
-    array: NDArray, shape: tuple[int], value: Any, name: str
-) -> NDArray:
+    array: npt.NDArray, shape: tuple[int], value: Any, name: str
+) -> npt.NDArray:
     """Expand array when it is empty.
 
     Parameters
@@ -609,7 +630,7 @@ def expand_array(
 
     Returns
     -------
-    NDArray
+    npt.NDArray
         Expanded array.
 
     """
@@ -617,9 +638,9 @@ def expand_array(
     if len(array) == 0:
         if hasattr(value, "__iter__") and not isinstance(value, str):
             value = np.array(value)
-            assert (
-                value.shape == shape
-            ), f"{name}, alternative value inconsistent shape."
+            assert value.shape == shape, (
+                f"{name}, alternative value inconsistent shape."
+            )
             array = value
         else:
             array = np.full(shape, value)
@@ -631,7 +652,7 @@ def expand_array(
 def ravel_dict(x: dict) -> dict:
     """Ravel dictionary."""
     assert all([isinstance(k, str) for k in x.keys()])
-    assert all([isinstance(v, NDArray) for v in x.values()])
+    assert all([isinstance(v, npt.NDArray) for v in x.values()])
     new_x = {}
     for k, v in x.items():
         if v.size == 1:

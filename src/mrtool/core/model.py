@@ -10,9 +10,9 @@ from copy import deepcopy
 from typing import Sequence
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from limetr import LimeTr
-from numpy.typing import NDArray
 
 from . import utils
 from .cov_model import CovModel
@@ -27,7 +27,7 @@ class MRBRT:
         data: MRData,
         cov_models: Sequence[CovModel],
         inlier_pct: float = 1.0,
-    ):
+    ) -> None:
         """Constructor of MRBRT.
 
         Parameters
@@ -53,11 +53,11 @@ class MRBRT:
 
         # place holder for the limetr objective
         self.lt: LimeTr
-        self.beta_soln: NDArray
-        self.gamma_soln: NDArray
-        self.u_soln: NDArray
-        self.w_soln: NDArray
-        self.re_soln: NDArray
+        self.beta_soln: npt.NDArray
+        self.gamma_soln: npt.NDArray
+        self.u_soln: npt.NDArray
+        self.w_soln: npt.NDArray
+        self.re_soln: npt.NDArray
 
     def _infer_shape(self) -> None:
         # add random effects
@@ -92,14 +92,14 @@ class MRBRT:
             [cov_model.num_regularizations for cov_model in self.cov_models]
         )
 
-    def attach_data(self, data=None):
+    def attach_data(self, data: MRData | None = None) -> None:
         """Attach data to cov_model."""
         data = self.data if data is None else data
         # attach data to cov_model
         for cov_model in self.cov_models:
             cov_model.attach_data(data)
 
-    def check_input(self):
+    def check_input(self) -> None:
         """Check the input type of the attributes."""
         assert isinstance(self.data, MRData)
         assert isinstance(self.cov_models, list)
@@ -121,12 +121,12 @@ class MRBRT:
             if cov_model_name == name
         ]
         num_matching_index = len(matching_index)
-        assert (
-            num_matching_index == 1
-        ), f"Number of matching index is {num_matching_index}."
+        assert num_matching_index == 1, (
+            f"Number of matching index is {num_matching_index}."
+        )
         return matching_index[0]
 
-    def create_x_fun(self, data=None):
+    def create_x_fun(self, data: MRData | None = None):
         """Create the fixed effects function, link with limetr."""
         data = self.data if data is None else data
         # create design functions
@@ -150,7 +150,7 @@ class MRBRT:
 
         return x_fun, x_jac_fun
 
-    def create_z_mat(self, data=None):
+    def create_z_mat(self, data: MRData | None = None):
         """Create the random effects matrix, link with limetr."""
         data = self.data if data is None else data
         mat = np.hstack(
@@ -159,7 +159,7 @@ class MRBRT:
 
         return mat
 
-    def create_c_mat(self):
+    def create_c_mat(self) -> tuple[npt.NDArray, npt.NDArray]:
         """Create the constraints matrices."""
         c_mat = np.zeros((0, self.num_vars))
         c_vec = np.zeros((2, 0))
@@ -175,7 +175,7 @@ class MRBRT:
 
         return c_mat, c_vec
 
-    def create_h_mat(self):
+    def create_h_mat(self) -> tuple[npt.NDArray, npt.NDArray]:
         """Create the regularizer matrices."""
         h_mat = np.zeros((0, self.num_vars))
         h_vec = np.zeros((2, 0))
@@ -193,7 +193,7 @@ class MRBRT:
 
         return h_mat, h_vec
 
-    def create_uprior(self):
+    def create_uprior(self) -> npt.NDArray:
         """Create direct uniform prior."""
         uprior = np.array([[-np.inf] * self.num_vars, [np.inf] * self.num_vars])
 
@@ -205,7 +205,7 @@ class MRBRT:
 
         return uprior
 
-    def create_gprior(self):
+    def create_gprior(self) -> npt.NDArray:
         """Create direct gaussian prior."""
         gprior = np.array([[0] * self.num_vars, [np.inf] * self.num_vars])
 
@@ -217,7 +217,7 @@ class MRBRT:
 
         return gprior
 
-    def create_lprior(self):
+    def create_lprior(self) -> npt.NDArray:
         """Create direct laplace prior."""
         lprior = np.array([[0] * self.num_vars, [np.inf] * self.num_vars])
 
@@ -229,7 +229,7 @@ class MRBRT:
 
         return lprior
 
-    def fit_model(self, **fit_options):
+    def fit_model(self, **fit_options) -> None:
         """Fitting the model through limetr.
 
         Parameters
@@ -332,7 +332,7 @@ class MRBRT:
             if self.cov_models[self.get_cov_model_index(cov_name)].use_re
         }
 
-    def extract_re(self, study_id: NDArray) -> NDArray:
+    def extract_re(self, study_id: npt.NDArray) -> npt.NDArray:
         """Extract the random effect for a given dataset."""
         re = np.vstack(
             [
@@ -349,7 +349,7 @@ class MRBRT:
         data: MRData,
         predict_for_study: bool = False,
         sort_by_data_id: bool = False,
-    ) -> NDArray:
+    ) -> npt.NDArray:
         """Create new prediction with existing solution.
 
         Parameters
@@ -366,13 +366,13 @@ class MRBRT:
 
         Returns
         -------
-        NDArray
+        npt.NDArray
             Predicted outcome array.
 
         """
-        assert data.has_covs(
-            self.cov_names
-        ), "Prediction data do not have covariates used for fitting."
+        assert data.has_covs(self.cov_names), (
+            "Prediction data do not have covariates used for fitting."
+        )
         x_fun, _ = self.create_x_fun(data=data)
         prediction = x_fun(self.beta_soln)
         if predict_for_study:
@@ -385,7 +385,9 @@ class MRBRT:
 
         return prediction
 
-    def sample_soln(self, sample_size: int = 1) -> tuple[NDArray, NDArray]:
+    def sample_soln(
+        self, sample_size: int = 1
+    ) -> tuple[npt.NDArray, npt.NDArray]:
         """Sample solutions.
 
         Parameters
@@ -395,7 +397,7 @@ class MRBRT:
 
         Returns
         -------
-        tuple[NDArray, NDArray]
+        tuple[npt.NDArray, npt.NDArray]
             Return beta samples and gamma samples.
 
         """
@@ -412,11 +414,11 @@ class MRBRT:
     def create_draws(
         self,
         data: MRData,
-        beta_samples: NDArray,
-        gamma_samples: NDArray,
+        beta_samples: npt.NDArray,
+        gamma_samples: npt.NDArray,
         random_study: bool = True,
         sort_by_data_id: bool = False,
-    ) -> NDArray:
+    ) -> npt.NDArray:
         """Create draws for the given data set.
 
         Parameters
@@ -435,7 +437,7 @@ class MRBRT:
 
         Returns
         -------
-        NDArray
+        npt.NDArray
             Returns outcome sample matrix.
 
         """
@@ -479,10 +481,10 @@ class MRBeRT:
         self,
         data: MRData,
         ensemble_cov_model: CovModel,
-        ensemble_knots: NDArray,
+        ensemble_knots: npt.NDArray,
         cov_models: list[CovModel] | None = None,
         inlier_pct: float = 1.0,
-    ):
+    ) -> None:
         """Constructor of `MRBeRT`
 
         Parameters
@@ -534,11 +536,11 @@ class MRBeRT:
 
     def fit_model(
         self,
-        scores_weights=np.array([1.0, 1.0]),
-        slopes=np.array([2.0, 10.0]),
-        quantiles=np.array([0.4, 0.4]),
+        scores_weights: Sequence[float] = np.array([1.0, 1.0]),
+        slopes: Sequence[float] = np.array([2.0, 10.0]),
+        quantiles: Sequence[float] = np.array([0.4, 0.4]),
         **fit_options,
-    ):
+    ) -> None:
         """Fitting the model through limetr."""
         for sub_model in self.sub_models:
             sub_model.fit_model(**fit_options)
@@ -555,9 +557,9 @@ class MRBeRT:
 
     def score_model(
         self,
-        scores_weights=np.array([1.0, 1.0]),
-        slopes=np.array([2.0, 10.0]),
-        quantiles=np.array([0.4, 0.4]),
+        scores_weights: Sequence[float] = np.array([1.0, 1.0]),
+        slopes: Sequence[float] = np.array([2.0, 10.0]),
+        quantiles: Sequence[float] = np.array([0.4, 0.4]),
     ):
         """Score the model by there fitting and variation."""
         scores = np.zeros((2, self.num_sub_models))
@@ -581,7 +583,7 @@ class MRBeRT:
 
     def sample_soln(
         self, sample_size: int = 1
-    ) -> tuple[list[NDArray], list[NDArray]]:
+    ) -> tuple[list[npt.NDArray], list[npt.NDArray]]:
         """Sample solution."""
         sample_sizes = np.random.multinomial(sample_size, self.weights)
 
@@ -608,7 +610,7 @@ class MRBeRT:
         predict_for_study: bool = False,
         sort_by_data_id: bool = False,
         return_avg: bool = True,
-    ) -> NDArray:
+    ) -> npt.NDArray:
         """Create new prediction with existing solution.
 
         Parameters
@@ -637,11 +639,11 @@ class MRBeRT:
     def create_draws(
         self,
         data: MRData,
-        beta_samples: list[NDArray],
-        gamma_samples: list[NDArray],
+        beta_samples: list[npt.NDArray],
+        gamma_samples: list[npt.NDArray],
         random_study: bool = True,
         sort_by_data_id: bool = False,
-    ) -> NDArray:
+    ) -> npt.NDArray:
         """Create draws.
         For function description please check `create_draws` for `MRBRT`.
         """
@@ -704,7 +706,7 @@ class MRBeRT:
         return fe, re_var
 
 
-def score_sub_models_datafit(mr: MRBRT):
+def score_sub_models_datafit(mr: MRBRT) -> float:
     """score the result of mrbert"""
     if mr.lt.soln is None:
         raise ValueError("Must optimize MRBRT first.")

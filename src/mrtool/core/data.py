@@ -6,6 +6,8 @@ data
 `data` module for `mrtool` package.
 """
 
+from __future__ import annotations
+
 import warnings
 from dataclasses import dataclass, field
 from typing import Any
@@ -28,7 +30,7 @@ class MRData:
     data_id: NDArray = field(default_factory=empty_array)
     cov_scales: dict[str, float] = field(init=False, default_factory=dict)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self._check_attr_type()
 
         self.obs = expand_array(self.obs, (self.num_points,), np.nan, "obs")
@@ -44,21 +46,21 @@ class MRData:
             np.arange(self.num_points),
             "data_id",
         )
-        assert (
-            len(np.unique(self.data_id)) == self.num_points
-        ), "data_id must be unique for each data point."
+        assert len(np.unique(self.data_id)) == self.num_points, (
+            "data_id must be unique for each data point."
+        )
         self.covs.update({"intercept": np.ones(self.num_points)})
         for cov_name, cov in self.covs.items():
-            assert (
-                len(cov) == self.num_points
-            ), f"covs[{cov_name}], inconsistent shape."
+            assert len(cov) == self.num_points, (
+                f"covs[{cov_name}], inconsistent shape."
+            )
 
         self._remove_nan_in_covs()
         self._get_study_structure()
         self._get_cov_scales()
 
     @property
-    def num_points(self):
+    def num_points(self) -> list[int]:
         """Number of data points."""
         return max(
             [len(self.obs), len(self.obs_se), len(self.study_id)]
@@ -66,21 +68,21 @@ class MRData:
         )
 
     @property
-    def num_obs(self):
+    def num_obs(self) -> int:
         """Number of observations."""
         return len(self.obs)
 
     @property
-    def num_covs(self):
+    def num_covs(self) -> int:
         """Number of covariates."""
         return len(self.covs)
 
     @property
-    def num_studies(self):
+    def num_studies(self) -> int:
         """Number of studies."""
         return len(self.studies)
 
-    def _check_attr_type(self):
+    def _check_attr_type(self) -> None:
         """Check the type of the attributes."""
         assert isinstance(self.obs, np.ndarray)
         assert is_numeric_array(self.obs)
@@ -93,7 +95,7 @@ class MRData:
             assert isinstance(cov, np.ndarray)
             # assert is_numeric_array(cov)
 
-    def _get_cov_scales(self):
+    def _get_cov_scales(self) -> None:
         """Compute the covariate scale."""
         if self.is_empty():
             self.cov_scales = {
@@ -116,14 +118,14 @@ class MRData:
                     f"Please use this in spline range exposure or when preidct."
                 )
 
-    def _get_study_structure(self):
+    def _get_study_structure(self) -> None:
         """Get the study structure."""
         self.studies, self.study_sizes = np.unique(
             self.study_id, return_counts=True
         )
         self._sort_by_study_id()
 
-    def _sort_data(self, index: NDArray):
+    def _sort_data(self, index: NDArray) -> None:
         """Sort the object.
 
         Parameters
@@ -133,9 +135,9 @@ class MRData:
 
         """
         index = np.array(index)
-        assert (
-            np.sort(index) == np.arange(self.num_obs)
-        ).all(), "Sorting index must go from 0 to num_obs - 1."
+        assert (np.sort(index) == np.arange(self.num_obs)).all(), (
+            "Sorting index must go from 0 to num_obs - 1."
+        )
         self.obs = self.obs[index]
         self.obs_se = self.obs_se[index]
         for cov_name, cov in self.covs.items():
@@ -143,19 +145,19 @@ class MRData:
         self.study_id = self.study_id[index]
         self.data_id = self.data_id[index]
 
-    def _sort_by_study_id(self):
+    def _sort_by_study_id(self) -> None:
         """Sort data by study_id."""
         if not self.is_empty() and self.num_studies != 1:
             sort_index = np.argsort(self.study_id)
             self._sort_data(sort_index)
 
-    def _sort_by_data_id(self):
+    def _sort_by_data_id(self) -> None:
         """Sort data by data_id."""
         if not self.is_empty():
             sort_index = np.argsort(self.data_id)
             self._sort_data(sort_index)
 
-    def _remove_nan_in_covs(self):
+    def _remove_nan_in_covs(self) -> None:
         """Remove potential nans in covaraites."""
         if not self.is_empty():
             index = np.full(self.num_obs, False)
@@ -169,7 +171,7 @@ class MRData:
                     index = index | cov_index
             self._remove_data(index)
 
-    def _remove_data(self, index: NDArray):
+    def _remove_data(self, index: NDArray) -> None:
         """Remove the data point by index.
 
         Parameters
@@ -189,7 +191,7 @@ class MRData:
         self.study_id = self.study_id[keep_index]
         self.data_id = self.data_id[keep_index]
 
-    def _get_data(self, index: NDArray) -> "MRData":
+    def _get_data(self, index: NDArray) -> MRData:
         """Get the data point by index.
 
         Parameters
@@ -217,7 +219,7 @@ class MRData:
         """Return true when object contain data."""
         return self.num_points == 0
 
-    def _assert_not_empty(self):
+    def _assert_not_empty(self) -> None:
         """Raise ValueError when object is empty."""
         if self.is_empty():
             raise ValueError("MRData object is empty.")
@@ -237,7 +239,7 @@ class MRData:
             )
         return ok
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset all the attributes to default values."""
         self.obs = empty_array()
         self.obs_se = empty_array()
@@ -254,7 +256,7 @@ class MRData:
         col_covs: list[str] | None = None,
         col_study_id: str | None = None,
         col_data_id: str | None = None,
-    ):
+    ) -> None:
         """Load data from data frame."""
         self.reset()
 
@@ -289,7 +291,7 @@ class MRData:
         var_obs_se: str | None = None,
         var_covs: list[str] | None = None,
         coord_study_id: str | None = None,
-    ):
+    ) -> None:
         """Load data from xarray."""
         self.reset()
 
@@ -366,7 +368,7 @@ class MRData:
         else:
             return all([study in self.studies for study in studies])
 
-    def _assert_has_covs(self, covs: list[str] | str):
+    def _assert_has_covs(self, covs: list[str] | str) -> None:
         """Assert has covariates otherwise raise ValueError."""
         if not self.has_covs(covs):
             covs = to_list(covs)
@@ -375,7 +377,7 @@ class MRData:
                 f"MRData object do not contain covariates: {missing_covs}."
             )
 
-    def _assert_has_studies(self, studies: list[Any] | Any):
+    def _assert_has_studies(self, studies: list[Any] | Any) -> None:
         """Assert has studies otherwise raise ValueError."""
         if not self.has_studies(studies):
             studies = to_list(studies)
@@ -409,7 +411,7 @@ class MRData:
                 [self.covs[cov_names][:, None] for cov_names in covs]
             )
 
-    def get_study_data(self, studies: list[Any] | Any) -> "MRData":
+    def get_study_data(self, studies: list[Any] | Any) -> MRData:
         """Get study specific data.
 
         Parameters
@@ -428,7 +430,7 @@ class MRData:
         index = np.array([study in studies for study in self.study_id])
         return self._get_data(index)
 
-    def normalize_covs(self, covs: list[str] | str | None = None):
+    def normalize_covs(self, covs: list[str] | str | None = None) -> None:
         """Normalize covariates by the largest absolute value for each covariate."""
         if covs is None:
             covs = list(self.covs.keys())
@@ -442,7 +444,7 @@ class MRData:
                         self.covs[cov_name] / self.cov_scales[cov_name]
                     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Summary of the object."""
         dimension_summary = [
             "number of observations: %i" % self.num_obs,
