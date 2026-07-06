@@ -631,7 +631,7 @@ def expand_array(
 def ravel_dict(x: dict) -> dict:
     """Ravel dictionary."""
     assert all([isinstance(k, str) for k in x.keys()])
-    assert all([isinstance(v, NDArray) for v in x.values()])
+    assert all([isinstance(v, np.ndarray) for v in x.values()])
     new_x = {}
     for k, v in x.items():
         if v.size == 1:
