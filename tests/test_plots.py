@@ -23,7 +23,8 @@ def mrbert():
             "a_1": 0.0,
             "b_0": alt_lower,
             "b_1": alt_upper,
-            "obs": np.log(1.0 + 0.5 * (alt_lower + alt_upper)) + rng.normal(0.0, 0.05, num_obs),
+            "obs": np.log(1.0 + 0.5 * (alt_lower + alt_upper))
+            + rng.normal(0.0, 0.05, num_obs),
             "obs_se": 0.1,
             "study_id": rng.integers(0, 5, num_obs),
         }
@@ -53,7 +54,9 @@ def mrbert():
     )
     knots_samples[:, 0] = 0.0
     knots_samples[:, -1] = 1.0
-    model = MRBeRT(data, ensemble_cov_model=cov_model, ensemble_knots=knots_samples)
+    model = MRBeRT(
+        data, ensemble_cov_model=cov_model, ensemble_knots=knots_samples
+    )
     model.fit_model()
     return model
 
