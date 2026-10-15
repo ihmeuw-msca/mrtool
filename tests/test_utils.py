@@ -135,3 +135,12 @@ def test_knots_feasible():
     for ii in range(num_knots):
         assert np.all(knot_bounds[ii][0] <= knots[:, ii + 1])
         assert np.all(knots[:, ii + 1] <= knot_bounds[ii][1])
+
+def test_ravel_dict():
+    """Check the types in the dictionary correctly."""
+    fe_soln = {'intercept': np.array([1.0]), 'x1': np.array([0.5])}
+    re_var_soln = {'intercept': np.array([0.25])}
+    my_dict1 = utils.ravel_dict(fe_soln)
+    my_dict2 = utils.ravel_dict(re_var_soln)
+    assert isinstance(my_dict1, dict), "beta output should be a dictionary"
+    assert isinstance(my_dict2, dict), "gamma output should be a dictionary"

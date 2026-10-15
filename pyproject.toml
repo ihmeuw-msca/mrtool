@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mrtool"
-version = "0.2.1"
+version = "0.2.2"
 description = "Featured nonlinear mixed effects model"
 readme = "README.rst"
 requires-python = ">=3.10"
@@ -12,7 +12,7 @@ license = { file = "LICENSE" }
 authors = [
     { name = "IHME Math Sciences", email = "ihme.math.sciences@gmail.com" },
 ]
-dependencies = ["numpy", "pandas", "scipy", "xspline<0.1.0", "xarray", "limetr<0.1.0", "matplotlib"]
+dependencies = ["numpy", "pandas", "scipy", "xspline>=0.0.8,<0.1.0", "xarray", "limetr<0.1.0", "matplotlib"]
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-mock"]
