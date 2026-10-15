@@ -105,8 +105,8 @@ def plot_risk_function(
     plt.plot(dose_grid, np.exp(y_mean_fe), c="red")
     plt.ylim(
         [
-            np.exp(y_lower_fe).min() - np.exp(y_mean_fe).ptp() * 0.1,
-            np.exp(y_upper_fe).max() + np.exp(y_mean_fe).ptp() * 0.1,
+            np.exp(y_lower_fe).min() - np.ptp(np.exp(y_mean_fe)) * 0.1,
+            np.exp(y_upper_fe).max() + np.ptp(np.exp(y_mean_fe)) * 0.1,
         ]
     )
     plt.ylabel("RR", fontsize=10)
